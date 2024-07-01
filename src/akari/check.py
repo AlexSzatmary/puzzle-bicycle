@@ -5,11 +5,25 @@ import numpy as np
 # Board:
 # 0, 1, 2, 3: number of bulbs
 # X: black, unnumbered
-# " " [space]: empty
+# ".": empty
 # Solution:
 # o: bulb
 # Marks:
 # -, |, +: indicate light paths, + shows both directions
+
+
+def load_pzprv3(pzprv3):
+    """
+    Loads PUZ-PRE v3 text and returns an Akari board
+    """
+    pzprv3 = pzprv3.replace("\n", "/").replace("//", "/").replace("-", "X").split("/")
+    rows = int(pzprv3[3])
+    cols = int(pzprv3[4])
+    board = np.zeros((rows + 2, cols + 2), dtype="|S1")
+    board[:, :] = "X"
+    for i, row in enumerate(pzprv3[5:5 + rows]):
+        board[i + 1, 1:-1] = list(row.replace(" ", ""))
+    return board
 
 
 def zero_pad(grid):
