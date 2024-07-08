@@ -15,6 +15,18 @@ lightup/
 . . . . . /
 """
 
+pzprv3_1_sol = """
+pzprv3/
+lightup/
+5/
+5/
+. # . . . /
+. . 0 . # /
+# 2 - 1 . /
+. # 3 # . /
+. . # . . /
+"""
+
 board_1 = """
 XXXXXXX
 X.....X
@@ -26,9 +38,24 @@ XXXXXXX
 """[1:-1]
 board_1 = np.array(list(map(list, board_1.split("\n"))), dtype="|S1")
 
+board_1_sol = """
+XXXXXXX
+X.o...X
+X..0.oX
+Xo2X1.X
+X.o3o.X
+X..o..X
+XXXXXXX
+"""[1:-1]
+board_1_sol = np.array(list(map(list, board_1_sol.split("\n"))), dtype="|S1")
+
 
 def test_load_pzprv3():
     assert np.all(board_1 == load_pzprv3(pzprv3_1))
+
+
+def test_load_pzprv3_solved():
+    assert np.all(board_1_sol == load_pzprv3(pzprv3_1_sol))
 
 
 def test_zero_pad():
