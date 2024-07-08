@@ -49,13 +49,13 @@ def check_number(board):
     wrong_bulbs = []
     for i in range(1, np.size(board, 0) - 1):
         for j in range(1, np.size(board, 1) - 1):
-            if board[i, j] in "0123":
+            if board[i, j] in b"0123":
+                # breakpoint()
                 if not int(board[i, j]) == (
-                    board[i - 1, j]
-                    == "o" + board[i + 1, j]
-                    == "o" + board[i, j - 1]
-                    == "o" + board[i, j + 1]
-                    == "o"
+                    (board[i - 1, j] == b"o")
+                    + (board[i + 1, j] == b"o")
+                    + (board[i, j - 1] == b"o")
+                    + (board[i, j + 1] == b"o")
                 ):
                     wrong_bulbs.append((i, j))
     return wrong_bulbs

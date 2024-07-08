@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
-from check import zero_pad, load_pzprv3
+from check import zero_pad, load_pzprv3, check_number
 
 
 pzprv3_1 = """
@@ -66,3 +66,10 @@ def test_zero_pad():
     c[:, :] = "X"
     c[1:-1, 1:-1] = " "
     assert np.all(b == c)
+
+
+def test_check_number_1():
+    assert not check_number(board_1_sol)
+    board_1_sol_1 = board_1_sol.copy()
+    board_1_sol_1[4, 2] = b"."
+    assert check_number(board_1_sol_1) == [(3, 2), (4, 3)]
