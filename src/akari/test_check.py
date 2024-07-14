@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
-from check import zero_pad, load_pzprv3, check_number
+from check import zero_pad, load_pzprv3, check_number, illuminate
 
 
 pzprv3_1 = """
@@ -35,7 +35,9 @@ X.2X1.X
 X..3..X
 X.....X
 XXXXXXX
-"""[1:-1]
+"""[
+    1:-1
+]
 board_1 = np.array(list(map(list, board_1.split("\n"))), dtype="|S1")
 
 board_1_sol = """
@@ -46,8 +48,26 @@ Xo2X1.X
 X.o3o.X
 X..o..X
 XXXXXXX
-"""[1:-1]
+"""[
+    1:-1
+]
 board_1_sol = np.array(list(map(list, board_1_sol.split("\n"))), dtype="|S1")
+
+
+board_1_sol_illuminated = """
+XXXXXXX
+X+o--+X
+X||0-oX
+Xo2X1|X
+X+o3o+X
+X++o++X
+XXXXXXX
+"""[
+    1:-1
+]
+board_1_sol_illuminated = np.array(
+    list(map(list, board_1_sol_illuminated.split("\n"))), dtype="|S1"
+)
 
 
 def test_load_pzprv3():
@@ -73,3 +93,21 @@ def test_check_number_1():
     board_1_sol_1 = board_1_sol.copy()
     board_1_sol_1[4, 2] = b"."
     assert check_number(board_1_sol_1) == [(3, 2), (4, 3)]
+
+
+def test_illuminate_1():
+    (wrong_bulb_pairs, illuminated_board) = illuminate(board_1_sol)
+    assert not wrong_bulb_pairs
+    assert np.all(illuminated_board == board_1_sol_illuminated)
+
+    board_1_sol_wrong = board_1_sol.copy()
+    board_1_sol_wrong[2, 1] = b"o"
+    board_1_sol_wrong[1, 5] = b"o"
+    (wrong_bulb_pairs_wrong, illuminated_board_wrong) = illuminate(board_1_sol_wrong)
+    board_1_sol_illuminated_wrong = board_1_sol_illuminated.copy()
+    board_1_sol_illuminated_wrong[2, 1] = b"o"
+    board_1_sol_illuminated_wrong[2, 2] = b"+"
+    board_1_sol_illuminated_wrong[1, 5] = b"o"
+    print(wrong_bulb_pairs_wrong)
+    assert wrong_bulb_pairs_wrong == [(1, 2, 1, 5), (1, 5, 2, 5), (2, 1, 3, 1)]
+    assert np.all(illuminated_board_wrong == board_1_sol_illuminated_wrong)

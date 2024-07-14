@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
+from itertools import zip_longest
 
 # format
 # Board:
@@ -39,6 +40,11 @@ def zero_pad(grid):
     return grid2
 
 
+def print_board(board):
+    for row in board.astype(str):
+        print(''.join(list(row)))
+
+
 def check_number(board):
     """
     Checks numbered spaces to see if they have the correct number of bulbs.
@@ -61,13 +67,42 @@ def check_number(board):
     return wrong_bulbs
 
 
-def illuminate():
+def illuminate(board):
     """
     Takes board with bulbs. Returns a tuple with
     *a list of lists of tuples of coordinates of bulbs that shine on each other
     *a copy of board with light paths drawn
     """
-    pass
+    wrong_bulb_pairs = []
+    board = board.copy()
+    fill_chars = [b"|", b"-", b"|", b"-"]
+    for i in range(1, np.size(board, 0) - 1):
+        for j in range(1, np.size(board, 1) - 1):
+            if board[i, j] == b"o":
+                iters = [
+                    zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
+                    zip_longest([], range(j - 1, 0, -1), fillvalue=i),
+                    zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
+                    zip_longest([], range(j + 1, np.size(board, 0) - 1), fillvalue=i),
+                ]
+                for (it, fill_char) in zip(iters, fill_chars):
+                    for (i1, j1) in it:
+                        if board[i1, j1] == b"o":
+                            if i <= i1 and j <= j1:
+                                wrong_bulb_pairs.append((i, j, i1, j1))
+                            break
+                        elif board[i1, j1] == fill_char:
+                            # wrong bulb pair already detected
+                            break
+                        elif board[i1, j1] == b"-" or board[i1, j1] == b"|":
+                            # this branch will only trigger if the char at this location
+                            # is not the same as the fill_char
+                            board[i1, j1] = b"+"
+                        elif board[i1, j1] in b"01234X":
+                            break
+                        else:
+                            board[i1, j1] = fill_char
+    return (wrong_bulb_pairs, board)
 
 
 def check_empty():
