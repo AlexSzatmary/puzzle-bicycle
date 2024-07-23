@@ -4,7 +4,7 @@ from itertools import zip_longest
 
 # format
 # Board:
-# 0, 1, 2, 3: number of bulbs
+# 0, 1, 2, 3, 4: number of bulbs
 # X: black, unnumbered
 # ".": empty
 # Solution:
@@ -42,7 +42,7 @@ def zero_pad(grid):
 
 def print_board(board):
     for row in board.astype(str):
-        print(''.join(list(row)))
+        print("".join(list(row)))
 
 
 def check_number(board):
@@ -73,7 +73,7 @@ def illuminate(board):
     *a list of lists of tuples of coordinates of bulbs that shine on each other
     *a copy of board with light paths drawn
     """
-    wrong_bulb_pairs = []
+    lit_bulb_pairs = []
     board = board.copy()
     fill_chars = [b"|", b"-", b"|", b"-"]
     for i in range(1, np.size(board, 0) - 1):
@@ -85,11 +85,11 @@ def illuminate(board):
                     zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
                     zip_longest([], range(j + 1, np.size(board, 0) - 1), fillvalue=i),
                 ]
-                for (it, fill_char) in zip(iters, fill_chars):
-                    for (i1, j1) in it:
+                for it, fill_char in zip(iters, fill_chars):
+                    for i1, j1 in it:
                         if board[i1, j1] == b"o":
                             if i <= i1 and j <= j1:
-                                wrong_bulb_pairs.append((i, j, i1, j1))
+                                lit_bulb_pairs.append((i, j, i1, j1))
                             break
                         elif board[i1, j1] == fill_char:
                             # wrong bulb pair already detected
@@ -102,8 +102,26 @@ def illuminate(board):
                             break
                         else:
                             board[i1, j1] = fill_char
-    return (wrong_bulb_pairs, board)
+    return (lit_bulb_pairs, board)
 
 
-def check_empty():
-    pass
+def check_unlit_cells(board):
+    """
+    Returns True if a board has no unlit cells, False otherwise
+    """
+    (wrong_bulb_pairs, board) = illuminate(board)
+    return not np.any(board == b".") == np.True_
+
+
+def check_lit_bulbs(board):
+    """
+    Returns True if a board has no lit bulbs, False otherwise
+    """
+    (wrong_bulb_pairs, board) = illuminate(board)
+    return not bool(wrong_bulb_pairs)
+
+
+def check_all(board):
+    return (
+        not check_number(board) and check_unlit_cells(board) and check_lit_bulbs(board)
+    )

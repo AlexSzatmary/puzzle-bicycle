@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 import numpy as np
-from check import zero_pad, load_pzprv3, check_number, illuminate
+from check import (
+    zero_pad,
+    load_pzprv3,
+    check_number,
+    illuminate,
+    check_unlit_cells,
+    check_lit_bulbs,
+    check_all,
+)
 
 
 pzprv3_1 = """
@@ -111,3 +119,31 @@ def test_illuminate_1():
     print(wrong_bulb_pairs_wrong)
     assert wrong_bulb_pairs_wrong == [(1, 2, 1, 5), (1, 5, 2, 5), (2, 1, 3, 1)]
     assert np.all(illuminated_board_wrong == board_1_sol_illuminated_wrong)
+
+
+def test_check_unlit_cells_1():
+    assert check_unlit_cells(board_1_sol)
+
+    board_1_sol_wrong = board_1_sol.copy()
+    board_1_sol_wrong[1, 2] = b"."
+    assert not check_unlit_cells(board_1_sol_wrong)
+
+
+def test_check_unlit():
+    assert check_lit_bulbs(board_1_sol)
+
+    board_1_sol_wrong = board_1_sol.copy()
+    board_1_sol_wrong[2, 1] = b"o"
+    assert not check_lit_bulbs(board_1_sol_wrong)
+
+
+def test_check_all():
+    assert check_all(board_1_sol)
+
+    board_1_sol_wrong = board_1_sol.copy()
+    board_1_sol_wrong[1, 2] = b"."
+    assert not check_all(board_1_sol_wrong)
+
+    board_1_sol_wrong_2 = board_1_sol.copy()
+    board_1_sol_wrong_2[2, 1] = b"o"
+    assert not check_all(board_1_sol_wrong)
