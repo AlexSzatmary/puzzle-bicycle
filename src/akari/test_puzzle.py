@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import numpy as np
-from check import (
+from puzzle import (
     check_all,
     check_lit_bulbs,
     check_number,

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 from itertools import zip_longest
 
 import numpy as np
