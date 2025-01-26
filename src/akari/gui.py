@@ -54,7 +54,7 @@ class Cell(QWidget):
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(1)
-        pen.setColor(Qt.gray)  # pyright: ignore[reportAttributeAccessIssue]
+        pen.setColor(Qt.gray)
         p.setPen(pen)
         brush = QBrush()
         brush.setColor(Qt.gray)
@@ -66,7 +66,7 @@ class Cell(QWidget):
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(1)
-        pen.setColor(Qt.gray)  # pyright: ignore[reportAttributeAccessIssue]
+        pen.setColor(Qt.gray)
         p.setPen(pen)
         brush = QBrush()
         brush.setColor(Qt.gray)
@@ -78,7 +78,7 @@ class Cell(QWidget):
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(1)
-        pen.setColor(Qt.gray)  # pyright: ignore[reportAttributeAccessIssue]
+        pen.setColor(Qt.gray)
         p.setPen(pen)
         brush = QBrush()
         brush.setColor(Qt.gray)
@@ -91,24 +91,16 @@ class Cell(QWidget):
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(2)
-        pen.setColor(Qt.gray)  # pyright: ignore[reportAttributeAccessIssue]
+        pen.setColor(Qt.gray)
         p.setPen(pen)
-        # brush = QBrush()
-        # brush.setColor(Qt.gray)
-        # brush.setStyle(Qt.SolidPattern)
-        # p.setBrush(brush)
         p.drawEllipse(2, 2, 16, 16)
 
     def draw_dot(self, event) -> None:
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(2)
-        pen.setColor(Qt.gray)  # pyright: ignore[reportAttributeAccessIssue]
+        pen.setColor(Qt.gray)
         p.setPen(pen)
-        # brush = QBrush()
-        # brush.setColor(Qt.gray)
-        # brush.setStyle(Qt.SolidPattern)
-        # p.setBrush(brush)
         p.drawEllipse(9, 9, 2, 2)
 
     def draw_black_square(self, event) -> None:
@@ -119,7 +111,7 @@ class Cell(QWidget):
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(2)
-        pen.setColor(Qt.white)  # pyright: ignore[reportAttributeAccessIssue]
+        pen.setColor(Qt.white)
         p.setPen(pen)
         p.drawText(
             2,
