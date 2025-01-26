@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-import numpy as np
 from itertools import zip_longest
+
+import numpy as np
 
 # format
 # Board:
@@ -13,7 +14,7 @@ from itertools import zip_longest
 # -, |, +: indicate light paths, + shows both directions
 
 
-def load_pzprv3(pzprv3):
+def load_pzprv3(pzprv3) -> np.ndarray:
     """
     Loads PUZ-PRE v3 text and returns an Akari board
     """

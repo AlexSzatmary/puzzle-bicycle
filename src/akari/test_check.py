@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 import numpy as np
 from check import (
-    zero_pad,
-    load_pzprv3,
-    check_number,
-    illuminate,
-    check_unlit_cells,
-    check_lit_bulbs,
     check_all,
+    check_lit_bulbs,
+    check_number,
+    check_unlit_cells,
+    illuminate,
+    load_pzprv3,
+    zero_pad,
 )
-
 
 pzprv3_1 = """
 pzprv3/
@@ -43,12 +42,10 @@ X.2X1.X
 X..3..X
 X.....X
 XXXXXXX
-"""[
-    1:-1
-]
+"""[1:-1]
 board_1 = np.array(list(map(list, board_1.split("\n"))), dtype="|S1")
 
-board_1_sol = """
+board_1_sol_str = """
 XXXXXXX
 X.o...X
 X..0.oX
@@ -56,13 +53,11 @@ Xo2X1.X
 X.o3o.X
 X..o..X
 XXXXXXX
-"""[
-    1:-1
-]
-board_1_sol = np.array(list(map(list, board_1_sol.split("\n"))), dtype="|S1")
+"""[1:-1]
+board_1_sol = np.array(list(map(list, board_1_sol_str.split("\n"))), dtype="|S1")
 
 
-board_1_sol_illuminated = """
+board_1_sol_illuminated_str = """
 XXXXXXX
 X+o--+X
 X||0-oX
@@ -70,11 +65,9 @@ Xo2X1|X
 X+o3o+X
 X++o++X
 XXXXXXX
-"""[
-    1:-1
-]
+"""[1:-1]
 board_1_sol_illuminated = np.array(
-    list(map(list, board_1_sol_illuminated.split("\n"))), dtype="|S1"
+    list(map(list, board_1_sol_illuminated_str.split("\n"))), dtype="|S1"
 )
 
 
