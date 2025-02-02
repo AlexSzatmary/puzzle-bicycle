@@ -161,3 +161,5 @@ cython_debug/
 
 *.code-workspace
 .DS_Store
+scratch
+.vscode

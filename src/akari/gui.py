@@ -1,32 +1,39 @@
-from PySide6.QtCore import QSize, Signal
-from PySide6.QtGui import QMouseEvent, QPainter, QPen, QBrush
+import os
+# from itertools import cycle
+
+import numpy as np
+import puzzle
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QBrush, QMouseEvent, QPainter, QPen
 from PySide6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QGridLayout,
     QHBoxLayout,
     QMainWindow,
     QPushButton,
+    QSizePolicy,
+    QSpacerItem,
     QVBoxLayout,
     QWidget,
-    QSpacerItem,
-    QSizePolicy,
 )
-from PySide6.QtCore import Qt
-from itertools import cycle
 
 
-def fake_next_state(state):
-    s = ".-|+O#01234*."
+def fake_next_state(state: str) -> str:
+    s = "._-|+O#01234*."
     return s[s.find(state) + 1]
 
 
 class Cell(QWidget):
     clicked = Signal()
 
-    def __init__(self, x, y, main_window, *args, **kwargs) -> None:
+    def __init__(self, main_window, i, j, state, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self.i = i
+        self.j = j
+        self.main_window = main_window
         self.setFixedSize(QSize(20, 20))
-        self.state = "."
+        self.state = state
 
     def paintEvent(self, event) -> None:
         p = QPainter(self)
@@ -34,17 +41,17 @@ class Cell(QWidget):
         p.drawRect(0, 0, 20, 20)
 
         match self.state:
-            case "-":
+            case "_":
                 self.draw_horizontal(event)
             case "|":
                 self.draw_vertical(event)
             case "+":
                 self.draw_cross(event)
-            case "O":
+            case "#":
                 self.draw_circle(event)
             case "*":
                 self.draw_dot(event)
-            case "#":
+            case "-":
                 self.draw_black_square(event)
             case num if "0" <= num <= "4":
                 self.draw_black_square(event)
@@ -123,9 +130,16 @@ class Cell(QWidget):
         )
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        print("hi", self.state)
-        self.state = fake_next_state(self.state)
-        print("bye", self.state)
+        match self.main_window.board[self.i + 1, self.j + 1]:
+            case "#":
+                self.state = "."
+                self.main_window.board[self.i + 1, self.j + 1] = self.state
+            case ".":
+                self.state = "*"
+                self.main_window.board[self.i + 1, self.j + 1] = self.state
+            case "*":
+                self.state = "#"
+                self.main_window.board[self.i + 1, self.j + 1] = self.state
         self.clicked.emit()
         self.update()
         return super().mouseReleaseEvent(event)
@@ -146,7 +160,14 @@ class MainWindow(QMainWindow):
         self.open = QPushButton()
         self.open.setText("Open")
         self.vb.addWidget(self.open)
+        self.open.pressed.connect(self.open_pressed)
 
+        self.save = QPushButton()
+        self.save.setText("Save")
+        self.vb.addWidget(self.save)
+        self.save.pressed.connect(self.save_pressed)
+
+        # TODO
         # self.clear = QPushButton()
         # self.clear.setText("Clear")
         # self.vb.addWidget(self.clear)
@@ -163,11 +184,18 @@ class MainWindow(QMainWindow):
         # self.settings.setText("Settings")
         # self.vb.addWidget(self.settings)
 
-        symbols = cycle(".-|+O#01234*.")
+        # symbols = cycle(".-|+O#01234*.")
+        # for i in range(5):
+        #     for j in range(5):
+        #         c = Cell(0, 0, self)
+        #         c.state = next(symbols)
+        #         self.grid.addWidget(c, i, j)
+        self.board = np.zeros((7, 7), dtype=str)
+        self.board[:] = "-"
+        self.board[1:-1, 1:-1] = "."
         for i in range(5):
             for j in range(5):
-                c = Cell(0, 0, self)
-                c.state = next(symbols)
+                c = Cell(self, i, j, self.board[i + 1, j + 1])
                 self.grid.addWidget(c, i, j)
         self.grid.setSpacing(0)
         self.grid.addItem(
@@ -176,6 +204,41 @@ class MainWindow(QMainWindow):
             0,
         )
         self.show()
+
+    def open_pressed(self) -> None:
+        qfd = QFileDialog()
+        qfd.open()
+        filename, _ = qfd.getOpenFileName(
+            self, "Open pzprv3", os.path.dirname(__file__), "(*.txt)"
+        )
+        with open(filename) as hin:
+            text = hin.read()
+        self.board = puzzle.load_pzprv3(text)
+        self.grid.setParent(None)
+        self.grid = QGridLayout()
+        for i in range(self.board.shape[0] - 2):
+            for j in range(self.board.shape[0] - 2):
+                c = Cell(self, i, j, self.board[i + 1, j + 1])
+                self.grid.addWidget(c, i, j)
+                c.update()
+        self.grid.setSpacing(0)
+        self.grid.addItem(
+            QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding),
+            self.grid.rowCount(),
+            0,
+        )
+        self.show()
+        self.hb.addLayout(self.grid)
+
+    def save_pressed(self) -> None:
+        qfd = QFileDialog()
+        qfd.open()
+        filename, _ = qfd.getSaveFileName(
+            self, "Save pzprv3", os.path.dirname(__file__), "(*.txt)"
+        )
+        pzprv3 = puzzle.save_pzprv3(self.board)
+        with open(filename, "w") as hout:
+            hout.write(pzprv3)
 
 
 if __name__ == "__main__":
