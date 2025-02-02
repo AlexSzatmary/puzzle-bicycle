@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 
 
 def fake_next_state(state: str) -> str:
-    s = "._-|+O#01234*."
+    s = "._-|+O#01234x."
     return s[s.find(state) + 1]
 
 
@@ -45,11 +45,11 @@ class Cell(QWidget):
                 self.draw_horizontal(event)
             case "|":
                 self.draw_vertical(event)
-            case "+":
+            case "x":
                 self.draw_cross(event)
             case "#":
                 self.draw_circle(event)
-            case "*":
+            case "+":
                 self.draw_dot(event)
             case "-":
                 self.draw_black_square(event)
@@ -135,9 +135,9 @@ class Cell(QWidget):
                 self.state = "."
                 self.main_window.board[self.i + 1, self.j + 1] = self.state
             case ".":
-                self.state = "*"
+                self.state = "+"
                 self.main_window.board[self.i + 1, self.j + 1] = self.state
-            case "*":
+            case "+":
                 self.state = "#"
                 self.main_window.board[self.i + 1, self.j + 1] = self.state
         self.clicked.emit()

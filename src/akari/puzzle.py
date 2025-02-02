@@ -6,12 +6,12 @@ import numpy as np
 # Board:
 # 0, 1, 2, 3, 4: number of bulbs
 # -: black, unnumbered
-# ".": empty
+# .: empty
 # Solution:
 # #: bulb
 # Marks:
-# _, |, +: indicate light paths, + shows both directions,
-# * indicates no bulb but direction not indicated
+# _, |, x: indicate light paths, x shows both directions,
+# + indicates no bulb but direction not indicated
 
 
 def load_pzprv3(pzprv3: str) -> np.ndarray:
@@ -108,7 +108,7 @@ def illuminate(board):
                         elif board[i1, j1] == "_" or board[i1, j1] == "|":
                             # this branch will only trigger if the char at this location
                             # is not the same as the fill_char
-                            board[i1, j1] = "+"
+                            board[i1, j1] = "x"
                         elif board[i1, j1] in "01234-":
                             break
                         else:
