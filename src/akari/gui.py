@@ -151,10 +151,8 @@ class MainWindow(QMainWindow):
         self.w = QWidget()
         self.hb = QHBoxLayout()
         self.vb = QVBoxLayout()
-        self.grid = QGridLayout()
         self.w.setLayout(self.hb)
         self.hb.addLayout(self.vb)
-        self.hb.addLayout(self.grid)
         self.setCentralWidget(self.w)
 
         self.open = QPushButton()
@@ -184,25 +182,10 @@ class MainWindow(QMainWindow):
         # self.settings.setText("Settings")
         # self.vb.addWidget(self.settings)
 
-        # symbols = cycle(".-|+O#01234*.")
-        # for i in range(5):
-        #     for j in range(5):
-        #         c = Cell(0, 0, self)
-        #         c.state = next(symbols)
-        #         self.grid.addWidget(c, i, j)
         self.board = np.zeros((7, 7), dtype=str)
         self.board[:] = "-"
         self.board[1:-1, 1:-1] = "."
-        for i in range(5):
-            for j in range(5):
-                c = Cell(self, i, j, self.board[i + 1, j + 1])
-                self.grid.addWidget(c, i, j)
-        self.grid.setSpacing(0)
-        self.grid.addItem(
-            QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding),
-            5,
-            0,
-        )
+        self.initialize_grid()
         self.show()
 
     def open_pressed(self) -> None:
@@ -215,6 +198,9 @@ class MainWindow(QMainWindow):
             text = hin.read()
         self.board = puzzle.load_pzprv3(text)
         clearLayout(self.grid)
+        self.initialize_grid()
+
+    def initialize_grid(self) -> None:
         self.grid = QGridLayout()
         for i in range(self.board.shape[0] - 2):
             for j in range(self.board.shape[0] - 2):
