@@ -214,7 +214,7 @@ class MainWindow(QMainWindow):
         with open(filename) as hin:
             text = hin.read()
         self.board = puzzle.load_pzprv3(text)
-        self.grid.setParent(None)
+        clearLayout(self.grid)
         self.grid = QGridLayout()
         for i in range(self.board.shape[0] - 2):
             for j in range(self.board.shape[0] - 2):
@@ -239,6 +239,18 @@ class MainWindow(QMainWindow):
         pzprv3 = puzzle.save_pzprv3(self.board)
         with open(filename, "w") as hout:
             hout.write(pzprv3)
+
+
+# Taken from https://stackoverflow.com/a/9383780/400793 by ekhumoro
+def clearLayout(layout):
+    if layout is not None:
+        while layout.count():
+            item = layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+            else:
+                clearLayout(item.layout())
 
 
 if __name__ == "__main__":
