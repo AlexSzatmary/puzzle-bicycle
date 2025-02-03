@@ -19,6 +19,9 @@ from PySide6.QtWidgets import (
 )
 
 
+AUTO_ILLUMINATE = True
+
+
 def fake_next_state(state: str) -> str:
     s = "._-|+O#01234x."
     return s[s.find(state) + 1]
@@ -130,18 +133,26 @@ class Cell(QWidget):
         )
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        match self.main_window.board[self.i + 1, self.j + 1]:
+        mwb = self.main_window.board
+        match self.state:
             case "#":
                 self.state = "."
-                self.main_window.board[self.i + 1, self.j + 1] = self.state
+                mwb[self.i + 1, self.j + 1] = self.state
             case ".":
+                if str(mwb[self.i + 1, self.j + 1]) != ".":
+                    print("NOT EQUAL")
                 self.state = "+"
-                self.main_window.board[self.i + 1, self.j + 1] = self.state
+                mwb[self.i + 1, self.j + 1] = self.state
             case "+":
                 self.state = "#"
-                self.main_window.board[self.i + 1, self.j + 1] = self.state
+                mwb[self.i + 1, self.j + 1] = self.state
+            case _:
+                print(puzzle.save_pzprv3(mwb))
+                return super().mouseReleaseEvent(event)
+        print(puzzle.save_pzprv3(mwb))
         self.clicked.emit()
         self.update()
+        self.main_window.maybe_illuminate()
         return super().mouseReleaseEvent(event)
 
 
@@ -185,6 +196,7 @@ class MainWindow(QMainWindow):
         self.board = np.zeros((7, 7), dtype=str)
         self.board[:] = "-"
         self.board[1:-1, 1:-1] = "."
+        self.board_illuminated = self.board.copy()
         self.initialize_grid()
         self.show()
 
@@ -197,14 +209,15 @@ class MainWindow(QMainWindow):
         with open(filename) as hin:
             text = hin.read()
         self.board = puzzle.load_pzprv3(text)
+        self.board_illuminated = puzzle.illuminate(self.board)[1]
         clearLayout(self.grid)
         self.initialize_grid()
 
     def initialize_grid(self) -> None:
         self.grid = QGridLayout()
-        for i in range(self.board.shape[0] - 2):
-            for j in range(self.board.shape[0] - 2):
-                c = Cell(self, i, j, self.board[i + 1, j + 1])
+        for i in range(self.board_illuminated.shape[0] - 2):
+            for j in range(self.board_illuminated.shape[0] - 2):
+                c = Cell(self, i, j, self.board_illuminated[i + 1, j + 1])
                 self.grid.addWidget(c, i, j)
                 c.update()
         self.grid.setSpacing(0)
@@ -225,6 +238,23 @@ class MainWindow(QMainWindow):
         pzprv3 = puzzle.save_pzprv3(self.board)
         with open(filename, "w") as hout:
             hout.write(pzprv3)
+
+    def maybe_illuminate(self) -> None:
+        if AUTO_ILLUMINATE:
+            new_illuminated = puzzle.illuminate(self.board)[1]
+            for i in range(self.board_illuminated.shape[0] - 2):
+                for j in range(self.board_illuminated.shape[1] - 2):
+                    if (
+                        new_illuminated[i + 1, j + 1]
+                        != self.board_illuminated[i + 1, j + 1]
+                    ):
+                        ci = self.grid.itemAtPosition(i, j)
+                        assert ci is not None
+                        c = ci.widget()
+                        c.state = new_illuminated[i + 1, j + 1]
+                        c.update()
+            self.board_illuminated = new_illuminated
+        print(puzzle.save_pzprv3(self.board))
 
 
 # Taken from https://stackoverflow.com/a/9383780/400793 by ekhumoro
