@@ -1,23 +1,20 @@
 import os
-# from itertools import cycle
 
 import numpy as np
 import puzzle
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QBrush, QMouseEvent, QPainter, QPen
+from PySide6.QtGui import QAction, QBrush, QMouseEvent, QPainter, QPen, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QGridLayout,
     QHBoxLayout,
     QMainWindow,
-    QPushButton,
     QSizePolicy,
     QSpacerItem,
     QVBoxLayout,
     QWidget,
 )
-
 
 AUTO_ILLUMINATE = True
 
@@ -139,17 +136,13 @@ class Cell(QWidget):
                 self.state = "."
                 mwb[self.i + 1, self.j + 1] = self.state
             case ".":
-                if str(mwb[self.i + 1, self.j + 1]) != ".":
-                    print("NOT EQUAL")
                 self.state = "+"
                 mwb[self.i + 1, self.j + 1] = self.state
             case "+":
                 self.state = "#"
                 mwb[self.i + 1, self.j + 1] = self.state
             case _:
-                print(puzzle.save_pzprv3(mwb))
                 return super().mouseReleaseEvent(event)
-        print(puzzle.save_pzprv3(mwb))
         self.clicked.emit()
         self.update()
         self.main_window.maybe_illuminate()
@@ -166,15 +159,19 @@ class MainWindow(QMainWindow):
         self.hb.addLayout(self.vb)
         self.setCentralWidget(self.w)
 
-        self.open = QPushButton()
-        self.open.setText("Open")
-        self.vb.addWidget(self.open)
-        self.open.pressed.connect(self.open_pressed)
+        menu = self.menuBar()
+        file_menu = menu.addMenu("&File")
+        open_action = QAction("Open", self)
+        open_action.triggered.connect(self.open_pressed)
+        file_menu.addAction(open_action)
+        open_action.setShortcut(QKeySequence("Ctrl+o"))
 
-        self.save = QPushButton()
-        self.save.setText("Save")
-        self.vb.addWidget(self.save)
-        self.save.pressed.connect(self.save_pressed)
+        save_action = QAction("Save", self)
+        save_action.triggered.connect(self.save_pressed)
+        file_menu.addAction(save_action)
+        save_action.setShortcut(QKeySequence("Ctrl+s"))
+
+        file_menu.addAction("Save")
 
         # TODO
         # self.clear = QPushButton()
@@ -254,7 +251,6 @@ class MainWindow(QMainWindow):
                         c.state = new_illuminated[i + 1, j + 1]
                         c.update()
             self.board_illuminated = new_illuminated
-        print(puzzle.save_pzprv3(self.board))
 
 
 # Taken from https://stackoverflow.com/a/9383780/400793 by ekhumoro
