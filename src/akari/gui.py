@@ -158,20 +158,27 @@ class MainWindow(QMainWindow):
         self.w.setLayout(self.hb)
         self.hb.addLayout(self.vb)
         self.setCentralWidget(self.w)
+        self.illuminate = True
 
         menu = self.menuBar()
         file_menu = menu.addMenu("&File")
         open_action = QAction("Open", self)
         open_action.triggered.connect(self.open_pressed)
-        file_menu.addAction(open_action)
         open_action.setShortcut(QKeySequence("Ctrl+o"))
+        file_menu.addAction(open_action)
 
         save_action = QAction("Save", self)
         save_action.triggered.connect(self.save_pressed)
-        file_menu.addAction(save_action)
         save_action.setShortcut(QKeySequence("Ctrl+s"))
+        file_menu.addAction(save_action)
 
-        file_menu.addAction("Save")
+        settings_menu = menu.addMenu("&Settings")
+        illuminate_action = QAction("Illuminate", self)
+        illuminate_action.triggered.connect(self.illuminate_toggled)
+        illuminate_action.setShortcut(QKeySequence("Ctrl+i"))
+        illuminate_action.setCheckable(True)
+        illuminate_action.setChecked(self.illuminate)
+        settings_menu.addAction(illuminate_action)
 
         # TODO
         # self.clear = QPushButton()
@@ -209,6 +216,16 @@ class MainWindow(QMainWindow):
         self.board_illuminated = puzzle.illuminate(self.board)[1]
         clearLayout(self.grid)
         self.initialize_grid()
+
+    def illuminate_toggled(self) -> None:
+        self.illuminate = not self.illuminate
+        if self.illuminate:
+            self.board_illuminated = self.board.copy()
+            self.maybe_illuminate()
+        else:
+            self.board_illuminated = self.board.copy()
+            clearLayout(self.grid)
+            self.initialize_grid()
 
     def initialize_grid(self) -> None:
         self.grid = QGridLayout()
