@@ -206,7 +206,6 @@ class MainWindow(QMainWindow):
 
     def open_pressed(self) -> None:
         qfd = QFileDialog()
-        qfd.open()
         filename, _ = qfd.getOpenFileName(
             self, "Open pzprv3", os.path.dirname(__file__), "(*.txt)"
         )
