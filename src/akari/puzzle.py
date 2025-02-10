@@ -43,7 +43,6 @@ def save_pzprv3(board: np.ndarray):
     return "\n".join(lines)
 
 
-
 def zero_pad(grid):
     grid2 = np.zeros((grid.shape[0] + 2, grid.shape[1] + 2), dtype="str")
     grid2[:, :] = "-"
@@ -85,7 +84,6 @@ def illuminate(board):
     *a copy of board with light paths drawn
     """
     lit_bulb_pairs = []
-    board = board.copy()
     fill_chars = ["|", "_", "|", "_"]
     for i in range(1, np.size(board, 0) - 1):
         for j in range(1, np.size(board, 1) - 1):
@@ -116,11 +114,53 @@ def illuminate(board):
     return (lit_bulb_pairs, board)
 
 
+def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
+    old_board = board.copy()
+    while True:
+        if level >= 0:
+            board = illuminate(board)[1]
+        if level >= 1:
+            board = mark_dots_around_full_numbers(board)
+            board = mark_bulbs_around_dotted_numbers(board)
+        if np.all(board == old_board):
+            break
+        else:
+            old_board = board
+    return board
+
+
+def mark_dots_around_full_numbers(board: np.ndarray) -> np.ndarray:
+    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+    for i in range(1, np.size(board, 0) - 1):
+        for j in range(1, np.size(board, 1) - 1):
+            if board[i, j] in "01234":
+                n_neighbors = sum(board[i + di, j + dj] == "#" for (di, dj) in dirs)
+                if n_neighbors == int(board[i, j]):
+                    for di, dj in dirs:
+                        if board[i + di, j + dj] == ".":
+                            board[i + di, j + dj] = "+"
+    return board
+
+
+def mark_bulbs_around_dotted_numbers(board: np.ndarray) -> np.ndarray:
+    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+    for i in range(1, np.size(board, 0) - 1):
+        for j in range(1, np.size(board, 1) - 1):
+            if board[i, j] in "01234":
+                n_free = sum(board[i + di, j + dj] == "." for (di, dj) in dirs)
+                n_bulbs_already = sum(board[i + di, j + dj] == "#" for (di, dj) in dirs)
+                if n_free + n_bulbs_already == int(board[i, j]):
+                    for di, dj in dirs:
+                        if board[i + di, j + dj] == ".":
+                            board[i + di, j + dj] = "#"
+    return board
+
+
 def check_unlit_cells(board):
     """
     Returns True if a board has no unlit cells, False otherwise
     """
-    (wrong_bulb_pairs, board) = illuminate(board)
+    (_, board) = illuminate(board.copy())
     return not np.any(board == ".") == np.True_
 
 
@@ -128,7 +168,7 @@ def check_lit_bulbs(board):
     """
     Returns True if a board has no lit bulbs, False otherwise
     """
-    (wrong_bulb_pairs, board) = illuminate(board)
+    (wrong_bulb_pairs, board) = illuminate(board.copy())
     return not bool(wrong_bulb_pairs)
 
 
