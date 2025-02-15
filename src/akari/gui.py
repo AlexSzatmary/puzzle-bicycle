@@ -128,7 +128,10 @@ class Cell(QWidget):
         pen.setWidth(2)
         pen.setColor(Qt.gray)
         p.setPen(pen)
-        p.drawEllipse(2, 2, 16, 16)
+        if self.state_user == "#":
+            p.drawEllipse(2, 2, 16, 16)
+        else:
+            p.drawEllipse(4, 4, 12, 12)
 
     def draw_dot(self, event: QPaintEvent) -> None:
         p = QPainter(self)
