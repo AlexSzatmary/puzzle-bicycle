@@ -100,8 +100,8 @@ def illuminate(board):
                             if i <= i1 and j <= j1:
                                 lit_bulb_pairs.append((i, j, i1, j1))
                             break
-                        elif board[i1, j1] == fill_char:
-                            # wrong bulb pair already detected
+                        elif board[i1, j1] == fill_char or board[i1, j1] == "x":
+                            # row or column already filled
                             break
                         elif board[i1, j1] == "_" or board[i1, j1] == "|":
                             # this branch will only trigger if the char at this location
@@ -115,8 +115,8 @@ def illuminate(board):
 
 
 def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
-    old_board = board.copy()
     while True:
+        old_board = board.copy()
         if level >= 0:
             board = illuminate(board)[1]
         if level >= 1:
@@ -124,8 +124,6 @@ def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
             board = mark_bulbs_around_dotted_numbers(board)
         if np.all(board == old_board):
             break
-        else:
-            old_board = board
     return board
 
 
