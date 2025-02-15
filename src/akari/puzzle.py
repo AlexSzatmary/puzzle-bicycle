@@ -175,3 +175,25 @@ def check_all(board: np.ndarray) -> bool:
     return (
         not check_number(board) and check_unlit_cells(board) and check_lit_bulbs(board)
     )
+
+
+def find_wrong_numbers(board: np.ndarray) -> list[tuple[int, int]]:
+    """
+    Checks numbered spaces to see if they have the correct number of bulbs.
+
+    Returns a list of tuples of coordinates of numbered spaces that touch the wrong
+    number of bulbs.
+    """
+    wrong_numbers = []
+    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+    for i in range(1, np.size(board, 0) - 1):
+        for j in range(1, np.size(board, 1) - 1):
+            if board[i, j] in "0123":
+                n_free = sum(board[i + di, j + dj] == "." for (di, dj) in dirs)
+                n_bulbs_already = sum(board[i + di, j + dj] == "#" for (di, dj) in dirs)
+                if (
+                    n_bulbs_already > int(board[i, j])
+                    or n_free + + n_bulbs_already < int(board[i, j])
+                ):
+                    wrong_numbers.append((i, j))
+    return wrong_numbers

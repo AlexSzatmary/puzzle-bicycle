@@ -45,6 +45,7 @@ class Cell(QWidget):
         j: int,
         state: str,
         *args: Any,  # noqa: ANN401
+        correct: bool = True,
         **kwargs: dict,
     ) -> None:
         super().__init__(*args, **kwargs)
@@ -54,6 +55,7 @@ class Cell(QWidget):
         self.setFixedSize(QSize(20, 20))
         self.state_user = state
         self.state_auto = state
+        self.correct = correct
 
     def paintEvent(self, event: QPaintEvent) -> None:
         p = QPainter(self)
@@ -148,7 +150,13 @@ class Cell(QWidget):
 
     def draw_black_square(self, event: QPaintEvent) -> None:
         p = QPainter(self)
-        p.fillRect(0, 0, 20, 20, QBrush(Qt.black))
+        brush = QBrush()
+        if self.correct:
+            brush.setStyle(Qt.SolidPattern)
+        else:
+            brush.setStyle(Qt.Dense3Pattern)
+        p.setBrush(brush)
+        p.fillRect(0, 0, 20, 20, brush)
 
     def draw_num(self, event: QPaintEvent, num: str) -> None:
         p = QPainter(self)
@@ -328,12 +336,24 @@ class MainWindow(QMainWindow):
 
         for i in range(self.board_auto.shape[0] - 2):
             for j in range(self.board_auto.shape[1] - 2):
-                if new_board_auto[i + 1, j + 1] != self.board_auto[i + 1, j + 1]:
-                    ci = self.grid.itemAtPosition(i, j)
-                    assert ci is not None
-                    c = ci.widget()
+                ci = self.grid.itemAtPosition(i, j)
+                assert ci is not None
+                c = ci.widget()
+                if (
+                    new_board_auto[i + 1, j + 1] != self.board_auto[i + 1, j + 1]
+                    or not c.correct
+                ):
                     c.state_auto = new_board_auto[i + 1, j + 1]
+                    c.correct = True  # presume correct then indicate if not below
                     c.update()
+
+        for i, j in puzzle.find_wrong_numbers(new_board_auto):
+            ci = self.grid.itemAtPosition(i - 1, j - 1)
+            assert ci is not None
+            c = ci.widget()
+            c.correct = False
+            c.update()
+
         self.board_auto = new_board_auto
 
 
