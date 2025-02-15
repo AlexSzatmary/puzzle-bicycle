@@ -31,7 +31,7 @@ def load_pzprv3(pzprv3: str) -> np.ndarray:
     return board
 
 
-def save_pzprv3(board: np.ndarray):
+def save_pzprv3(board: np.ndarray) -> str:
     lines = []
     lines.append("pzprv3")
     lines.append("lightup")
@@ -43,19 +43,19 @@ def save_pzprv3(board: np.ndarray):
     return "\n".join(lines)
 
 
-def zero_pad(grid):
+def zero_pad(grid: np.ndarray) -> np.ndarray:
     grid2 = np.zeros((grid.shape[0] + 2, grid.shape[1] + 2), dtype="str")
     grid2[:, :] = "-"
     grid2[1:-1, 1:-1] = grid
     return grid2
 
 
-def print_board(board):
+def print_board(board: np.ndarray) -> None:
     for row in board.astype(str):
         print("".join(list(row)))
 
 
-def check_number(board):
+def check_number(board: np.ndarray) -> list[tuple[int, int, int, int]]:
     """
     Checks numbered spaces to see if they have the correct number of bulbs.
 
@@ -77,7 +77,7 @@ def check_number(board):
     return wrong_bulbs
 
 
-def illuminate(board):
+def illuminate(board: np.ndarray) -> tuple[list[tuple[int, int, int, int]], np.ndarray]:  # noqa: C901 This level of complexity is fine.
     """
     Takes board with bulbs. Returns a tuple with
     *a list of lists of tuples of coordinates of bulbs that shine on each other
@@ -94,7 +94,7 @@ def illuminate(board):
                     zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
                     zip_longest([], range(j + 1, np.size(board, 0) - 1), fillvalue=i),
                 ]
-                for it, fill_char in zip(iters, fill_chars):
+                for it, fill_char in zip(iters, fill_chars, strict=True):
                     for i1, j1 in it:
                         if board[i1, j1] == "#":
                             if i <= i1 and j <= j1:
@@ -154,7 +154,7 @@ def mark_bulbs_around_dotted_numbers(board: np.ndarray) -> np.ndarray:
     return board
 
 
-def check_unlit_cells(board):
+def check_unlit_cells(board: np.ndarray) -> bool:
     """
     Returns True if a board has no unlit cells, False otherwise
     """
@@ -162,7 +162,7 @@ def check_unlit_cells(board):
     return not np.any(board == ".") == np.True_
 
 
-def check_lit_bulbs(board):
+def check_lit_bulbs(board: np.ndarray) -> bool:
     """
     Returns True if a board has no lit bulbs, False otherwise
     """
@@ -170,7 +170,7 @@ def check_lit_bulbs(board):
     return not bool(wrong_bulb_pairs)
 
 
-def check_all(board):
+def check_all(board: np.ndarray) -> bool:
     return (
         not check_number(board) and check_unlit_cells(board) and check_lit_bulbs(board)
     )

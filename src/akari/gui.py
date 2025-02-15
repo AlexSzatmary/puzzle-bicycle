@@ -1,14 +1,24 @@
 import os
+from typing import Any
 
 import numpy as np
 import puzzle
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QAction, QBrush, QMouseEvent, QPainter, QPen, QKeySequence
+from PySide6.QtGui import (
+    QAction,
+    QBrush,
+    QKeySequence,
+    QMouseEvent,
+    QPainter,
+    QPaintEvent,
+    QPen,
+)
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QGridLayout,
     QHBoxLayout,
+    QLayout,
     QMainWindow,
     QSizePolicy,
     QSpacerItem,
@@ -28,7 +38,15 @@ def fake_next_state(state: str) -> str:
 class Cell(QWidget):
     clicked = Signal()
 
-    def __init__(self, main_window, i, j, state, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        main_window: QMainWindow,
+        i: int,
+        j: int,
+        state: str,
+        *args: Any,  # noqa: ANN401
+        **kwargs: dict,
+    ) -> None:
         super().__init__(*args, **kwargs)
         self.i = i
         self.j = j
@@ -37,7 +55,7 @@ class Cell(QWidget):
         self.state_user = state
         self.state_auto = state
 
-    def paintEvent(self, event) -> None:
+    def paintEvent(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         p.fillRect(0, 0, 20, 20, QBrush(Qt.white))
         p.drawRect(0, 0, 20, 20)
@@ -58,14 +76,16 @@ class Cell(QWidget):
             case num if "0" <= num <= "4":
                 self.draw_black_square(event)
                 self.draw_num(event, num)
+        self.superimpose_user_state(event)
 
+    def superimpose_user_state(self, event: QPaintEvent) -> None:
         if self.state_auto in "_|x":
             if self.state_user == "+":
                 self.draw_dot(event)
         elif self.state_auto != self.state_user:
             self.draw_dotted_border(event)
 
-    def draw_horizontal(self, event) -> None:
+    def draw_horizontal(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(1)
@@ -77,7 +97,7 @@ class Cell(QWidget):
         p.setBrush(brush)
         p.drawRect(2, 9, 16, 2)
 
-    def draw_vertical(self, event) -> None:
+    def draw_vertical(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(1)
@@ -89,7 +109,7 @@ class Cell(QWidget):
         p.setBrush(brush)
         p.drawRect(9, 2, 2, 16)
 
-    def draw_cross(self, event) -> None:
+    def draw_cross(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(1)
@@ -102,7 +122,7 @@ class Cell(QWidget):
         p.drawRect(2, 9, 16, 2)
         p.drawRect(9, 2, 2, 16)
 
-    def draw_circle(self, event) -> None:
+    def draw_circle(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(2)
@@ -110,7 +130,7 @@ class Cell(QWidget):
         p.setPen(pen)
         p.drawEllipse(2, 2, 16, 16)
 
-    def draw_dot(self, event) -> None:
+    def draw_dot(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(2)
@@ -123,11 +143,11 @@ class Cell(QWidget):
         p.setBrush(brush)
         p.drawEllipse(8, 8, 4, 4)
 
-    def draw_black_square(self, event) -> None:
+    def draw_black_square(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         p.fillRect(0, 0, 20, 20, QBrush(Qt.black))
 
-    def draw_num(self, event, num: str) -> None:
+    def draw_num(self, event: QPaintEvent, num: str) -> None:
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(2)
@@ -142,7 +162,7 @@ class Cell(QWidget):
             str(num),
         )
 
-    def draw_dotted_border(self, event) -> None:
+    def draw_dotted_border(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         pen = QPen()
         pen.setWidth(1)
@@ -172,7 +192,7 @@ class Cell(QWidget):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: dict) -> None:  # noqa: ANN401
         super().__init__(*args, **kwargs)
         self.w = QWidget()
         self.hb = QHBoxLayout()
@@ -315,7 +335,7 @@ class MainWindow(QMainWindow):
 
 
 # Taken from https://stackoverflow.com/a/9383780/400793 by ekhumoro
-def clearLayout(layout):
+def clearLayout(layout: QLayout) -> None:
     if layout is not None:
         while layout.count():
             item = layout.takeAt(0)

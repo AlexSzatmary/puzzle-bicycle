@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import numpy as np
 from puzzle import (
     check_all,
@@ -71,15 +70,15 @@ board_1_sol_illuminated = np.array(
 )
 
 
-def test_load_pzprv3():
+def test_load_pzprv3() -> None:
     assert np.all(board_1 == load_pzprv3(pzprv3_1))
 
 
-def test_load_pzprv3_solved():
+def test_load_pzprv3_solved() -> None:
     assert np.all(board_1_sol == load_pzprv3(pzprv3_1_sol))
 
 
-def test_zero_pad():
+def test_zero_pad() -> None:
     a = np.zeros((3, 3), dtype="str")
     a[:, :] = " "
     b = zero_pad(a)
@@ -89,14 +88,14 @@ def test_zero_pad():
     assert np.all(b == c)
 
 
-def test_check_number_1():
+def test_check_number_1() -> None:
     assert not check_number(board_1_sol)
     board_1_sol_1 = board_1_sol.copy()
     board_1_sol_1[4, 2] = "."
     assert check_number(board_1_sol_1) == [(3, 2), (4, 3)]
 
 
-def test_illuminate_1():
+def test_illuminate_1() -> None:
     (wrong_bulb_pairs, illuminated_board) = illuminate(board_1_sol.copy())
     assert not wrong_bulb_pairs
     assert np.all(illuminated_board == board_1_sol_illuminated)
@@ -117,7 +116,7 @@ def test_illuminate_1():
     assert np.all(illuminated_board_wrong == board_1_sol_illuminated_wrong)
 
 
-def test_check_unlit_cells_1():
+def test_check_unlit_cells_1() -> None:
     assert check_unlit_cells(board_1_sol)
 
     board_1_sol_wrong = board_1_sol.copy()
@@ -125,7 +124,7 @@ def test_check_unlit_cells_1():
     assert not check_unlit_cells(board_1_sol_wrong)
 
 
-def test_check_unlit():
+def test_check_unlit() -> None:
     assert check_lit_bulbs(board_1_sol)
 
     board_1_sol_wrong = board_1_sol.copy()
@@ -133,7 +132,7 @@ def test_check_unlit():
     assert not check_lit_bulbs(board_1_sol_wrong)
 
 
-def test_check_all():
+def test_check_all() -> None:
     assert check_all(board_1_sol)
 
     board_1_sol_wrong = board_1_sol.copy()

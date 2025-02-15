@@ -21,9 +21,8 @@ exclude_also = [
     "if __name__ == .__main__.:",
 ]
 
-[tool.ruff]
-[lint]
+[tool.ruff.lint]
 select = ["E", "F", "W", "C", "UP", "B", "N", "ANN", "BLE", "FBT", "A", "C4", "T10", 
           "EM", "EXE", "NPY", "RUF", "I"]
-ignore = ["N803", "N806"]
+ignore = ["N802", "N803", "N806"]
 preview = true
