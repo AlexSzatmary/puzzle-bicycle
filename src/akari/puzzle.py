@@ -55,7 +55,7 @@ def print_board(board: np.ndarray) -> None:
         print("".join(list(row)))
 
 
-def check_number(board: np.ndarray) -> list[tuple[int, int, int, int]]:
+def check_number(board: np.ndarray) -> list[tuple[int, int]]:
     """
     Checks numbered spaces to see if they have the correct number of bulbs.
 
@@ -66,7 +66,6 @@ def check_number(board: np.ndarray) -> list[tuple[int, int, int, int]]:
     for i in range(1, np.size(board, 0) - 1):
         for j in range(1, np.size(board, 1) - 1):
             if board[i, j] in "0123":
-                # breakpoint()
                 if not int(board[i, j]) == (
                     (board[i - 1, j] == "#")
                     + (board[i + 1, j] == "#")
@@ -77,7 +76,9 @@ def check_number(board: np.ndarray) -> list[tuple[int, int, int, int]]:
     return wrong_bulbs
 
 
-def illuminate(board: np.ndarray) -> tuple[list[tuple[int, int, int, int]], np.ndarray]:  # noqa: C901 This level of complexity is fine.
+def illuminate(  # noqa: C901 This level of complexity is fine.
+    board: np.ndarray,
+) -> tuple[list[tuple[int, int, int, int]], np.ndarray]:
     """
     Takes board with bulbs. Returns a tuple with
     *a list of lists of tuples of coordinates of bulbs that shine on each other
