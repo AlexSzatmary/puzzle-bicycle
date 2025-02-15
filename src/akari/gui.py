@@ -153,22 +153,21 @@ class Cell(QWidget):
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         mwb = self.main_window.board
-        if self.state_user == self.state_auto:
-            match self.state_user:
-                case "#":
-                    self.state_user = "."
-                    mwb[self.i + 1, self.j + 1] = self.state_user
-                case ".":
-                    self.state_user = "+"
-                    mwb[self.i + 1, self.j + 1] = self.state_user
-                case "+":
-                    self.state_user = "#"
-                    mwb[self.i + 1, self.j + 1] = self.state_user
-                case _:
-                    return super().mouseReleaseEvent(event)
-            self.clicked.emit()
-            self.update()
-            self.main_window.apply_methods()
+        match self.state_user:
+            case "#":
+                self.state_user = "."
+                mwb[self.i + 1, self.j + 1] = self.state_user
+            case ".":
+                self.state_user = "+"
+                mwb[self.i + 1, self.j + 1] = self.state_user
+            case "+":
+                self.state_user = "#"
+                mwb[self.i + 1, self.j + 1] = self.state_user
+            case _:
+                return super().mouseReleaseEvent(event)
+        self.clicked.emit()
+        self.update()
+        self.main_window.apply_methods()
         return super().mouseReleaseEvent(event)
 
 
