@@ -58,9 +58,21 @@ class Cell(QWidget):
         self.correct = correct
 
     def paintEvent(self, event: QPaintEvent) -> None:
+        if self.state_auto in "-01234":
+            self.paint_black(event)
+        else:
+            self.paint_white(event)
+
+    def paint_white(self, event: QPaintEvent) -> None:
         p = QPainter(self)
         p.fillRect(0, 0, 20, 20, QBrush(Qt.white))
         p.drawRect(0, 0, 20, 20)
+
+        if not self.correct:
+            brush = QBrush()
+            brush.setStyle(Qt.DiagCrossPattern)
+            brush.setColor(Qt.black)
+            p.fillRect(0, 0, 20, 20, brush)
 
         match self.state_auto:
             case "_":
@@ -73,12 +85,15 @@ class Cell(QWidget):
                 self.draw_circle(event)
             case "+":
                 self.draw_dot(event)
+        self.superimpose_user_state(event)
+
+    def paint_black(self, event: QPaintEvent) -> None:
+        match self.state_auto:
             case "-":
                 self.draw_black_square(event)
             case num if "0" <= num <= "4":
                 self.draw_black_square(event)
                 self.draw_num(event, num)
-        self.superimpose_user_state(event)
 
     def superimpose_user_state(self, event: QPaintEvent) -> None:
         if self.state_auto in "_|x":
@@ -289,16 +304,18 @@ class MainWindow(QMainWindow):
             self.board_auto = self.board.copy()
             clearLayout(self.grid)
             self.initialize_grid()
+            self.apply_methods()
 
     def full_auto_toggled(self) -> None:
         self.full_auto = not self.full_auto
         if self.full_auto:
-            self.board_full_auto = self.board.copy()
+            self.board_auto = self.board.copy()
             self.apply_methods()
         else:
-            self.board_full_auto = self.board.copy()
+            self.board_auto = self.board.copy()
             clearLayout(self.grid)
             self.initialize_grid()
+            self.apply_methods()
 
     def initialize_grid(self) -> None:
         self.grid = QGridLayout()
@@ -327,7 +344,9 @@ class MainWindow(QMainWindow):
             hout.write(pzprv3)
 
     def apply_methods(self) -> None:
-        if self.auto_apply_methods == 9:
+        print(self.auto_apply_methods, self.full_auto, self.auto_illuminate)
+        # if self.auto_apply_methods == 9:
+        if self.full_auto:
             new_board_auto = puzzle.apply_methods(self.board.copy(), 9)
         elif self.auto_illuminate:
             new_board_auto = puzzle.illuminate(self.board.copy())[1]
@@ -353,6 +372,18 @@ class MainWindow(QMainWindow):
             c = ci.widget()
             c.correct = False
             c.update()
+
+        for i1, j1, i2, j2 in puzzle.illuminate(new_board_auto)[0]:
+            if i1 == i2:
+                ijs = [(i1, j) for j in range(j1, j2 + 1)]
+            else:
+                ijs = [(i, j1) for i in range(i1, i2 + 1)]
+            for i, j in ijs:
+                ci = self.grid.itemAtPosition(i - 1, j - 1)
+                assert ci is not None
+                c = ci.widget()
+                c.correct = False
+                c.update()
 
         self.board_auto = new_board_auto
 
