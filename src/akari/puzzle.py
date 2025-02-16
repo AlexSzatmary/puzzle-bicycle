@@ -103,7 +103,7 @@ def illuminate(  # noqa: C901 This level of complexity is fine.
                             break
                         elif board[i1, j1] == fill_char or board[i1, j1] == "x":
                             # row or column already filled
-                            break
+                            continue
                         elif board[i1, j1] == "_" or board[i1, j1] == "|":
                             # this branch will only trigger if the char at this location
                             # is not the same as the fill_char
