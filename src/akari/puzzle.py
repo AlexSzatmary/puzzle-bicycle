@@ -160,7 +160,7 @@ def check_unlit_cells(board: np.ndarray) -> bool:
     Returns True if a board has no unlit cells, False otherwise
     """
     (_, board) = illuminate(board.copy())
-    return not np.any(board == ".") == np.True_
+    return not np.any(np.logical_or(board == ".", board == "+")) == np.True_
 
 
 def check_lit_bulbs(board: np.ndarray) -> bool:

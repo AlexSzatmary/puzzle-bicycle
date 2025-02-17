@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QGridLayout,
     QHBoxLayout,
+    QLabel,
     QLayout,
     QMainWindow,
     QSizePolicy,
@@ -68,24 +69,27 @@ class Cell(QWidget):
         p.fillRect(0, 0, 20, 20, QBrush(Qt.white))
         p.drawRect(0, 0, 20, 20)
 
-        if not self.correct:
-            brush = QBrush()
-            brush.setStyle(Qt.DiagCrossPattern)
-            brush.setColor(Qt.black)
-            p.fillRect(0, 0, 20, 20, brush)
+        if not self.main_window.puzzle_complete:
+            if not self.correct:
+                brush = QBrush()
+                brush.setStyle(Qt.DiagCrossPattern)
+                brush.setColor(Qt.black)
+                p.fillRect(0, 0, 20, 20, brush)
 
-        match self.state_auto:
-            case "_":
-                self.draw_horizontal(event)
-            case "|":
-                self.draw_vertical(event)
-            case "x":
-                self.draw_cross(event)
-            case "#":
-                self.draw_circle(event)
-            case "+":
-                self.draw_dot(event)
-        self.superimpose_user_state(event)
+            match self.state_auto:
+                case "_":
+                    self.draw_horizontal(event)
+                case "|":
+                    self.draw_vertical(event)
+                case "x":
+                    self.draw_cross(event)
+                case "#":
+                    self.draw_circle(event)
+                case "+":
+                    self.draw_dot(event)
+            self.superimpose_user_state(event)
+        elif self.state_auto == "#":
+            self.draw_circle(event)
 
     def paint_black(self, event: QPaintEvent) -> None:
         match self.state_auto:
@@ -145,7 +149,7 @@ class Cell(QWidget):
         pen.setWidth(2)
         pen.setColor(Qt.gray)
         p.setPen(pen)
-        if self.state_user == "#":
+        if self.state_user == "#" or self.main_window.puzzle_complete:
             p.drawEllipse(2, 2, 16, 16)
         else:
             p.drawEllipse(4, 4, 12, 12)
@@ -217,18 +221,34 @@ class Cell(QWidget):
         return super().mouseReleaseEvent(event)
 
 
+pzprv3_1 = """
+pzprv3/
+lightup/
+5/
+5/
+. . . . . /
+. . 0 . . /
+. 2 - 1 . /
+. . 3 . . /
+. . . . . /
+"""[1:]
+
+
 class MainWindow(QMainWindow):
     def __init__(self, *args: Any, **kwargs: dict) -> None:  # noqa: ANN401
         super().__init__(*args, **kwargs)
         self.w = QWidget()
         self.hb = QHBoxLayout()
-        self.vb = QVBoxLayout()
+        self.vbl = QVBoxLayout()
+        self.vbr = QVBoxLayout()
         self.w.setLayout(self.hb)
-        self.hb.addLayout(self.vb)
+        self.hb.addLayout(self.vbl)
+        self.hb.addLayout(self.vbr)
         self.setCentralWidget(self.w)
         self.auto_illuminate = True
         self.auto_apply_methods = 9
         self.full_auto = True
+        self.puzzle_complete = False
 
         menu = self.menuBar()
         file_menu = menu.addMenu("&File")
@@ -274,12 +294,19 @@ class MainWindow(QMainWindow):
         # self.settings.setText("Settings")
         # self.vb.addWidget(self.settings)
 
-        self.board = np.zeros((7, 7), dtype=str)
-        self.board[:] = "-"
-        self.board[1:-1, 1:-1] = "."
+        # self.board = np.zeros((7, 7), dtype=str)
+        # self.board[:] = "-"
+        # self.board[1:-1, 1:-1] = "."
+        self.board = puzzle.load_pzprv3(pzprv3_1)
         self.board_auto = self.board.copy()
         self.initialize_grid()
         self.apply_methods()
+
+        self.puzzle_status = QLabel()
+        self.puzzle_status.setText("")
+        self.puzzle_status.setVisible(False)
+        self.vbr.addWidget(self.puzzle_status)
+
         self.show()
 
     def open_pressed(self) -> None:
@@ -289,11 +316,12 @@ class MainWindow(QMainWindow):
         )
         with open(filename) as hin:
             text = hin.read()
-        self.board = puzzle.load_pzprv3(text)
-        self.board_auto = puzzle.illuminate(self.board)[1]
-        clearLayout(self.grid)
-        self.initialize_grid()
-        self.apply_methods()
+        if text:
+            self.board = puzzle.load_pzprv3(text)
+            self.board_auto = puzzle.illuminate(self.board)[1]
+            clearLayout(self.grid)
+            self.initialize_grid()
+            self.apply_methods()
 
     def auto_illuminate_toggled(self) -> None:
         self.auto_illuminate = not self.auto_illuminate
@@ -330,8 +358,13 @@ class MainWindow(QMainWindow):
             self.grid.rowCount(),
             0,
         )
+        self.grid.addItem(
+            QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum),
+            0,
+            self.grid.columnCount(),
+        )
         self.show()
-        self.hb.addLayout(self.grid)
+        self.vbr.insertLayout(0, self.grid)
 
     def save_pressed(self) -> None:
         qfd = QFileDialog()
@@ -339,19 +372,28 @@ class MainWindow(QMainWindow):
         filename, _ = qfd.getSaveFileName(
             self, "Save pzprv3", os.path.dirname(__file__), "(*.txt)"
         )
-        pzprv3 = puzzle.save_pzprv3(self.board)
-        with open(filename, "w") as hout:
-            hout.write(pzprv3)
+        if filename:
+            pzprv3 = puzzle.save_pzprv3(self.board)
+            with open(filename, "w") as hout:
+                hout.write(pzprv3)
 
     def apply_methods(self) -> None:
-        print(self.auto_apply_methods, self.full_auto, self.auto_illuminate)
-        # if self.auto_apply_methods == 9:
         if self.full_auto:
             new_board_auto = puzzle.apply_methods(self.board.copy(), 9)
         elif self.auto_illuminate:
             new_board_auto = puzzle.illuminate(self.board.copy())[1]
         else:
             new_board_auto = self.board.copy()
+
+        old_puzzle_complete = self.puzzle_complete
+        self.puzzle_complete = puzzle.check_all(new_board_auto)
+        if self.puzzle_complete != old_puzzle_complete:
+            if self.puzzle_complete:
+                self.puzzle_status.setText("Puzzle solved")
+                self.puzzle_status.setVisible(True)
+            else:
+                self.puzzle_status.setText("")
+                self.puzzle_status.setVisible(False)
 
         for i in range(self.board_auto.shape[0] - 2):
             for j in range(self.board_auto.shape[1] - 2):
@@ -361,11 +403,16 @@ class MainWindow(QMainWindow):
                 if (
                     new_board_auto[i + 1, j + 1] != self.board_auto[i + 1, j + 1]
                     or not c.correct
+                    or old_puzzle_complete != self.puzzle_complete
                 ):
                     c.state_auto = new_board_auto[i + 1, j + 1]
                     c.correct = True  # presume correct then indicate if not below
                     c.update()
 
+        self.indicate_contradictions(new_board_auto)
+        self.board_auto = new_board_auto
+
+    def indicate_contradictions(self, new_board_auto: np.ndarray) -> None:
         for i, j in puzzle.find_wrong_numbers(new_board_auto):
             ci = self.grid.itemAtPosition(i - 1, j - 1)
             assert ci is not None
@@ -384,8 +431,6 @@ class MainWindow(QMainWindow):
                 c = ci.widget()
                 c.correct = False
                 c.update()
-
-        self.board_auto = new_board_auto
 
 
 # Taken from https://stackoverflow.com/a/9383780/400793 by ekhumoro
