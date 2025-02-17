@@ -191,9 +191,8 @@ def find_wrong_numbers(board: np.ndarray) -> list[tuple[int, int]]:
             if board[i, j] in "0123":
                 n_free = sum(board[i + di, j + dj] == "." for (di, dj) in dirs)
                 n_bulbs_already = sum(board[i + di, j + dj] == "#" for (di, dj) in dirs)
-                if (
-                    n_bulbs_already > int(board[i, j])
-                    or n_free + + n_bulbs_already < int(board[i, j])
+                if n_bulbs_already > int(board[i, j]) or n_free + n_bulbs_already < int(
+                    board[i, j]
                 ):
                     wrong_numbers.append((i, j))
     return wrong_numbers
