@@ -3,7 +3,14 @@ from typing import Any
 
 import numpy as np
 import puzzle
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import (
+    Property,
+    QParallelAnimationGroup,
+    QPropertyAnimation,
+    QSize,
+    Qt,
+    Signal,
+)
 from PySide6.QtGui import (
     QAction,
     QBrush,
@@ -57,6 +64,7 @@ class Cell(QWidget):
         self.state_user = state
         self.state_auto = state
         self.correct = correct
+        self._white_out_step = 0
 
     def paintEvent(self, event: QPaintEvent) -> None:
         if self.state_auto in "-01234":
@@ -69,27 +77,55 @@ class Cell(QWidget):
         p.fillRect(0, 0, 20, 20, QBrush(Qt.white))
         p.drawRect(0, 0, 20, 20)
 
-        if not self.main_window.puzzle_complete:
-            if not self.correct:
-                brush = QBrush()
-                brush.setStyle(Qt.DiagCrossPattern)
-                brush.setColor(Qt.black)
-                p.fillRect(0, 0, 20, 20, brush)
+        if not self.correct:
+            brush = QBrush()
+            brush.setStyle(Qt.DiagCrossPattern)
+            brush.setColor(Qt.black)
+            p.fillRect(0, 0, 20, 20, brush)
 
-            match self.state_auto:
-                case "_":
-                    self.draw_horizontal(event)
-                case "|":
-                    self.draw_vertical(event)
-                case "x":
-                    self.draw_cross(event)
-                case "#":
-                    self.draw_circle(event)
-                case "+":
-                    self.draw_dot(event)
+        p.end()
+
+        match self.state_auto:
+            case "_":
+                self.draw_horizontal(event)
+            case "|":
+                self.draw_vertical(event)
+            case "x":
+                self.draw_cross(event)
+            case "#":
+                self.draw_circle(event)
+            case "+":
+                self.draw_dot(event)
+
+        if not self.main_window.puzzle_complete:
             self.superimpose_user_state(event)
-        elif self.state_auto == "#":
-            self.draw_circle(event)
+        elif self.state_auto != "#":
+            white_out_patterns = [
+                Qt.Dense6Pattern,
+                Qt.Dense5Pattern,
+                Qt.Dense4Pattern,
+                Qt.Dense3Pattern,
+                Qt.Dense2Pattern,
+                Qt.Dense1Pattern,
+                Qt.SolidPattern,
+            ]
+            brush = QBrush()
+            brush.setStyle(
+                white_out_patterns[self.white_out_step]  # type: ignore
+            )
+            brush.setColor(Qt.white)
+            p = QPainter(self)
+            p.fillRect(1, 1, 18, 18, brush)
+            p.end()
+
+    @Property(int)  # type: ignore
+    def white_out_step(self) -> int:  # type: ignore
+        return self._white_out_step
+
+    @white_out_step.setter  # type: ignore
+    def white_out_step(self, i: int) -> None:
+        self._white_out_step = i
+        self.update()
 
     def paint_black(self, event: QPaintEvent) -> None:
         match self.state_auto:
@@ -117,6 +153,7 @@ class Cell(QWidget):
         brush.setStyle(Qt.SolidPattern)
         p.setBrush(brush)
         p.drawRect(2, 9, 16, 2)
+        p.end()
 
     def draw_vertical(self, event: QPaintEvent) -> None:
         p = QPainter(self)
@@ -129,6 +166,7 @@ class Cell(QWidget):
         brush.setStyle(Qt.SolidPattern)
         p.setBrush(brush)
         p.drawRect(9, 2, 2, 16)
+        p.end()
 
     def draw_cross(self, event: QPaintEvent) -> None:
         p = QPainter(self)
@@ -142,6 +180,7 @@ class Cell(QWidget):
         p.setBrush(brush)
         p.drawRect(2, 9, 16, 2)
         p.drawRect(9, 2, 2, 16)
+        p.end()
 
     def draw_circle(self, event: QPaintEvent) -> None:
         p = QPainter(self)
@@ -153,6 +192,7 @@ class Cell(QWidget):
             p.drawEllipse(2, 2, 16, 16)
         else:
             p.drawEllipse(4, 4, 12, 12)
+        p.end()
 
     def draw_dot(self, event: QPaintEvent) -> None:
         p = QPainter(self)
@@ -166,6 +206,7 @@ class Cell(QWidget):
         brush.setStyle(Qt.SolidPattern)
         p.setBrush(brush)
         p.drawEllipse(8, 8, 4, 4)
+        p.end()
 
     def draw_black_square(self, event: QPaintEvent) -> None:
         p = QPainter(self)
@@ -176,6 +217,7 @@ class Cell(QWidget):
             brush.setStyle(Qt.Dense3Pattern)
         p.setBrush(brush)
         p.fillRect(0, 0, 20, 20, brush)
+        p.end()
 
     def draw_num(self, event: QPaintEvent, num: str) -> None:
         p = QPainter(self)
@@ -191,6 +233,7 @@ class Cell(QWidget):
             Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
             str(num),
         )
+        p.end()
 
     def draw_dotted_border(self, event: QPaintEvent) -> None:
         p = QPainter(self)
@@ -200,6 +243,7 @@ class Cell(QWidget):
         pen.setStyle(Qt.DashLine)
         p.setPen(pen)
         p.drawRect(2, 2, 16, 16)
+        p.end()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         mwb = self.main_window.board
@@ -411,6 +455,8 @@ class MainWindow(QMainWindow):
 
         self.indicate_contradictions(new_board_auto)
         self.board_auto = new_board_auto
+        if self.puzzle_complete and not old_puzzle_complete:
+            self.animate_puzzle_complete()
 
     def indicate_contradictions(self, new_board_auto: np.ndarray) -> None:
         for i, j in puzzle.find_wrong_numbers(new_board_auto):
@@ -431,6 +477,22 @@ class MainWindow(QMainWindow):
                 c = ci.widget()
                 c.correct = False
                 c.update()
+
+    def animate_puzzle_complete(self) -> None:
+        pag = QParallelAnimationGroup()
+        for i in range(self.board_auto.shape[0] - 2):
+            for j in range(self.board_auto.shape[1] - 2):
+                ci = self.grid.itemAtPosition(i, j)
+                assert ci is not None
+                c = ci.widget()
+                if self.board_auto[i + 1, j + 1] in "_|x+":
+                    c.anim = QPropertyAnimation(c, b"white_out_step")
+                    c.anim.setStartValue(0)
+                    c.anim.setEndValue(6)
+                    c.anim.setDuration(500)
+                    pag.addAnimation(c.anim)
+        pag.start()
+        self.pag = pag
 
 
 # Taken from https://stackoverflow.com/a/9383780/400793 by ekhumoro
