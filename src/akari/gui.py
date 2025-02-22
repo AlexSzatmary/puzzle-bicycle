@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import puzzle
@@ -111,21 +111,23 @@ class Cell(QWidget):
             ]
             brush = QBrush()
             brush.setStyle(
-                white_out_patterns[self.white_out_step]  # type: ignore
+                white_out_patterns[cast(int, self.white_out_step)]
             )
             brush.setColor(Qt.white)
             p = QPainter(self)
             p.fillRect(1, 1, 18, 18, brush)
             p.end()
 
-    @Property(int)  # type: ignore
-    def white_out_step(self) -> int:  # type: ignore
+    def white_out_step_getter(self) -> int:
         return self._white_out_step
 
-    @white_out_step.setter  # type: ignore
-    def white_out_step(self, i: int) -> None:
+    def white_out_step_setter(self, i: int) -> None:
         self._white_out_step = i
         self.update()
+
+    white_out_step = Property(
+        int, white_out_step_getter, white_out_step_setter, freset=None, doc=""
+    )
 
     def paint_black(self, event: QPaintEvent) -> None:
         match self.state_auto:
