@@ -355,6 +355,7 @@ class MainWindow(QMainWindow):
         if text:
             self.board = puzzle.load_pzprv3(text)
             self.board_auto = puzzle.illuminate(self.board)[1]
+            self.puzzle_complete = False
             clearLayout(self.grid)
             self.initialize_grid()
             self.apply_methods()

@@ -115,12 +115,43 @@ def illuminate(  # noqa: C901 This level of complexity is fine.
     return (lit_bulb_pairs, board)
 
 
+def fill_holes(board: np.ndarray) -> np.ndarray:
+    """
+    Takes annotated and possibly illuminated board.
+    Returns the board with holes filled in.
+
+    A hole is a free cell that must be a bulb because no bulb can possibly reach it.
+    """
+
+    for i in range(1, np.size(board, 0) - 1):
+        for j in range(1, np.size(board, 1) - 1):
+            if board[i, j] == ".":
+                is_hole = True  # presume a hole
+                iters = [
+                    zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
+                    zip_longest([], range(j - 1, 0, -1), fillvalue=i),
+                    zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
+                    zip_longest([], range(j + 1, np.size(board, 0) - 1), fillvalue=i),
+                ]
+                for it in iters:
+                    for i1, j1 in it:
+                        if board[i1, j1] == ".":
+                            is_hole = False
+                            break
+                    if not is_hole:
+                        break
+                if is_hole:
+                    board[i, j] = "#"
+    return board
+
+
 def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
     while True:
         old_board = board.copy()
         if level >= 0:
             board = illuminate(board)[1]
         if level >= 1:
+            board = fill_holes(board)
             board = mark_dots_around_full_numbers(board)
             board = mark_bulbs_around_dotted_numbers(board)
         if np.all(board == old_board):
