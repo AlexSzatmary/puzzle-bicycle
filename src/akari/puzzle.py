@@ -223,9 +223,10 @@ def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
         if level >= 0:
             board = illuminate(board)[1]
         if level >= 1:
-            board = fill_holes(board)
             board = mark_dots_around_full_numbers(board)
             board = mark_bulbs_around_dotted_numbers(board)
+        if level >= 2:
+            board = fill_holes(board)
             board = mark_unique_bulbs_for_dot_cells(board)
         if np.all(board == old_board):
             break
