@@ -82,7 +82,7 @@ def illuminate(  # noqa: C901 This level of complexity is fine.
     """
     Takes board with bulbs. Returns a tuple with
     *a list of lists of tuples of coordinates of bulbs that shine on each other
-    *a copy of board with light paths drawn
+    *board with light paths drawn (same object as input board)
     """
     lit_bulb_pairs = []
     fill_chars = ["|", "_", "|", "_"]
