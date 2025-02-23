@@ -138,6 +138,8 @@ def fill_holes(board: np.ndarray) -> np.ndarray:
                         if board[i1, j1] == ".":
                             is_hole = False
                             break
+                        elif board[i1, j1] in "01234-":
+                            break
                     if not is_hole:
                         break
                 if is_hole:
