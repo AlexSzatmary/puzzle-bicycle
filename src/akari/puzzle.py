@@ -174,6 +174,27 @@ def mark_bulbs_around_dotted_numbers(board: np.ndarray) -> np.ndarray:
     return board
 
 
+def mark_dots_at_corners(board: np.ndarray) -> np.ndarray:
+    ortho_dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+    diag_dirs = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+    for i in range(1, np.size(board, 0) - 1):
+        for j in range(1, np.size(board, 1) - 1):
+            if board[i, j] in "01234":
+                n_free = sum(board[i + di, j + dj] == "." for (di, dj) in ortho_dirs)
+                n_bulbs_already = sum(
+                    board[i + di, j + dj] == "#" for (di, dj) in ortho_dirs
+                )
+                if n_free + n_bulbs_already == int(board[i, j]) + 1:
+                    for di, dj in diag_dirs:
+                        if (
+                            board[i + di, j + dj] == "."
+                            and board[i + di, j] == "."
+                            and board[i, j + dj] == "."
+                        ):
+                            board[i + di, j + dj] = "+"
+    return board
+
+
 def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is fine.
     board: np.ndarray,
 ) -> np.ndarray:
@@ -229,6 +250,8 @@ def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
             board = illuminate(board)[1]
             board = fill_holes(board)
             board = mark_unique_bulbs_for_dot_cells(board)
+        if level >= 3:
+            board = mark_dots_at_corners(board)
         if np.all(board == old_board):
             break
     return board
