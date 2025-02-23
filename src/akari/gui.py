@@ -14,6 +14,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import (
     QAction,
+    QActionGroup,
     QBrush,
     QKeySequence,
     QMouseEvent,
@@ -35,8 +36,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-AUTO_ILLUMINATE = True
-AUTO_APPLY_METHODS = 9
+AUTO_APPLY_METHODS_LEVEL = 1
 
 
 def fake_next_state(state: str) -> str:
@@ -291,8 +291,7 @@ class MainWindow(QMainWindow):
         self.hb.addLayout(self.vbr)
         self.setCentralWidget(self.w)
         self.auto_illuminate = True
-        self.auto_apply_methods = 9
-        self.full_auto = True
+        self.auto_apply_methods_level = AUTO_APPLY_METHODS_LEVEL
         self.puzzle_complete = False
 
         menu = self.menuBar()
@@ -308,20 +307,26 @@ class MainWindow(QMainWindow):
         file_menu.addAction(save_action)
 
         settings_menu = menu.addMenu("&Settings")
-        auto_illuminate_action = QAction("Illuminate", self)
-        auto_illuminate_action.triggered.connect(self.auto_illuminate_toggled)
-        auto_illuminate_action.setShortcut(QKeySequence("Ctrl+i"))
-        auto_illuminate_action.setCheckable(True)
-        auto_illuminate_action.setChecked(self.auto_illuminate)
-        settings_menu.addAction(auto_illuminate_action)
 
-        auto_apply_methods = QAction("Full auto", self)
-        auto_apply_methods.triggered.connect(self.full_auto_toggled)
-        auto_apply_methods.setShortcut(QKeySequence("Ctrl+9"))
-        auto_apply_methods.setCheckable(True)
-        auto_apply_methods.setChecked(self.auto_apply_methods == 9)
-        settings_menu.addAction(auto_apply_methods)
-
+        self.methods_group = QActionGroup(self)
+        for level in range(10):
+            if 4 < level < 9:
+                continue  # these levels are not yet implemented
+            if level == 0:
+                name = "No automatic solving"
+            elif level == 1:
+                name = "Just illuminate"
+            elif level == 9:
+                name = "Full automatic"
+            else:
+                name = f"Level {level}"
+            action = QAction(name, self.methods_group)
+            action.triggered.connect(self.auto_level_checked)
+            action.setShortcut(QKeySequence(f"Ctrl+{level}"))
+            action.setCheckable(True)
+            action.setChecked(level == AUTO_APPLY_METHODS_LEVEL)
+            settings_menu.addAction(action)
+        print([action.isChecked() for action in self.methods_group.actions()])
         self.board = puzzle.load_pzprv3(pzprv3_1)
         self.board_auto = self.board.copy()
         self.initialize_grid()
@@ -363,27 +368,15 @@ class MainWindow(QMainWindow):
             self.apply_methods()
             QTimer.singleShot(0, self.adjustSize)
 
-    def auto_illuminate_toggled(self) -> None:
-        self.auto_illuminate = not self.auto_illuminate
-        if self.auto_illuminate:
-            self.board_auto = self.board.copy()
-            self.apply_methods()
-        else:
-            self.board_auto = self.board.copy()
-            clearLayout(self.grid)
-            self.initialize_grid()
-            self.apply_methods()
-
-    def full_auto_toggled(self) -> None:
-        self.full_auto = not self.full_auto
-        if self.full_auto:
-            self.board_auto = self.board.copy()
-            self.apply_methods()
-        else:
-            self.board_auto = self.board.copy()
-            clearLayout(self.grid)
-            self.initialize_grid()
-            self.apply_methods()
+    def auto_level_checked(self) -> None:
+        self.auto_apply_methods_level = next(
+            i
+            for (i, action) in enumerate(self.methods_group.actions())
+            if action.isChecked()
+        )
+        self.update_all(self.board)
+        self.board_auto = self.board
+        self.apply_methods()
 
     def initialize_grid(self) -> None:
         self.grid = QGridLayout()
@@ -417,12 +410,10 @@ class MainWindow(QMainWindow):
                 hout.write(pzprv3)
 
     def apply_methods(self) -> None:
-        if self.full_auto:
-            new_board_auto = puzzle.apply_methods(self.board.copy(), 9)
-        elif self.auto_illuminate:
-            new_board_auto = puzzle.illuminate(self.board.copy())[1]
-        else:
-            new_board_auto = self.board.copy()
+        print(f"level {self.auto_apply_methods_level}")
+        new_board_auto = puzzle.apply_methods(
+            self.board.copy(), self.auto_apply_methods_level
+        )
 
         old_puzzle_complete = self.puzzle_complete
         self.puzzle_complete = puzzle.check_all(new_board_auto)
@@ -453,6 +444,16 @@ class MainWindow(QMainWindow):
         self.board_auto = new_board_auto
         if self.puzzle_complete and not old_puzzle_complete:
             self.animate_puzzle_complete()
+
+    def update_all(self, board: np.ndarray) -> None:
+        for i in range(self.board_auto.shape[0] - 2):
+            for j in range(self.board_auto.shape[1] - 2):
+                ci = self.grid.itemAtPosition(i, j)
+                assert ci is not None
+                c = ci.widget()
+                c.state_auto = board[i + 1, j + 1]
+                c.correct = True  # presume correct then indicate if not elsewhere
+                c.update()
 
     def indicate_contradictions(self, new_board_auto: np.ndarray) -> None:
         for i, j in puzzle.find_wrong_numbers(new_board_auto):

@@ -241,16 +241,16 @@ def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is f
 def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
     while True:
         old_board = board.copy()
-        if level >= 0:
-            board = illuminate(board)[1]
         if level >= 1:
+            board = illuminate(board)[1]
+        if level >= 2:
             board = mark_dots_around_full_numbers(board)
             board = mark_bulbs_around_dotted_numbers(board)
-        if level >= 2:
+        if level >= 3:
             board = illuminate(board)[1]
             board = fill_holes(board)
             board = mark_unique_bulbs_for_dot_cells(board)
-        if level >= 3:
+        if level >= 4:
             board = mark_dots_at_corners(board)
         if np.all(board == old_board):
             break
