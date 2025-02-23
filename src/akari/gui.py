@@ -9,6 +9,7 @@ from PySide6.QtCore import (
     QPropertyAnimation,
     QSize,
     Qt,
+    QTimer,
     Signal,
 )
 from PySide6.QtGui import (
@@ -110,9 +111,7 @@ class Cell(QWidget):
                 Qt.SolidPattern,
             ]
             brush = QBrush()
-            brush.setStyle(
-                white_out_patterns[cast(int, self.white_out_step)]
-            )
+            brush.setStyle(white_out_patterns[cast(int, self.white_out_step)])
             brush.setColor(Qt.white)
             p = QPainter(self)
             p.fillRect(1, 1, 18, 18, brush)
@@ -323,26 +322,6 @@ class MainWindow(QMainWindow):
         auto_apply_methods.setChecked(self.auto_apply_methods == 9)
         settings_menu.addAction(auto_apply_methods)
 
-        # TODO
-        # self.clear = QPushButton()
-        # self.clear.setText("Clear")
-        # self.vb.addWidget(self.clear)
-
-        # self.check = QPushButton()
-        # self.check.setText("Check")
-        # self.vb.addWidget(self.check)
-
-        # self.solve = QPushButton()
-        # self.solve.setText("Solve")
-        # self.vb.addWidget(self.solve)
-
-        # self.settings = QPushButton()
-        # self.settings.setText("Settings")
-        # self.vb.addWidget(self.settings)
-
-        # self.board = np.zeros((7, 7), dtype=str)
-        # self.board[:] = "-"
-        # self.board[1:-1, 1:-1] = "."
         self.board = puzzle.load_pzprv3(pzprv3_1)
         self.board_auto = self.board.copy()
         self.initialize_grid()
@@ -351,9 +330,20 @@ class MainWindow(QMainWindow):
         self.puzzle_status = QLabel()
         self.puzzle_status.setText("")
         self.puzzle_status.setVisible(False)
-        self.vbr.addWidget(self.puzzle_status)
+        labelhb = QHBoxLayout()
+        labelhb.addItem(
+            QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum),
+        )
+        labelhb.addWidget(self.puzzle_status)
+        labelhb.addItem(
+            QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum),
+        )
+        self.labelhb = labelhb
+        self.vbr.addLayout(labelhb)
 
+        self.adjustSize()
         self.show()
+        self.resize(self.sizeHint())
 
     def open_pressed(self) -> None:
         qfd = QFileDialog()
@@ -368,6 +358,7 @@ class MainWindow(QMainWindow):
             clearLayout(self.grid)
             self.initialize_grid()
             self.apply_methods()
+            QTimer.singleShot(0, self.adjustSize)
 
     def auto_illuminate_toggled(self) -> None:
         self.auto_illuminate = not self.auto_illuminate
@@ -409,7 +400,6 @@ class MainWindow(QMainWindow):
             0,
             self.grid.columnCount(),
         )
-        self.show()
         self.vbr.insertLayout(0, self.grid)
 
     def save_pressed(self) -> None:
@@ -440,6 +430,7 @@ class MainWindow(QMainWindow):
             else:
                 self.puzzle_status.setText("")
                 self.puzzle_status.setVisible(False)
+                QTimer.singleShot(0, self.adjustSize)
 
         for i in range(self.board_auto.shape[0] - 2):
             for j in range(self.board_auto.shape[1] - 2):
