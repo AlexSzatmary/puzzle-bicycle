@@ -6,12 +6,12 @@ import numpy as np
 # Board:
 # 0, 1, 2, 3, 4: number of bulbs
 # -: black, unnumbered
-# .: empty
+# .: free, empty
 # Solution:
 # #: bulb
 # Marks:
 # _, |, x: indicate light paths, x shows both directions,
-# + indicates no bulb but direction not indicated
+# +: "dotted", indicates no bulb but direction not indicated
 
 
 def load_pzprv3(pzprv3: str) -> np.ndarray:
@@ -147,20 +147,6 @@ def fill_holes(board: np.ndarray) -> np.ndarray:
     return board
 
 
-def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
-    while True:
-        old_board = board.copy()
-        if level >= 0:
-            board = illuminate(board)[1]
-        if level >= 1:
-            board = fill_holes(board)
-            board = mark_dots_around_full_numbers(board)
-            board = mark_bulbs_around_dotted_numbers(board)
-        if np.all(board == old_board):
-            break
-    return board
-
-
 def mark_dots_around_full_numbers(board: np.ndarray) -> np.ndarray:
     dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
     for i in range(1, np.size(board, 0) - 1):
@@ -185,6 +171,64 @@ def mark_bulbs_around_dotted_numbers(board: np.ndarray) -> np.ndarray:
                     for di, dj in dirs:
                         if board[i + di, j + dj] == ".":
                             board[i + di, j + dj] = "#"
+    return board
+
+
+def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is fine.
+    board: np.ndarray,
+) -> np.ndarray:
+    """
+    Takes annotated and possibly illuminated board.
+    Returns the board with holes filled in.
+
+    A hole is a free cell that must be a bulb because no bulb can possibly reach it.
+    """
+    board = illuminate(board)[1]
+    # we have to illuminate a lot because this logic ignores bulbs
+    for i in range(1, np.size(board, 0) - 1):
+        for j in range(1, np.size(board, 1) - 1):
+            if board[i, j] == "+":
+                sees_free = False
+                sees_multiple_free = False
+                free_i = free_j = -1
+                iters = [
+                    zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
+                    zip_longest([], range(j - 1, 0, -1), fillvalue=i),
+                    zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
+                    zip_longest([], range(j + 1, np.size(board, 0) - 1), fillvalue=i),
+                ]
+                for it in iters:
+                    for i1, j1 in it:
+                        if board[i1, j1] == ".":
+                            if sees_free:
+                                sees_multiple_free = True
+                                break
+                            else:
+                                sees_free = True
+                                free_i = i1
+                                free_j = j1
+                        elif board[i1, j1] in "01234-":
+                            break
+                    if sees_multiple_free:
+                        break
+                if sees_free and not sees_multiple_free:
+                    board[free_i, free_j] = "#"
+                    board = illuminate(board)[1]
+    return board
+
+
+def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
+    while True:
+        old_board = board.copy()
+        if level >= 0:
+            board = illuminate(board)[1]
+        if level >= 1:
+            board = fill_holes(board)
+            board = mark_dots_around_full_numbers(board)
+            board = mark_bulbs_around_dotted_numbers(board)
+            board = mark_unique_bulbs_for_dot_cells(board)
+        if np.all(board == old_board):
+            break
     return board
 
 

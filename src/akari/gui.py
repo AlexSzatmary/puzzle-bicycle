@@ -325,7 +325,6 @@ class MainWindow(QMainWindow):
         self.board = puzzle.load_pzprv3(pzprv3_1)
         self.board_auto = self.board.copy()
         self.initialize_grid()
-        self.apply_methods()
 
         self.puzzle_status = QLabel()
         self.puzzle_status.setText("")
@@ -341,6 +340,7 @@ class MainWindow(QMainWindow):
         self.labelhb = labelhb
         self.vbr.addLayout(labelhb)
 
+        self.apply_methods()
         self.adjustSize()
         self.show()
         self.resize(self.sizeHint())
@@ -356,6 +356,8 @@ class MainWindow(QMainWindow):
             self.board = puzzle.load_pzprv3(text)
             self.board_auto = puzzle.illuminate(self.board)[1]
             self.puzzle_complete = False
+            self.puzzle_status.setText("")
+            self.puzzle_status.setVisible(False)
             clearLayout(self.grid)
             self.initialize_grid()
             self.apply_methods()
