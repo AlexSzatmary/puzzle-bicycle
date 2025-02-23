@@ -293,6 +293,7 @@ class MainWindow(QMainWindow):
         self.auto_illuminate = True
         self.auto_apply_methods_level = AUTO_APPLY_METHODS_LEVEL
         self.puzzle_complete = False
+        self.puzzle_file_name = os.path.join(os.path.dirname(__file__), "default.txt")
 
         menu = self.menuBar()
         file_menu = menu.addMenu("&File")
@@ -358,6 +359,7 @@ class MainWindow(QMainWindow):
         with open(filename) as hin:
             text = hin.read()
         if text:
+            self.puzzle_file_name = filename
             self.board = puzzle.load_pzprv3(text)
             self.board_auto = puzzle.illuminate(self.board)[1]
             self.puzzle_complete = False
@@ -402,7 +404,7 @@ class MainWindow(QMainWindow):
         qfd = QFileDialog()
         qfd.open()
         filename, _ = qfd.getSaveFileName(
-            self, "Save pzprv3", os.path.dirname(__file__), "(*.txt)"
+            self, "Save pzprv3", self.puzzle_file_name, "(*.txt)"
         )
         if filename:
             pzprv3 = puzzle.save_pzprv3(self.board)
