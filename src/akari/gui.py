@@ -383,7 +383,7 @@ class MainWindow(QMainWindow):
     def initialize_grid(self) -> None:
         self.grid = QGridLayout()
         for i in range(self.board_auto.shape[0] - 2):
-            for j in range(self.board_auto.shape[0] - 2):
+            for j in range(self.board_auto.shape[1] - 2):
                 c = Cell(self, i, j, self.board_auto[i + 1, j + 1])
                 self.grid.addWidget(c, i, j)
                 c.update()

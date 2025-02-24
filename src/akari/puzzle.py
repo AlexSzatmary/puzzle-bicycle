@@ -28,6 +28,7 @@ def load_pzprv3(pzprv3: str) -> np.ndarray:
     board[:, :] = "-"
     for i, row in enumerate(pzprv3_lines[4 : 4 + rows]):
         board[i + 1, 1:-1] = list(row.replace(" ", ""))
+    print(board)
     return board
 
 
