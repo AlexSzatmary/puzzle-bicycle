@@ -327,7 +327,6 @@ class MainWindow(QMainWindow):
             action.setCheckable(True)
             action.setChecked(level == AUTO_APPLY_METHODS_LEVEL)
             settings_menu.addAction(action)
-        print([action.isChecked() for action in self.methods_group.actions()])
         self.board = puzzle.load_pzprv3(pzprv3_1)
         self.board_auto = self.board.copy()
         self.initialize_grid()
@@ -412,7 +411,6 @@ class MainWindow(QMainWindow):
                 hout.write(pzprv3)
 
     def apply_methods(self) -> None:
-        print(f"level {self.auto_apply_methods_level}")
         new_board_auto = puzzle.apply_methods(
             self.board.copy(), self.auto_apply_methods_level
         )
