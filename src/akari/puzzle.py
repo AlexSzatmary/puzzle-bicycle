@@ -19,16 +19,12 @@ def load_pzprv3(pzprv3: str) -> np.ndarray:
     Loads PUZ-PRE v3 text and returns an Akari board
     """
     pzprv3_lines = pzprv3.replace(" ", "").replace("/", "").split("\n")
-    # print(pzprv3)
-    # print()
-    # print(pzprv3_lines)
     rows = int(pzprv3_lines[2])
     cols = int(pzprv3_lines[3])
     board = np.zeros((rows + 2, cols + 2), dtype="str")
     board[:, :] = "-"
     for i, row in enumerate(pzprv3_lines[4 : 4 + rows]):
         board[i + 1, 1:-1] = list(row.replace(" ", ""))
-    print(board)
     return board
 
 
