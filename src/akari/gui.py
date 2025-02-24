@@ -311,7 +311,7 @@ class MainWindow(QMainWindow):
 
         self.methods_group = QActionGroup(self)
         for level in range(10):
-            if 4 < level < 9:
+            if 5 < level < 9:
                 continue  # these levels are not yet implemented
             if level == 0:
                 name = "No automatic solving"
@@ -354,7 +354,7 @@ class MainWindow(QMainWindow):
     def open_pressed(self) -> None:
         qfd = QFileDialog()
         filename, _ = qfd.getOpenFileName(
-            self, "Open pzprv3", os.path.dirname(__file__), "(*.txt)"
+            self, "Open pzprv3", os.path.dirname(self.puzzle_file_name), "(*.txt)"
         )
         with open(filename) as hin:
             text = hin.read()

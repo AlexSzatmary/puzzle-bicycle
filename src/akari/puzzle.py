@@ -147,13 +147,23 @@ def fill_holes(board: np.ndarray) -> np.ndarray:
     return board
 
 
+def count_free_near_number(board: np.ndarray, i: int, j: int) -> int:
+    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+    return sum(board[i + di, j + dj] == "." for (di, dj) in dirs)
+
+
+def count_missing_bulbs_near_number(board: np.ndarray, i: int, j: int) -> int:
+    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+    n_bulbs = sum(board[i + di, j + dj] == "#" for (di, dj) in dirs)
+    return int(board[i, j]) - n_bulbs
+
+
 def mark_dots_around_full_numbers(board: np.ndarray) -> np.ndarray:
     dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
     for i in range(1, np.size(board, 0) - 1):
         for j in range(1, np.size(board, 1) - 1):
             if board[i, j] in "01234":
-                n_neighbors = sum(board[i + di, j + dj] == "#" for (di, dj) in dirs)
-                if n_neighbors == int(board[i, j]):
+                if count_missing_bulbs_near_number(board, i, j) == 0:
                     for di, dj in dirs:
                         if board[i + di, j + dj] == ".":
                             board[i + di, j + dj] = "+"
@@ -165,9 +175,9 @@ def mark_bulbs_around_dotted_numbers(board: np.ndarray) -> np.ndarray:
     for i in range(1, np.size(board, 0) - 1):
         for j in range(1, np.size(board, 1) - 1):
             if board[i, j] in "01234":
-                n_free = sum(board[i + di, j + dj] == "." for (di, dj) in dirs)
-                n_bulbs_already = sum(board[i + di, j + dj] == "#" for (di, dj) in dirs)
-                if n_free + n_bulbs_already == int(board[i, j]):
+                if count_free_near_number(
+                    board, i, j
+                ) == count_missing_bulbs_near_number(board, i, j):
                     for di, dj in dirs:
                         if board[i + di, j + dj] == ".":
                             board[i + di, j + dj] = "#"
@@ -238,6 +248,46 @@ def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is f
     return board
 
 
+def analyze_diagonally_adjacent_numbers(board: np.ndarray) -> np.ndarray:
+    for iA in range(1, np.size(board, 0) - 1):
+        for jA in range(1, np.size(board, 1) - 1):
+            if board[iA, jA] in "01234" and board[iA + 1, jA] == ".":
+                # only analyze numbered cells diagonally down and to the left or right
+                iB = iA + 1
+                for jB in [jA + 1, jA - 1]:
+                    if board[iB, jB] in "01234" and board[iA, jB] == ".":
+                        missing_A = count_missing_bulbs_near_number(board, iA, jA)
+                        free_A = count_free_near_number(board, iA, jA)
+                        missing_B = count_missing_bulbs_near_number(board, iB, jB)
+                        free_B = count_free_near_number(board, iB, jB)
+                        if missing_A == 1 and missing_B + 1 == free_B:
+                            analyze_diagonally_adjacent_numbers_update_board(
+                                board, iA, jA, iB, jB
+                            )
+                        elif missing_B == 1 and missing_A + 1 == free_A:
+                            analyze_diagonally_adjacent_numbers_update_board(
+                                board, iB, jB, iA, jA
+                            )
+    return board
+
+
+def analyze_diagonally_adjacent_numbers_update_board(
+    board: np.ndarray, iC: int, jC: int, iD: int, jD: int
+) -> np.ndarray:
+    # point C has 1 missing bulb and point D has one free space more
+    di = iD - iC
+    dj = jD - jC
+    if board[iC - di, jC] == ".":
+        board[iC - di, jC] = "+"
+    if board[iC, jC - dj] == ".":
+        board[iC, jC - dj] = "+"
+    if board[iD + di, jD] == ".":
+        board[iD + di, jD] = "#"
+    if board[iD, jD + dj] == ".":
+        board[iD, jD + dj] = "#"
+    return board
+
+
 def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
     while True:
         old_board = board.copy()
@@ -252,6 +302,8 @@ def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
             board = mark_unique_bulbs_for_dot_cells(board)
         if level >= 4:
             board = mark_dots_at_corners(board)
+        if level >= 5:
+            board = analyze_diagonally_adjacent_numbers(board)
         if np.all(board == old_board):
             break
     return board
