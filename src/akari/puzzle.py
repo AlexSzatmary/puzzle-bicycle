@@ -93,7 +93,7 @@ def illuminate(  # noqa: C901 This level of complexity is fine.
                     zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
                     zip_longest([], range(j - 1, 0, -1), fillvalue=i),
                     zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
-                    zip_longest([], range(j + 1, np.size(board, 0) - 1), fillvalue=i),
+                    zip_longest([], range(j + 1, np.size(board, 1) - 1), fillvalue=i),
                 ]
                 for it, fill_char in zip(iters, fill_chars, strict=True):
                     for i1, j1 in it:
@@ -131,7 +131,7 @@ def fill_holes(board: np.ndarray) -> np.ndarray:
                     zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
                     zip_longest([], range(j - 1, 0, -1), fillvalue=i),
                     zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
-                    zip_longest([], range(j + 1, np.size(board, 0) - 1), fillvalue=i),
+                    zip_longest([], range(j + 1, np.size(board, 1) - 1), fillvalue=i),
                 ]
                 for it in iters:
                     for i1, j1 in it:
@@ -226,7 +226,7 @@ def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is f
                     zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
                     zip_longest([], range(j - 1, 0, -1), fillvalue=i),
                     zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
-                    zip_longest([], range(j + 1, np.size(board, 0) - 1), fillvalue=i),
+                    zip_longest([], range(j + 1, np.size(board, 1) - 1), fillvalue=i),
                 ]
                 for it in iters:
                     for i1, j1 in it:

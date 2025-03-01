@@ -4,6 +4,7 @@ from puzzle import (
     check_lit_bulbs,
     check_number,
     check_unlit_cells,
+    fill_holes,
     illuminate,
     load_pzprv3,
     print_board,
@@ -71,6 +72,26 @@ board_1_sol_illuminated_str = """
 board_1_sol_illuminated = np.array(
     list(map(list, board_1_sol_illuminated_str.split("\n"))), dtype="str"
 )
+
+board_test_fill_holes_pzprv3 = """
+pzprv3
+lightup
+2
+10
+. - . . - . . - + . /
+- - - 0 - - - - - - /
+"""[1:-1]
+board_test_fill_holes = load_pzprv3(board_test_fill_holes_pzprv3)
+
+board_test_fill_holes_sol_pzprv3 = """
+pzprv3
+lightup
+2
+10
+# - . . - . . - + # /
+- - - 0 - - - - - - /
+"""[1:-1]
+board_test_fill_holes_sol = load_pzprv3(board_test_fill_holes_sol_pzprv3)
 
 
 def test_load_pzprv3() -> None:
@@ -160,3 +181,9 @@ def test_check_all() -> None:
     board_1_sol_wrong_2 = board_1_sol.copy()
     board_1_sol_wrong_2[2, 1] = "#"
     assert not check_all(board_1_sol_wrong)
+
+
+def test_fill_holes() -> None:
+    print(stringify_board(fill_holes(board_test_fill_holes)))
+    print_board(board_test_fill_holes_sol)
+    assert np.all(fill_holes(board_test_fill_holes) == board_test_fill_holes_sol)
