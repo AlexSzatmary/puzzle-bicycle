@@ -6,6 +6,9 @@ from puzzle import (
     check_unlit_cells,
     illuminate,
     load_pzprv3,
+    print_board,
+    save_pzprv3,
+    stringify_board,
     zero_pad,
 )
 
@@ -33,7 +36,7 @@ lightup/
 . . # . . /
 """[1:]
 
-board_1 = """
+board_1_str = """
 -------
 -.....-
 -..0..-
@@ -42,7 +45,7 @@ board_1 = """
 -.....-
 -------
 """[1:-1]
-board_1 = np.array(list(map(list, board_1.split("\n"))), dtype="str")
+board_1 = np.array(list(map(list, board_1_str.split("\n"))), dtype="str")
 
 board_1_sol_str = """
 -------
@@ -76,6 +79,21 @@ def test_load_pzprv3() -> None:
 
 def test_load_pzprv3_solved() -> None:
     assert np.all(board_1_sol == load_pzprv3(pzprv3_1_sol))
+
+
+def test_save_pzprv3() -> None:
+    # Some puzzles have trailing / and some don't. I don't add "/" at the end of my
+    # lines in my save function so there isn't a perfect round trip between load and
+    # save with this example.
+    s1 = pzprv3_1_sol.replace(" /", "").replace("/", "")
+    s2 = save_pzprv3(load_pzprv3(pzprv3_1_sol))
+    assert s1 == s2
+
+
+def test_stringify_board() -> None:
+    print(stringify_board(board_1))
+    print_board(board_1)
+    assert np.all(stringify_board(board_1) == board_1_str)
 
 
 def test_zero_pad() -> None:

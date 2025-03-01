@@ -47,9 +47,12 @@ def zero_pad(grid: np.ndarray) -> np.ndarray:
     return grid2
 
 
+def stringify_board(board: np.ndarray) -> str:
+    return "\n".join("".join(list(row)) for row in board.astype(str))
+
+
 def print_board(board: np.ndarray) -> None:
-    for row in board.astype(str):
-        print("".join(list(row)))
+    print(stringify_board(board))
 
 
 def check_number(board: np.ndarray) -> list[tuple[int, int]]:
