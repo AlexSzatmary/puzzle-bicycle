@@ -1,9 +1,12 @@
 import numpy as np
+import pytest
 from puzzle import (
     check_all,
     check_lit_bulbs,
     check_number,
     check_unlit_cells,
+    count_free_near_number,
+    count_missing_bulbs_near_number,
     fill_holes,
     illuminate,
     load_pzprv3,
@@ -187,3 +190,48 @@ def test_fill_holes() -> None:
     print(stringify_board(fill_holes(board_test_fill_holes)))
     print_board(board_test_fill_holes_sol)
     assert np.all(fill_holes(board_test_fill_holes) == board_test_fill_holes_sol)
+
+
+board_count_near_pzprv3 = """
+pzprv3
+lightup
+6
+19
+. 0 . - . 1 . - . 2 . - . 3 . - . 2 # 
+. + . - . + . - . + . - . # . - . # . 
+- - - - - - - - - - - - - - - - - - - 
+. . . - . . . - . + . - . . . - . # . 
+. 0 + - + 1 . - . 2 . - # 3 . - # 4 . 
+. . . - . . . - . . . - . + . - . . . 
+"""[1:-1]  # noqa: W291
+
+
+@pytest.fixture
+def board_count_near() -> np.ndarray:
+    return load_pzprv3(board_count_near_pzprv3)
+
+
+def test_count_free_near_number(board_count_near: np.ndarray) -> None:
+    assert count_free_near_number(board_count_near, 1, 2) == 2
+    assert count_free_near_number(board_count_near, 1, 6) == 2
+    assert count_free_near_number(board_count_near, 1, 10) == 2
+    assert count_free_near_number(board_count_near, 1, 14) == 2
+    assert count_free_near_number(board_count_near, 1, 18) == 1
+    assert count_free_near_number(board_count_near, 5, 2) == 3
+    assert count_free_near_number(board_count_near, 5, 6) == 3
+    assert count_free_near_number(board_count_near, 5, 10) == 3
+    assert count_free_near_number(board_count_near, 5, 14) == 2
+    assert count_free_near_number(board_count_near, 5, 18) == 2
+
+
+def test_count_missing_bulbs_near_number(board_count_near: np.ndarray) -> None:
+    assert count_missing_bulbs_near_number(board_count_near, 1, 2) == 0
+    assert count_missing_bulbs_near_number(board_count_near, 1, 6) == 1
+    assert count_missing_bulbs_near_number(board_count_near, 1, 10) == 2
+    assert count_missing_bulbs_near_number(board_count_near, 1, 14) == 2
+    assert count_missing_bulbs_near_number(board_count_near, 1, 18) == 0
+    assert count_missing_bulbs_near_number(board_count_near, 5, 2) == 0
+    assert count_missing_bulbs_near_number(board_count_near, 5, 6) == 1
+    assert count_missing_bulbs_near_number(board_count_near, 5, 10) == 2
+    assert count_missing_bulbs_near_number(board_count_near, 5, 14) == 2
+    assert count_missing_bulbs_near_number(board_count_near, 5, 18) == 2
