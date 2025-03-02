@@ -51,6 +51,10 @@ def stringify_board(board: np.ndarray) -> str:
     return "\n".join("".join(list(row)) for row in board.astype(str))
 
 
+def boardify_string(s: str) -> np.ndarray:
+    return np.array(list(map(list, s.split("\n"))), dtype="str")
+
+
 def print_board(board: np.ndarray) -> None:
     print(stringify_board(board))
 

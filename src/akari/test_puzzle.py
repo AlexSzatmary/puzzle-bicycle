@@ -1,6 +1,9 @@
+from collections.abc import Generator
+
 import numpy as np
 import pytest
 from puzzle import (
+    boardify_string,
     check_all,
     check_lit_bulbs,
     check_number,
@@ -16,6 +19,29 @@ from puzzle import (
     stringify_board,
     zero_pad,
 )
+
+
+def all_orientations(board: np.ndarray) -> Generator[np.ndarray]:
+    board = board.copy()
+    yield board
+    np.fliplr(board)
+    yield board
+    np.flipud(board)
+    yield board
+    np.fliplr(board)
+    yield board
+    board = board.T
+    board[board == "_"] = "S"
+    board[board == "|"] = "_"
+    board[board == "S"] = "|"
+    yield board
+    np.fliplr(board)
+    yield board
+    np.flipud(board)
+    yield board
+    np.fliplr(board)
+    yield board
+
 
 pzprv3_1 = """
 pzprv3/
@@ -50,7 +76,7 @@ board_1_str = """
 -.....-
 -------
 """[1:-1]
-board_1 = np.array(list(map(list, board_1_str.split("\n"))), dtype="str")
+board_1 = boardify_string(board_1_str)
 
 board_1_sol_str = """
 -------
@@ -61,7 +87,7 @@ board_1_sol_str = """
 -..#..-
 -------
 """[1:-1]
-board_1_sol = np.array(list(map(list, board_1_sol_str.split("\n"))), dtype="str")
+board_1_sol = boardify_string(board_1_sol_str)
 
 
 board_1_sol_illuminated_str = """
@@ -73,9 +99,7 @@ board_1_sol_illuminated_str = """
 -xx#xx-
 -------
 """[1:-1]
-board_1_sol_illuminated = np.array(
-    list(map(list, board_1_sol_illuminated_str.split("\n"))), dtype="str"
-)
+board_1_sol_illuminated = boardify_string(board_1_sol_illuminated_str)
 
 board_test_fill_holes_pzprv3 = """
 pzprv3
@@ -132,65 +156,89 @@ def test_zero_pad() -> None:
 
 
 def test_check_number_1() -> None:
-    assert not check_number(board_1_sol)
+    for board in all_orientations(board_1_sol):
+        assert not check_number(board)
     board_1_sol_1 = board_1_sol.copy()
     board_1_sol_1[4, 2] = "."
     assert check_number(board_1_sol_1) == [(3, 2), (4, 3)]
 
 
 def test_illuminate_1() -> None:
-    (wrong_bulb_pairs, illuminated_board) = illuminate(board_1_sol.copy())
-    assert not wrong_bulb_pairs
-    assert np.all(illuminated_board == board_1_sol_illuminated)
+    # Test for a good case
+    for board, ref in zip(
+        all_orientations(board_1_sol),
+        all_orientations(board_1_sol_illuminated),
+        strict=True,
+    ):
+        (wrong_bulb_pairs, illuminated_board) = illuminate(board)
+        assert not wrong_bulb_pairs
+        assert stringify_board(illuminated_board) == stringify_board(ref)
+
+    # Test for detection of wrong pairs one time
     board_1_sol_wrong = board_1_sol.copy()
     board_1_sol_wrong[2, 1] = "#"
     board_1_sol_wrong[1, 5] = "#"
-    (wrong_bulb_pairs_wrong, illuminated_board_wrong) = illuminate(
-        board_1_sol_wrong.copy()
-    )
+    (wrong_bulb_pairs_wrong, _) = illuminate(board_1_sol_wrong.copy())
+    assert wrong_bulb_pairs_wrong == [(1, 2, 1, 5), (1, 5, 2, 5), (2, 1, 3, 1)]
+
+    # Test that illumination happens for a known wrong case
+    # and that 3 wrong pairs are detected
     board_1_sol_illuminated_wrong = board_1_sol_illuminated.copy()
     board_1_sol_illuminated_wrong[2, 1] = "#"
     board_1_sol_illuminated_wrong[2, 2] = "x"
     board_1_sol_illuminated_wrong[1, 5] = "#"
-    assert wrong_bulb_pairs_wrong == [(1, 2, 1, 5), (1, 5, 2, 5), (2, 1, 3, 1)]
-    print(illuminated_board_wrong)
-    print(board_1_sol_illuminated_wrong)
-    print(illuminated_board_wrong == board_1_sol_illuminated_wrong)
-    assert np.all(illuminated_board_wrong == board_1_sol_illuminated_wrong)
+    for board, ref in zip(
+        all_orientations(board_1_sol_wrong),
+        all_orientations(board_1_sol_illuminated_wrong),
+        strict=True,
+    ):
+        (wrong_bulb_pairs_wrong, illuminated_board_wrong) = illuminate(board)
+        assert len(wrong_bulb_pairs_wrong) == 3
+        assert stringify_board(illuminated_board_wrong) == stringify_board(ref)
 
 
 def test_check_unlit_cells_1() -> None:
-    assert check_unlit_cells(board_1_sol)
+    for board in all_orientations(board_1_sol):
+        assert check_unlit_cells(board)
 
     board_1_sol_wrong = board_1_sol.copy()
     board_1_sol_wrong[1, 2] = "."
-    assert not check_unlit_cells(board_1_sol_wrong)
+    for board in all_orientations(board_1_sol_wrong):
+        assert not check_unlit_cells(board)
 
 
 def test_check_unlit() -> None:
-    assert check_lit_bulbs(board_1_sol)
+    for board in all_orientations(board_1_sol):
+        assert check_lit_bulbs(board)
 
     board_1_sol_wrong = board_1_sol.copy()
     board_1_sol_wrong[2, 1] = "#"
-    assert not check_lit_bulbs(board_1_sol_wrong)
+    for board in all_orientations(board_1_sol_wrong):
+        assert not check_lit_bulbs(board)
 
 
 def test_check_all() -> None:
-    assert check_all(board_1_sol)
+    for board in all_orientations(board_1_sol):
+        assert check_all(board)
 
     board_1_sol_wrong = board_1_sol.copy()
     board_1_sol_wrong[1, 2] = "."
-    assert not check_all(board_1_sol_wrong)
+    for board in all_orientations(board_1_sol_wrong):
+        assert not check_all(board)
 
     board_1_sol_wrong_2 = board_1_sol.copy()
     board_1_sol_wrong_2[2, 1] = "#"
-    assert not check_all(board_1_sol_wrong)
+    for board in all_orientations(board_1_sol_wrong):
+        assert not check_all(board)
 
 
 def test_fill_holes() -> None:
-    print(stringify_board(fill_holes(board_test_fill_holes)))
-    print_board(board_test_fill_holes_sol)
-    assert np.all(fill_holes(board_test_fill_holes) == board_test_fill_holes_sol)
+    for board, ref in zip(
+        all_orientations(board_test_fill_holes),
+        all_orientations(board_test_fill_holes_sol),
+        strict=True,
+    ):
+        assert stringify_board(fill_holes(board) == ref)
 
 
 board_count_near_pzprv3 = """
@@ -280,7 +328,10 @@ def test_mark_dots_around_full_numbers(
     board_mark_dots_around_full_numbers: np.ndarray,
     board_mark_dots_around_full_numbers_sol: np.ndarray,
 ) -> None:
-    board_post = mark_dots_around_full_numbers(board_mark_dots_around_full_numbers)
-    assert stringify_board(board_post) == stringify_board(
-        board_mark_dots_around_full_numbers_sol
-    )
+    for board, ref in zip(
+        all_orientations(board_mark_dots_around_full_numbers),
+        all_orientations(board_mark_dots_around_full_numbers_sol),
+        strict=True,
+    ):
+        board_post = mark_dots_around_full_numbers(board)
+        assert stringify_board(board_post) == stringify_board(ref)
