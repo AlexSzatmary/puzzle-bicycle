@@ -10,6 +10,7 @@ from puzzle import (
     fill_holes,
     illuminate,
     load_pzprv3,
+    mark_dots_around_full_numbers,
     print_board,
     save_pzprv3,
     stringify_board,
@@ -235,3 +236,51 @@ def test_count_missing_bulbs_near_number(board_count_near: np.ndarray) -> None:
     assert count_missing_bulbs_near_number(board_count_near, 5, 10) == 2
     assert count_missing_bulbs_near_number(board_count_near, 5, 14) == 2
     assert count_missing_bulbs_near_number(board_count_near, 5, 18) == 2
+
+
+board_mark_dots_around_full_numbers_pzprv3 = """
+pzprv3
+lightup
+6
+19
+. 0 . - + 1 . - . 2 . - . 3 . - . 2 # 
+. + . - . # . - . + . - . # . - . # . 
+- - - - - - - - - - - - - - - - - - - 
+. . . - . . . - . + . - . # . - . # . 
+. 0 + - + 1 . - # 2 # - # 3 . - # 4 . 
+. . . - . . . - . . . - . # . - . . . 
+"""[1:-1]  # noqa: W291
+
+
+board_mark_dots_around_full_numbers_sol_pzprv3 = """
+pzprv3
+lightup
+6
+19
++ 0 + - + 1 + - . 2 . - . 3 . - + 2 # 
+. + . - . # . - . + . - . # . - . # . 
+- - - - - - - - - - - - - - - - - - - 
+. + . - . . . - . + . - . # . - . # . 
++ 0 + - + 1 . - # 2 # - # 3 + - # 4 . 
+. + . - . . . - . + . - . # . - . . . 
+"""[1:-1]  # noqa: W291
+
+
+@pytest.fixture
+def board_mark_dots_around_full_numbers() -> np.ndarray:
+    return load_pzprv3(board_mark_dots_around_full_numbers_pzprv3)
+
+
+@pytest.fixture
+def board_mark_dots_around_full_numbers_sol() -> np.ndarray:
+    return load_pzprv3(board_mark_dots_around_full_numbers_sol_pzprv3)
+
+
+def test_mark_dots_around_full_numbers(
+    board_mark_dots_around_full_numbers: np.ndarray,
+    board_mark_dots_around_full_numbers_sol: np.ndarray,
+) -> None:
+    board_post = mark_dots_around_full_numbers(board_mark_dots_around_full_numbers)
+    assert stringify_board(board_post) == stringify_board(
+        board_mark_dots_around_full_numbers_sol
+    )
