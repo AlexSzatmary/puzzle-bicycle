@@ -13,6 +13,7 @@ from puzzle import (
     count_free_near_number,
     count_missing_bulbs_near_number,
     fill_holes,
+    find_wrong_numbers,
     illuminate,
     load_pzprv3,
     mark_bulbs_around_dotted_numbers,
@@ -557,3 +558,14 @@ def test_analyze_diagonally_adjacent_numbers(
         assert stringify_board(
             analyze_diagonally_adjacent_numbers(board)
         ) == stringify_board(ref)
+
+
+def test_find_wrong_numbers() -> None:
+    for board in all_orientations(board_1_sol):
+        assert not find_wrong_numbers(board)
+    board_1_sol_1 = board_1_sol.copy()
+    board_1_sol_1[2, 2] = "#"
+    board_1_sol_1[5, 3] = "+"
+    board_1_sol_1[2, 4] = "#"
+    print_board(board_1_sol_1)
+    assert find_wrong_numbers(board_1_sol_1) == [(2, 3), (3, 2), (3, 4), (4, 3)]
