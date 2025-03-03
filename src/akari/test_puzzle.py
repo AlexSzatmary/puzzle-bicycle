@@ -16,6 +16,7 @@ from puzzle import (
     load_pzprv3,
     mark_bulbs_around_dotted_numbers,
     mark_dots_around_full_numbers,
+    mark_dots_at_corners,
     print_board,
     save_pzprv3,
     stringify_board,
@@ -142,7 +143,6 @@ def test_save_pzprv3() -> None:
 
 
 def test_stringify_board() -> None:
-    print(stringify_board(board_1))
     print_board(board_1)
     assert np.all(stringify_board(board_1) == board_1_str)
 
@@ -389,3 +389,51 @@ def test_mark_bulbs_around_dotted_numbers(
         assert stringify_board(
             mark_bulbs_around_dotted_numbers(board)
         ) == stringify_board(ref)
+
+
+@pytest.fixture
+def board_mark_dots_at_corners() -> np.ndarray:
+    return boardify_string(
+        cleandoc(
+            """
+            ---------------------
+            -2..-+1.-.2.-#3.-.2.-
+            -...-...-.+.-...-...-
+            ---------------------
+            -...-...-.+.-+#.--+.-
+            -.0+-+1.-#2#-#3.--1.-
+            -...-...-...-+#.-...-
+            ---------------------
+            """
+        )
+    )
+
+
+@pytest.fixture
+def board_mark_dots_at_corners_sol() -> np.ndarray:
+    return boardify_string(
+        cleandoc(
+            """
+            ---------------------
+            -2..-+1.-.2.-#3.-.2.-
+            -...-..+-.+.-...-+.+-
+            ---------------------
+            -...-...-.+.-+#.--+.-
+            -.0+-+1.-#2#-#3.--1.-
+            -...-...-...-+#.-..+-
+            ---------------------
+            """
+        )
+    )
+
+
+def test_mark_dots_at_corners(
+    board_mark_dots_at_corners: np.ndarray,
+    board_mark_dots_at_corners_sol: np.ndarray,
+) -> None:
+    for board, ref in zip(
+        all_orientations(board_mark_dots_at_corners),
+        all_orientations(board_mark_dots_at_corners_sol),
+        strict=True,
+    ):
+        assert stringify_board(mark_dots_at_corners(board)) == stringify_board(ref)

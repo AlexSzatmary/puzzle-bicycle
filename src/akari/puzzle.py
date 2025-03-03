@@ -189,6 +189,24 @@ def mark_bulbs_around_dotted_numbers(board: np.ndarray) -> np.ndarray:
 
 
 def mark_dots_at_corners(board: np.ndarray) -> np.ndarray:
+    """
+    Marks dots at free cells diagonal to numbers if a bulb in that cell would not work.
+
+    Will fire for
+    ---
+    -1.
+    -..
+    to do
+    ---
+    -1.
+    -.+
+
+    But will not fire at all for
+    ---
+    -2.
+    -..
+    because that case should already be caught by mark_bulbs_around_dotted_numbers.
+    """
     ortho_dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
     diag_dirs = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
     for i in range(1, np.size(board, 0) - 1):
