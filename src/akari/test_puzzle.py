@@ -4,6 +4,7 @@ from inspect import cleandoc
 import numpy as np
 import pytest
 from puzzle import (
+    analyze_diagonally_adjacent_numbers,
     boardify_string,
     check_all,
     check_lit_bulbs,
@@ -491,4 +492,68 @@ def test_mark_unique_bulbs_for_dot_cells(
     ):
         assert stringify_board(
             mark_unique_bulbs_for_dot_cells(board)
+        ) == stringify_board(ref)
+
+
+@pytest.fixture
+def board_analyze_diagonally_adjacent_numbers() -> np.ndarray:
+    return boardify_string(
+        cleandoc(
+            """
+            ------
+            -1...-
+            -.1..-
+            -....-
+            ------
+            -....-
+            -.3..-
+            -..1.-
+            -....-
+            ------
+            -....-
+            -+2..-
+            -..1.-
+            -....-
+            ------
+            """
+        )
+    )
+
+
+@pytest.fixture
+def board_analyze_diagonally_adjacent_numbers_sol() -> np.ndarray:
+    return boardify_string(
+        cleandoc(
+            """
+            ------
+            -1...-
+            -.1+.-
+            -.+..-
+            ------
+            -.#..-
+            -#3..-
+            -..1+-
+            -..+.-
+            ------
+            -.#..-
+            -+2..-
+            -..1+-
+            -..+.-
+            ------
+            """
+        )
+    )
+
+
+def test_analyze_diagonally_adjacent_numbers(
+    board_analyze_diagonally_adjacent_numbers: np.ndarray,
+    board_analyze_diagonally_adjacent_numbers_sol: np.ndarray,
+) -> None:
+    for board, ref in zip(
+        all_orientations(board_analyze_diagonally_adjacent_numbers),
+        all_orientations(board_analyze_diagonally_adjacent_numbers_sol),
+        strict=True,
+    ):
+        assert stringify_board(
+            analyze_diagonally_adjacent_numbers(board)
         ) == stringify_board(ref)

@@ -292,6 +292,33 @@ def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is f
 
 
 def analyze_diagonally_adjacent_numbers(board: np.ndarray) -> np.ndarray:
+    """
+    Adds dots and bulbs for certain diagonally adjacent numbers sharing 2 free spaces.
+
+    Finds this kind of thing:
+    ----
+    -1..
+    -.1.
+    -...
+    and sees that we add + as shown:
+    ----
+    -1..
+    -.1+
+    -.+.
+    Likewise,
+    -----
+    -....
+    -.3..
+    -..1.
+    -....
+    becomes
+    -----
+    -.#..
+    -#3..
+    -..1+
+    -..+.
+    We also account for what happens if a bulb or dot is already known.
+    """
     for iA in range(1, np.size(board, 0) - 1):
         for jA in range(1, np.size(board, 1) - 1):
             if board[iA, jA] in "01234" and board[iA + 1, jA] == ".":
