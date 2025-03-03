@@ -17,6 +17,7 @@ from puzzle import (
     mark_bulbs_around_dotted_numbers,
     mark_dots_around_full_numbers,
     mark_dots_at_corners,
+    mark_unique_bulbs_for_dot_cells,
     print_board,
     save_pzprv3,
     stringify_board,
@@ -437,3 +438,57 @@ def test_mark_dots_at_corners(
         strict=True,
     ):
         assert stringify_board(mark_dots_at_corners(board)) == stringify_board(ref)
+
+
+@pytest.fixture
+def board_mark_unique_bulbs_for_dot_cells() -> np.ndarray:
+    return boardify_string(
+        cleandoc(
+            """
+            -----
+            -0---
+            -+.--
+            --.--
+            -----
+            -----
+            -0---
+            -+..-
+            --.--
+            -----
+            """
+        )
+    )
+
+
+@pytest.fixture
+def board_mark_unique_bulbs_for_dot_cells_sol() -> np.ndarray:
+    return boardify_string(
+        cleandoc(
+            """
+            -----
+            -0---
+            -_#--
+            --|--
+            -----
+            -----
+            -0---
+            -+..-
+            --.--
+            -----
+            """
+        )
+    )
+
+
+def test_mark_unique_bulbs_for_dot_cells(
+    board_mark_unique_bulbs_for_dot_cells: np.ndarray,
+    board_mark_unique_bulbs_for_dot_cells_sol: np.ndarray,
+) -> None:
+    for board, ref in zip(
+        all_orientations(board_mark_unique_bulbs_for_dot_cells),
+        all_orientations(board_mark_unique_bulbs_for_dot_cells_sol),
+        strict=True,
+    ):
+        assert stringify_board(
+            mark_unique_bulbs_for_dot_cells(board)
+        ) == stringify_board(ref)

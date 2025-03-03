@@ -125,6 +125,15 @@ def fill_holes(board: np.ndarray) -> np.ndarray:
     Returns the board with holes filled in.
 
     A hole is a free cell that must be a bulb because no bulb can possibly reach it.
+
+    Holes:      Not holes:
+    -------     -------
+    -.-+.+-     -..-..-
+    -------     ----0--
+     ^  ^        ^^  *
+
+    Cases marked ^ are simple. Case * is not a hole because this method does not see
+    the 0; after a + is marked above the 0, the * would then be a hole.
     """
 
     for i in range(1, np.size(board, 0) - 1):
@@ -231,10 +240,22 @@ def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is f
     board: np.ndarray,
 ) -> np.ndarray:
     """
-    Takes annotated and possibly illuminated board.
-    Returns the board with holes filled in.
+    Takes annotated and possibly illuminated board. Marks cells that must be bulbs for
+    a dotted cell to be illuminated. For example, if we have,
+    -0--
+    -+.-
+    --.-
+    ----
+    we must obtain,
+    -0--
+    -+#-
+    --.-
+    ----
+    Because otherwise the + below the 0 could not be illuminated.
 
-    A hole is a free cell that must be a bulb because no bulb can possibly reach it.
+    This function runs illuminate a lot and it's not obvious to me if that's an
+    implementation decision. If it's inefficient to run illuminate a lot, the fix is
+    to allow illuminate to take an argument for the single i, j for the new bulb.
     """
     board = illuminate(board)[1]
     # we have to illuminate a lot because this logic ignores bulbs
