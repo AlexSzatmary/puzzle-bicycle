@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from inspect import cleandoc
 
 import numpy as np
 import pytest
@@ -13,6 +14,7 @@ from puzzle import (
     fill_holes,
     illuminate,
     load_pzprv3,
+    mark_bulbs_around_dotted_numbers,
     mark_dots_around_full_numbers,
     print_board,
     save_pzprv3,
@@ -335,3 +337,55 @@ def test_mark_dots_around_full_numbers(
     ):
         board_post = mark_dots_around_full_numbers(board)
         assert stringify_board(board_post) == stringify_board(ref)
+
+
+@pytest.fixture
+def board_mark_bulbs_around_dotted_numbers() -> np.ndarray:
+    return boardify_string(
+        cleandoc(
+            """
+            ---------------------
+            -.0.-+1.-.2.-.3.-+2#-
+            -.+.-.#.-.+.-.#.-.#.-
+            ---------------------
+            -...-...-.+.-.#.-.#.-
+            -.0+-+1.-#2#-#3.-#4.-
+            -...-...-...-.#.-...-
+            ---------------------
+            """
+        )
+    )
+
+
+@pytest.fixture
+def board_mark_bulbs_around_dotted_numbers_sol() -> np.ndarray:
+    return boardify_string(
+        cleandoc(
+            """
+            ---------------------
+            -.0.-+1.-#2#-#3#-+2#-
+            -.+.-.#.-.+.-.#.-.#.-
+            ---------------------
+            -...-...-.+.-.#.-.#.-
+            -.0+-+1.-#2#-#3.-#4#-
+            -...-...-...-.#.-.#.-
+            ---------------------
+            """
+        )
+    )
+
+
+def test_mark_bulbs_around_dotted_numbers(
+    board_mark_bulbs_around_dotted_numbers: np.ndarray,
+    board_mark_bulbs_around_dotted_numbers_sol: np.ndarray,
+) -> None:
+    print_board(board_mark_bulbs_around_dotted_numbers)
+    print_board(board_mark_bulbs_around_dotted_numbers_sol)
+    for board, ref in zip(
+        all_orientations(board_mark_bulbs_around_dotted_numbers),
+        all_orientations(board_mark_bulbs_around_dotted_numbers_sol),
+        strict=True,
+    ):
+        assert stringify_board(
+            mark_bulbs_around_dotted_numbers(board)
+        ) == stringify_board(ref)
