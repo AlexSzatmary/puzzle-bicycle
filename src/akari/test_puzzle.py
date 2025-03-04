@@ -5,6 +5,7 @@ import numpy as np
 import pytest
 from puzzle import (
     analyze_diagonally_adjacent_numbers,
+    apply_methods,
     boardify_string,
     check_all,
     check_lit_bulbs,
@@ -569,3 +570,126 @@ def test_find_wrong_numbers() -> None:
     board_1_sol_1[2, 4] = "#"
     print_board(board_1_sol_1)
     assert find_wrong_numbers(board_1_sol_1) == [(2, 3), (3, 2), (3, 4), (4, 3)]
+
+
+@pytest.fixture
+def board_apply_methods() -> np.ndarray:
+    return boardify_string(
+        cleandoc(
+            """
+            ------
+            -2.1.-
+            -....-
+            -1--.-
+            -.1---
+            -...--
+            -.-..-
+            -.1..-
+            -...2-
+            -..1.-
+            -....-
+            -....-
+            ------
+            """
+        )
+    )
+
+
+@pytest.fixture
+def boards_apply_methods_sol() -> list[np.ndarray]:
+    board_strings = [
+        """
+            ------
+            -2.1.-
+            -....-
+            -1--.-
+            -.1---
+            -...--
+            -.-..-
+            -.1..-
+            -...2-
+            -..1.-
+            -....-
+            -....-
+            ------
+            """,
+        """
+            ------
+            -2#1+-
+            -#x__-
+            -1--.-
+            -+1---
+            -_#_--
+            -.-..-
+            -.1..-
+            -...2-
+            -..1.-
+            -....-
+            -....-
+            ------
+            """,
+        """
+            ------
+            -2#1|-
+            -#x_x-
+            -1--#-
+            -+1---
+            -_#_--
+            -.-..-
+            -.1..-
+            -...2-
+            -..1.-
+            -....-
+            -....-
+            ------
+            """,
+        """
+            ------
+            -2#1|-
+            -#x_x-
+            -1--#-
+            -+1---
+            -_#_--
+            -.-..-
+            -.1+.-
+            -+..2-
+            -..1.-
+            -....-
+            -....-
+            ------
+            """,
+        """
+            ------
+            -2#1|-
+            -#x_x-
+            -1--#-
+            -+1---
+            -_#_--
+            -.-.|-
+            -.1_#-
+            -+..2-
+            -.+1.-
+            -..+.-
+            -....-
+            ------
+            """,
+    ]
+    return [boardify_string(cleandoc(s)) for s in board_strings]
+
+
+def test_board_apply_methods(
+    board_apply_methods: np.ndarray,
+    boards_apply_methods_sol: np.ndarray,
+) -> None:
+    for i, board_ref in zip(
+        range(1, len(boards_apply_methods_sol) + 1),
+        boards_apply_methods_sol,
+        strict=True,
+    ):
+        print(i)
+        for board, ref in zip(
+            all_orientations(board_apply_methods),
+            all_orientations(board_ref),
+            strict=True,
+        ):
+            assert stringify_board(apply_methods(board, i)) == stringify_board(ref)
