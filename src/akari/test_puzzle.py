@@ -677,7 +677,7 @@ def boards_apply_methods_sol() -> list[np.ndarray]:
     return [boardify_string(cleandoc(s)) for s in board_strings]
 
 
-def test_board_apply_methods(
+def test_apply_methods(
     board_apply_methods: np.ndarray,
     boards_apply_methods_sol: np.ndarray,
 ) -> None:
