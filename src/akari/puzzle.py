@@ -519,8 +519,23 @@ def _analyze_pairs_adjacent_columns(
                 board[iB + 1, jB] = "#"
             if board[iB, jB + dj] == ".":
                 board[iB, jB + dj] = "#"
-            # TODO mark out blanks in columns, going down from iA + 2, jA and up from
-            # iB, jB - 2
+            _dot_adjacent_columns(board, iA, jA, iB, jB)
+    return board
+
+
+def _dot_adjacent_columns(
+    board: np.ndarray, iA: int, jA: int, iB: int, jB: int
+) -> np.ndarray:
+    for i in range(iA + 2, np.size(board, 0) - 1):
+        if board[i, jA] in "-01234":
+            break
+        elif i != iB and board[i, jA] == ".":
+            board[i, jA] = "+"
+    for i in range(iB - 2, 0, -1):
+        if board[i, jB] in "-01234":
+            break
+        elif i != iA and board[i, jB] == ".":
+            board[i, jB] = "+"
     return board
 
 
@@ -540,7 +555,7 @@ def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
             board = mark_dots_at_corners(board)
         if level >= 5:
             board = analyze_diagonally_adjacent_numbers(board)
-        if level >= 5:
+        if level >= 6:
             board = trace_shared_lanes(board)
         if np.all(board == old_board):
             break

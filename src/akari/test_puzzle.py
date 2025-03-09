@@ -833,12 +833,12 @@ def test_trace_shared_lanes() -> None:
     post = boardify_string(
         cleandoc("""
             ----
-            -#.-
+            -#+-
             -2.-
-            -..-
-            -..-
+            -.+-
+            -+.-
             -.2-
-            -.#-
+            -+#-
             ----
             """)
     )
