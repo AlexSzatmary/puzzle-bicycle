@@ -370,6 +370,160 @@ def analyze_diagonally_adjacent_numbers_update_board(
     return board
 
 
+def trace_shared_lanes(board: np.ndarray) -> np.ndarray:
+    """
+    If we have,
+    -----
+    -...-
+    -.3.-
+    -...-
+    -...-
+    -...-
+    -.2.-
+    -...-
+    -----
+    we can obtain,
+    -----
+    -.#.-
+    -.3.-
+    -...-
+    -...-
+    -...-
+    -.2.-
+    -.#.-
+    -----
+    because the 3 and 2 compete over 3 lanes, need 5 bulbs total, and can hide 2 bulbs
+    from each other. Moreover, we can also get,
+    -----
+    -_#_-
+    -.3.-
+    -+.+-
+    -+++-
+    -+.+-
+    -.2.-
+    -_#_-
+    -----
+    because a bulb at any of the + locations would steal needed cells for the 3
+    and 2.
+
+    We can also consider sharing only 2 lanes. We can't show anything if only 1 lane
+    is shared. This function can consider sharing like,
+    ----
+    -..-
+    -2.-
+    -..-
+    -..-
+    -.2-
+    -..-
+    ----
+    that is, where the two numbers are off by one row or column. We can also account for
+    two numbers in a line but that have one of their lanes blocked by a black square or
+    a bulb.
+
+    -----
+    -...-
+    -.3.-
+    -...-
+    -.2.-
+    -...-
+    -----
+    is a fun special case because the 3 and 2 share the cell between them. If two cells
+    are in a line and have one free cell between them, that cell is not considered in
+    a competing lane. Thus, this rule does not fire; it would fire if the 2 were
+    another 3.
+    """
+    board = _trace_shared_lanes_down(board)
+
+    # We can just transpose the board back and forth to just write the logic to sweep
+    # down.
+    board = board.T
+    board[board == "_"] = "S"
+    board[board == "|"] = "_"
+    board[board == "S"] = "|"
+    board = _trace_shared_lanes_down(board)
+    board = board.T
+    board[board == "_"] = "S"
+    board[board == "|"] = "_"
+    board[board == "S"] = "|"
+    return board
+
+
+def _trace_shared_lanes_down(board: np.ndarray) -> np.ndarray:
+    """
+    This helper for trace_shared_lanes only sweeps down.
+    """
+    for iA in range(1, np.size(board, 0) - 1):
+        for jA in range(1, np.size(board, 1) - 1):
+            if board[iA, jA] in "123" and count_missing_bulbs_near_number(
+                board, iA, jA
+            ) + 1 == count_free_near_number(board, iA, jA):
+                tracer_C = board[iA, jA - 1] == "."
+                tracer_D = True
+                tracer_E = board[iA, jA + 1] == "."
+                for iB in range(iA + 1, np.size(board, 0)):
+                    if tracer_C + tracer_D + tracer_E >= 2:
+                        new_tracer_C = tracer_C and board[iB, jA - 1] in ".+_|x"
+                        new_tracer_D = tracer_D and board[iB, jA] in ".+_|x"
+                        new_tracer_E = tracer_E and board[iB, jA + 1] in ".+_|x"
+                        _analyze_pairs_adjacent_columns(
+                            board,
+                            iA,
+                            jA,
+                            iB,
+                            jA - 1,
+                            tracer_C,
+                            new_tracer_D,
+                        )
+                        _analyze_pairs_adjacent_columns(
+                            board,
+                            iA,
+                            jA,
+                            iB,
+                            jA + 1,
+                            tracer_E,
+                            new_tracer_D,
+                        )
+                        tracer_C = new_tracer_C
+                        tracer_D = new_tracer_D
+                        tracer_E = new_tracer_E
+                        # TODO write function for two numbers that share a column
+    return board
+
+
+def _analyze_pairs_adjacent_columns(
+    board: np.ndarray,
+    iA: int,
+    jA: int,
+    iB: int,
+    jB: int,
+    tracer_col_B: bool,  # noqa: FBT001
+    new_tracer_col_A: bool,  # noqa: FBT001
+) -> np.ndarray:
+    dj = jB - jA
+    if (
+        tracer_col_B
+        and new_tracer_col_A
+        and board[iB, jB] in "123"
+        and board[iB - 1, jB] == "."
+        and board[iB, jA] == "."
+    ):
+        # points A and B are both numbers and share 2 lanes
+        if count_missing_bulbs_near_number(board, iB, jB) + 1 == count_free_near_number(
+            board, iB, jB
+        ):
+            if board[iA - 1, jA] == ".":
+                board[iA - 1, jA] = "#"
+            if board[iA, jA - dj] == ".":
+                board[iA, jA - dj] = "#"
+            if board[iB + 1, jB] == ".":
+                board[iB + 1, jB] = "#"
+            if board[iB, jB + dj] == ".":
+                board[iB, jB + dj] = "#"
+            # TODO mark out blanks in columns, going down from iA + 2, jA and up from
+            # iB, jB - 2
+    return board
+
+
 def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
     while True:
         old_board = board.copy()
@@ -386,6 +540,8 @@ def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
             board = mark_dots_at_corners(board)
         if level >= 5:
             board = analyze_diagonally_adjacent_numbers(board)
+        if level >= 5:
+            board = trace_shared_lanes(board)
         if np.all(board == old_board):
             break
     return board

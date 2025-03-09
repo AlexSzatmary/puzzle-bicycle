@@ -24,6 +24,7 @@ from puzzle import (
     print_board,
     save_pzprv3,
     stringify_board,
+    trace_shared_lanes,
     transpose_board,
     zero_pad,
 )
@@ -691,3 +692,154 @@ def test_apply_methods(
             strict=True,
         ):
             assert stringify_board(apply_methods(board, i)) == stringify_board(ref)
+
+
+@pytest.fixture
+def boards_trace_shared_lanes() -> list[tuple[np.ndarray, np.ndarray]]:
+    board_pairs = [
+        (
+            """
+            -----
+            -...-
+            -.3.-
+            -...-
+            -...-
+            -...-
+            -.2.-
+            -...-
+            -----
+            """,
+            """
+            -----
+            -_#_-
+            -.3.-
+            -+.+-
+            -+++-
+            -+.+-
+            -.2.-
+            -_#_-
+            -----
+            """,
+        ),
+        (
+            """
+            ----
+            -..-
+            -2.-
+            -..-
+            -..-
+            -.2-
+            -..-
+            ----
+            """,
+            # TODO
+            """
+            ----
+            -..-
+            -2.-
+            -..-
+            -..-
+            -.2-
+            -..-
+            ----
+            """,
+        ),
+        (
+            """
+            -----
+            -...-
+            -.3.-
+            -...-
+            -.2.-
+            -...-
+            -----
+            """,
+            """
+            -----
+            -...-
+            -.3.-
+            -...-
+            -.2.-
+            -...-
+            -----
+            """,
+        ),
+        (
+            """
+            -----
+            -...-
+            -.3.-
+            -...-
+            -.3.-
+            -...-
+            -----
+            """,
+            """
+            -----
+            -.#.-
+            -.3.-
+            -.#.-
+            -.3.-
+            -.#.-
+            -----
+            """,
+        ),
+    ]
+    return [
+        (boardify_string(cleandoc(pre)), boardify_string(cleandoc(post)))
+        for (pre, post) in board_pairs
+    ]
+
+
+def _test_trace_shared_lanes_all(
+    boards_trace_shared_lanes: list[tuple[np.ndarray, np.ndarray]],
+) -> None:
+    for pre, post in boards_trace_shared_lanes:
+        for pre_rotated, post_rotated in zip(
+            all_orientations(pre),
+            all_orientations(post),
+            strict=True,
+        ):
+            assert stringify_board(trace_shared_lanes(pre_rotated)) == stringify_board(
+                post_rotated
+            )
+
+
+def test_trace_shared_lanes() -> None:
+    null = boardify_string(
+        cleandoc("""
+        ----
+        -..-
+        -1.-
+        -..-
+        -.1-
+        -..-
+        ----
+        """)
+    )
+    assert stringify_board(trace_shared_lanes(null)) == stringify_board(null)
+    pre = boardify_string(
+        cleandoc("""
+            ----
+            -..-
+            -2.-
+            -..-
+            -..-
+            -.2-
+            -..-
+            ----
+            """)
+    )
+    post = boardify_string(
+        cleandoc("""
+            ----
+            -#.-
+            -2.-
+            -..-
+            -..-
+            -.2-
+            -.#-
+            ----
+            """)
+    )
+    assert stringify_board(trace_shared_lanes(pre)) == stringify_board(post)
