@@ -24,6 +24,7 @@ from puzzle import (
     print_board,
     save_pzprv3,
     stringify_board,
+    transpose_board,
     zero_pad,
 )
 
@@ -37,10 +38,7 @@ def all_orientations(board: np.ndarray) -> Generator[np.ndarray]:
     yield board
     np.fliplr(board)
     yield board
-    board = board.T
-    board[board == "_"] = "S"
-    board[board == "|"] = "_"
-    board[board == "S"] = "|"
+    board = transpose_board(board)
     yield board
     np.fliplr(board)
     yield board

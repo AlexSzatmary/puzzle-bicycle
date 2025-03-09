@@ -59,6 +59,18 @@ def print_board(board: np.ndarray) -> None:
     print(stringify_board(board))
 
 
+def transpose_board(board: np.ndarray) -> np.ndarray:
+    """
+    Returns the board transposed, accounting for swapping the _ and | symbols
+    """
+    board = board.T
+    boardLR = board == "_"
+    boardUD = board == "|"
+    board[boardLR] = "|"
+    board[boardUD] = "_"
+    return board
+
+
 def check_number(board: np.ndarray) -> list[tuple[int, int]]:
     """
     Checks numbered spaces to see if they have the correct number of bulbs.
