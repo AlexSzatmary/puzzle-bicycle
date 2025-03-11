@@ -311,7 +311,7 @@ class MainWindow(QMainWindow):
 
         self.methods_group = QActionGroup(self)
         for level in range(10):
-            if 5 < level < 9:
+            if 6 < level < 9:
                 continue  # these levels are not yet implemented
             if level == 0:
                 name = "No automatic solving"
