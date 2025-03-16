@@ -34,19 +34,19 @@ from puzzle import (
 def all_orientations(board: np.ndarray) -> Generator[np.ndarray]:
     board = board.copy()
     yield board.copy()
-    np.fliplr(board)
+    board = np.fliplr(board)
     yield board.copy()
-    np.flipud(board)
+    board = np.flipud(board)
     yield board.copy()
-    np.fliplr(board)
+    board = np.fliplr(board)
     yield board.copy()
     board = transpose_board(board)
     yield board.copy()
-    np.fliplr(board)
+    board = np.fliplr(board)
     yield board.copy()
-    np.flipud(board)
+    board = np.flipud(board)
     yield board.copy()
-    np.fliplr(board)
+    board = np.fliplr(board)
     yield board
 
 
@@ -686,7 +686,6 @@ def test_apply_methods(
         boards_apply_methods_sol,
         strict=True,
     ):
-        print(i)
         for board, ref in zip(
             all_orientations(board_apply_methods),
             all_orientations(board_ref),
@@ -760,6 +759,32 @@ def board_pairs_trace_shared_lanes_adjacent() -> list[tuple[np.ndarray, np.ndarr
             ------
             """,
         ),
+        (
+            """
+            ------
+            ------
+            -....-
+            -.3..-
+            -....-
+            -....-
+            -..3.-
+            -....-
+            ------
+            ------
+            """,
+            """
+            ------
+            ------
+            -.#+.-
+            -#3..-
+            -..+.-
+            -.+..-
+            -..3#-
+            -.+#.-
+            ------
+            ------
+            """,
+        ),
     ]
     return [
         (boardify_string(cleandoc(pre)), boardify_string(cleandoc(post)))
@@ -829,6 +854,30 @@ def board_pairs_trace_shared_lanes_same_2() -> list[tuple[np.ndarray, np.ndarray
             -+#+-
             -.2.-
             -+-+-
+            -----
+            """,
+        ),
+        (
+            """
+            -----
+            -...-
+            -.3.-
+            -...-
+            --..-
+            -...-
+            -.3.-
+            -...-
+            -----
+            """,
+            """
+            -----
+            -.#+-
+            -#3.-
+            -..+-
+            --++-
+            -..+-
+            -#3.-
+            -.#+-
             -----
             """,
         ),

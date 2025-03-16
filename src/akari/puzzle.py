@@ -601,7 +601,7 @@ def _analyze_pairs_same_column_2(
         if board[iB, j + 1] == "." and not new_tracer_E:
             board[iB, j + 1] = "#"
         _dot_columns_same(board, iA, j - 1, iB, new_tracer_C)
-        _dot_columns_same(board, iA, j, iB, tracer_D)
+        _dot_columns_same(board, iA + 1, j, iB - 1, tracer_D)
         _dot_columns_same(board, iA, j + 1, iB, new_tracer_E)
     return board
 
