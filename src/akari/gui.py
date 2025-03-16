@@ -475,6 +475,13 @@ class MainWindow(QMainWindow):
                 c.correct = False
                 c.update()
 
+        for i, j in puzzle.find_unilluminatable_cells(new_board_auto):
+            ci = self.grid.itemAtPosition(i - 1, j - 1)
+            assert ci is not None
+            c = ci.widget()
+            c.correct = False
+            c.update()
+
     def animate_puzzle_complete(self) -> None:
         pag = QParallelAnimationGroup()
         for i in range(self.board_auto.shape[0] - 2):

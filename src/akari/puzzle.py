@@ -723,3 +723,46 @@ def find_wrong_numbers(board: np.ndarray) -> list[tuple[int, int]]:
                 ):
                     wrong_numbers.append((i, j))
     return wrong_numbers
+
+
+def find_unilluminatable_cells(board: np.ndarray) -> list[tuple[int, int]]:
+    """
+    Takes annotated board.
+    Returns the coordinates of holes that cannot be illuminated and cannot be bulbs.
+
+    Examples:
+    ---
+    0*-
+    ---
+
+    -----
+    -2..-
+    -.-.0
+    -----
+
+    illuminate should be run before calling this function, which only checks + cells.
+    """
+    unilluminatable_cells = []
+
+    for i in range(1, np.size(board, 0) - 1):
+        for j in range(1, np.size(board, 1) - 1):
+            if board[i, j] == "+":
+                is_unilluminatable = True  # presume a hole
+                iters = [
+                    zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
+                    zip_longest([], range(j - 1, 0, -1), fillvalue=i),
+                    zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
+                    zip_longest([], range(j + 1, np.size(board, 1) - 1), fillvalue=i),
+                ]
+                for it in iters:
+                    for i1, j1 in it:
+                        if board[i1, j1] == ".":
+                            is_unilluminatable = False
+                            break
+                        elif board[i1, j1] in "01234-":
+                            break
+                    if not is_unilluminatable:
+                        break
+                if is_unilluminatable:
+                    unilluminatable_cells.append((i, j))
+    return unilluminatable_cells

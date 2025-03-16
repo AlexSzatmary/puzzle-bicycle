@@ -14,6 +14,7 @@ from puzzle import (
     count_free_near_number,
     count_missing_bulbs_near_number,
     fill_holes,
+    find_unilluminatable_cells,
     find_wrong_numbers,
     illuminate,
     load_pzprv3,
@@ -983,3 +984,24 @@ def test_trace_shared_lanes_all(
                 post_rotated
             )
         j = 1
+
+
+def test_find_unilluminatable_cells() -> None:
+    board = boardify_string(
+        cleandoc("""
+            ----
+            -0.-
+            ----
+            -2.-
+            -.--
+            -..-
+            -.0-
+            ----
+            -0.-
+            -..-
+            -..-
+            ----
+            """)
+    )
+    board = apply_methods(board, 6)
+    assert set(find_unilluminatable_cells(board)) == {(1, 2), (5, 2)}
