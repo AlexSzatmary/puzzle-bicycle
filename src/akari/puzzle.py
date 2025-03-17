@@ -660,7 +660,8 @@ def _dot_columns_same(
 
 
 def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
-    while True:
+    old_board = np.zeros_like(board)
+    while not np.all(board == old_board):
         old_board = board.copy()
         if level >= 1:
             board = illuminate(board)[1]
@@ -677,8 +678,13 @@ def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
             board = analyze_diagonally_adjacent_numbers(board)
         if level >= 6:
             board = trace_shared_lanes(board)
-        if np.all(board == old_board):
-            break
+        if not check_unsolved(board):
+            return board
+        if level >= 9 and np.all(board == old_board):
+            # guess and check is orders of magnitude more expensive than other methods
+            # and should only be called if all else has been tried.
+            # print_board(board)
+            board = guess_and_check(board, level)
     return board
 
 
@@ -766,3 +772,36 @@ def find_unilluminatable_cells(board: np.ndarray) -> list[tuple[int, int]]:
                 if is_unilluminatable:
                     unilluminatable_cells.append((i, j))
     return unilluminatable_cells
+
+
+def check_unsolved(board: np.ndarray) -> bool:
+    """
+    Returns true if a partial solution is not observably incorrect
+    """
+    return not bool(
+        find_wrong_numbers(board)
+        or illuminate(board)[0]
+        or find_unilluminatable_cells(board)
+    )
+
+
+def guess_and_check(board: np.ndarray, level: int) -> np.ndarray:
+    """
+    Guesses at every blank cell and uses apply_methods to eliminate impossible options.
+    """
+    for i, j in zip(*np.asarray(board == ".").nonzero(), strict=True):
+        if board[i, j] == ".":
+            try_board_dot = board.copy()
+            try_board_dot[i, j] = "+"
+            try_board_dot = apply_methods(try_board_dot, min(level, 8))
+            if not check_unsolved(try_board_dot):
+                board[i, j] = "#"
+                board = apply_methods(board, min(level, 8))
+                continue  # continue for this branch because we already know the cell
+            try_board_bulb = board.copy()
+            try_board_bulb[i, j] = "#"
+            try_board_bulb = apply_methods(try_board_bulb, min(level, 8))
+            if not check_unsolved(try_board_bulb):
+                board[i, j] = "+"
+                board = apply_methods(board, min(level, 8))
+    return board
