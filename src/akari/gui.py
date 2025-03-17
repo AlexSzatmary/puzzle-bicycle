@@ -375,6 +375,8 @@ class MainWindow(QMainWindow):
             for (i, action) in enumerate(self.methods_group.actions())
             if action.isChecked()
         )
+        if self.auto_apply_methods_level + 1 == len(self.methods_group.actions()):
+            self.auto_apply_methods_level = 9
         self.update_all(self.board)
         self.board_auto = self.board
         self.apply_methods()
