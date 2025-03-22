@@ -139,6 +139,12 @@ def illuminate_all(
     return (lit_bulb_pairs, board)
 
 
+def board_maybe_set_bulb(board: np.ndarray, i: int, j: int) -> None:
+    if board[i, j] == ".":
+        board[i, j] = "#"
+        illuminate_one(board, [], i, j)
+
+
 def fill_holes(board: np.ndarray) -> np.ndarray:
     """
     Takes annotated and possibly illuminated board.
@@ -176,7 +182,7 @@ def fill_holes(board: np.ndarray) -> np.ndarray:
                     if not is_hole:
                         break
                 if is_hole:
-                    board[i, j] = "#"
+                    board_maybe_set_bulb(board, i, j)
     return board
 
 
@@ -213,7 +219,7 @@ def mark_bulbs_around_dotted_numbers(board: np.ndarray) -> np.ndarray:
                 ) == count_missing_bulbs_near_number(board, i, j):
                     for di, dj in dirs:
                         if board[i + di, j + dj] == ".":
-                            board[i + di, j + dj] = "#"
+                            board_maybe_set_bulb(board, i + di, j + dj)
     return board
 
 
@@ -306,8 +312,7 @@ def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is f
                     if sees_multiple_free:
                         break
                 if sees_free and not sees_multiple_free:
-                    board[free_i, free_j] = "#"
-                    board = illuminate_all(board)[1]
+                    board_maybe_set_bulb(board, free_i, free_j)
     return board
 
 
@@ -371,10 +376,8 @@ def analyze_diagonally_adjacent_numbers_update_board(
         board[iC - di, jC] = "+"
     if board[iC, jC - dj] == ".":
         board[iC, jC - dj] = "+"
-    if board[iD + di, jD] == ".":
-        board[iD + di, jD] = "#"
-    if board[iD, jD + dj] == ".":
-        board[iD, jD + dj] = "#"
+    board_maybe_set_bulb(board, iD + di, jD)
+    board_maybe_set_bulb(board, iD, jD + dj)
     return board
 
 
@@ -524,14 +527,10 @@ def _analyze_pairs_adjacent_columns(
         if count_missing_bulbs_near_number(board, iB, jB) + 1 == count_free_near_number(
             board, iB, jB
         ):
-            if board[iA - 1, jA] == ".":
-                board[iA - 1, jA] = "#"
-            if board[iA, jA - dj] == ".":
-                board[iA, jA - dj] = "#"
-            if board[iB + 1, jB] == ".":
-                board[iB + 1, jB] = "#"
-            if board[iB, jB + dj] == ".":
-                board[iB, jB + dj] = "#"
+            board_maybe_set_bulb(board, iA - 1, jA)
+            board_maybe_set_bulb(board, iA, jA - dj)
+            board_maybe_set_bulb(board, iB + 1, jB)
+            board_maybe_set_bulb(board, iB, jB + dj)
             _dot_adjacent_columns(board, iA, jA, iB, jB)
     return board
 
@@ -591,23 +590,21 @@ def _analyze_pairs_same_column_2(
     ) and count_missing_bulbs_near_number(board, iB, j) + 1 == count_free_near_number(
         board, iB, j
     ):
-        if board[iA - 1, j] == ".":
-            board[iA - 1, j] = "#"
-        if board[iA, j - 1] == "." and not new_tracer_C:
-            board[iA, j - 1] = "#"
-        if board[iA + 1, j] == "." and (not tracer_D or iA + 2 == iB):
-            board[iA + 1, j] = "#"
-        if board[iA, j + 1] == "." and not new_tracer_E:
-            board[iA, j + 1] = "#"
+        board_maybe_set_bulb(board, iA - 1, j)
+        if not new_tracer_C:
+            board_maybe_set_bulb(board, iA, j - 1)
+        if not tracer_D or iA + 2 == iB:
+            board_maybe_set_bulb(board, iA + 1, j)
+        if not new_tracer_E:
+            board_maybe_set_bulb(board, iA, j + 1)
 
-        if board[iB + 1, j] == ".":
-            board[iB + 1, j] = "#"
-        if board[iB, j - 1] == "." and not new_tracer_C:
-            board[iB, j - 1] = "#"
-        if board[iB - 1, j] == "." and not tracer_D:
-            board[iB - 1, j] = "#"
-        if board[iB, j + 1] == "." and not new_tracer_E:
-            board[iB, j + 1] = "#"
+        board_maybe_set_bulb(board, iB + 1, j)
+        if not new_tracer_C:
+            board_maybe_set_bulb(board, iB, j - 1)
+        if not tracer_D:
+            board_maybe_set_bulb(board, iB - 1, j)
+        if not new_tracer_E:
+            board_maybe_set_bulb(board, iB, j + 1)
         _dot_columns_same(board, iA, j - 1, iB, new_tracer_C)
         _dot_columns_same(board, iA + 1, j, iB - 1, tracer_D)
         _dot_columns_same(board, iA, j + 1, iB, new_tracer_E)
@@ -631,11 +628,8 @@ def _analyze_pairs_same_column_3(
         - 3
         == 0
     ):
-        if board[iA - 1, j] == ".":
-            board[iA - 1, j] = "#"
-
-        if board[iB + 1, j] == ".":
-            board[iB + 1, j] = "#"
+        board_maybe_set_bulb(board, iA - 1, j)
+        board_maybe_set_bulb(board, iB + 1, j)
 
         _dot_columns_same(board, iA, j - 1, iB, new_tracer_C)
         # _dot_columns_same(board, iA, j, iB, tracer_D)
@@ -803,11 +797,11 @@ def guess_and_check(board: np.ndarray, level: int) -> np.ndarray:
             try_board_dot[i, j] = "+"
             try_board_dot = apply_methods(try_board_dot, min(level, 8))
             if not check_unsolved(try_board_dot):
-                board[i, j] = "#"
+                board_maybe_set_bulb(board, i, j)
                 board = apply_methods(board, min(level, 8))
                 continue  # continue for this branch because we already know the cell
             try_board_bulb = board.copy()
-            try_board_bulb[i, j] = "#"
+            board_maybe_set_bulb(try_board_bulb, i, j)
             try_board_bulb = apply_methods(try_board_bulb, min(level, 8))
             if not check_unsolved(try_board_bulb):
                 board[i, j] = "+"

@@ -440,11 +440,11 @@ def board_mark_bulbs_around_dotted_numbers_sol() -> np.ndarray:
             """
             ---------------------
             -.0.-+1.-#2#-#3#-+2#-
-            -.+.-.#.-.+.-.#.-.#.-
+            -.+.-.#.-|+|-|#|-.#.-
             ---------------------
-            -...-...-.+.-.#.-.#.-
+            -...-...-.+.-.#.-.#|-
             -.0+-+1.-#2#-#3.-#4#-
-            -...-...-...-.#.-.#.-
+            -...-...-...-.#.-_#x-
             ---------------------
             """
         )
@@ -604,12 +604,12 @@ def board_analyze_diagonally_adjacent_numbers_sol() -> np.ndarray:
             -.1+.-
             -.+..-
             ------
-            -.#..-
+            -x#__-
             -#3..-
-            -..1+-
-            -..+.-
+            -|.1+-
+            -|.+.-
             ------
-            -.#..-
+            -_#__-
             -+2..-
             -..1+-
             -..+.-
@@ -782,12 +782,12 @@ def board_pairs_trace_shared_lanes_adjacent() -> list[tuple[np.ndarray, np.ndarr
             """,
             """
             ----
-            -#+-
+            -#_-
             -2.-
             -.+-
             -+.-
             -.2-
-            -+#-
+            -_#-
             ----
             """,
         ),
@@ -847,12 +847,12 @@ def board_pairs_trace_shared_lanes_adjacent() -> list[tuple[np.ndarray, np.ndarr
             """
             ------
             ------
-            -.#+.-
-            -#3..-
-            -..+.-
-            -.+..-
-            -..3#-
-            -.+#.-
+            -x#_x-
+            -#3.|-
+            -|.+|-
+            -|+.|-
+            -|.3#-
+            -x_#x-
             ------
             ------
             """,
@@ -891,12 +891,12 @@ def test_trace_shared_lanes() -> None:
     )
     post = """
             ----
-            -#+-
+            -#_-
             -2.-
             -.+-
             -+.-
             -.2-
-            -+#-
+            -_#-
             ----
             """
     assert stringify_board(trace_shared_lanes(pre)) == cleandoc(post)
@@ -919,11 +919,11 @@ def board_pairs_trace_shared_lanes_same_2() -> list[tuple[np.ndarray, np.ndarray
             """,
             """
             -----
-            -+#+-
+            -_#_-
             -.3.-
-            -+#+-
+            -_#_-
             -+-+-
-            -+#+-
+            -_#_-
             -.2.-
             -+-+-
             -----
@@ -943,13 +943,13 @@ def board_pairs_trace_shared_lanes_same_2() -> list[tuple[np.ndarray, np.ndarray
             """,
             """
             -----
-            -.#+-
+            -x#_-
             -#3.-
-            -..+-
+            -|.+-
             --++-
-            -..+-
+            -|.+-
             -#3.-
-            -.#+-
+            -x#_-
             -----
             """,
         ),
@@ -985,11 +985,11 @@ def board_pairs_trace_shared_lanes_same_2() -> list[tuple[np.ndarray, np.ndarray
             """,
             """
             -----
-            -+#+-
+            -_#_-
             -.3.-
-            -+#+-
+            -_#_-
             -.3.-
-            -+#+-
+            -_#_-
             -----
             """,
         ),
@@ -1024,13 +1024,13 @@ def board_pairs_trace_shared_lanes_same_3() -> list[tuple[np.ndarray, np.ndarray
             """,
             """
             -----
-            -+#+-
+            -_#_-
             -.3.-
             -+.+-
             -+++-
             -+.+-
             -.2.-
-            -+#+-
+            -_#_-
             -----
             """,
         ),
@@ -1048,7 +1048,7 @@ def board_pairs_trace_shared_lanes_same_3() -> list[tuple[np.ndarray, np.ndarray
             """,
             """
             -----
-            -+#+-
+            -_#_-
             -.3.-
             -+.+-
             -+++-
