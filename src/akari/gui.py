@@ -360,7 +360,7 @@ class MainWindow(QMainWindow):
         if text:
             self.puzzle_file_name = filename
             self.board = puzzle.load_pzprv3(text)
-            self.board_auto = puzzle.illuminate(self.board)[1]
+            self.board_auto = puzzle.illuminate_all(self.board)[1]
             self.puzzle_complete = False
             self.puzzle_status.setText("")
             self.puzzle_status.setVisible(False)
@@ -465,7 +465,7 @@ class MainWindow(QMainWindow):
             c.correct = False
             c.update()
 
-        for i1, j1, i2, j2 in puzzle.illuminate(new_board_auto)[0]:
+        for i1, j1, i2, j2 in puzzle.illuminate_all(new_board_auto)[0]:
             if i1 == i2:
                 ijs = [(i1, j) for j in range(j1, j2 + 1)]
             else:

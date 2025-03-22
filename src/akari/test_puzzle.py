@@ -16,7 +16,8 @@ from puzzle import (
     fill_holes,
     find_unilluminatable_cells,
     find_wrong_numbers,
-    illuminate,
+    illuminate_all,
+    illuminate_one,
     load_pzprv3,
     mark_bulbs_around_dotted_numbers,
     mark_dots_around_full_numbers,
@@ -169,14 +170,14 @@ def test_check_number_1() -> None:
     assert check_number(board_1_sol_1) == [(3, 2), (4, 3)]
 
 
-def test_illuminate_1() -> None:
+def test_illuminate_all_1() -> None:
     # Test for a good case
     for board, ref in zip(
         all_orientations(board_1_sol),
         all_orientations(board_1_sol_illuminated),
         strict=True,
     ):
-        (wrong_bulb_pairs, illuminated_board) = illuminate(board)
+        (wrong_bulb_pairs, illuminated_board) = illuminate_all(board)
         assert not wrong_bulb_pairs
         assert stringify_board(illuminated_board) == stringify_board(ref)
 
@@ -184,7 +185,7 @@ def test_illuminate_1() -> None:
     board_1_sol_wrong = board_1_sol.copy()
     board_1_sol_wrong[2, 1] = "#"
     board_1_sol_wrong[1, 5] = "#"
-    (wrong_bulb_pairs_wrong, _) = illuminate(board_1_sol_wrong.copy())
+    (wrong_bulb_pairs_wrong, _) = illuminate_all(board_1_sol_wrong.copy())
     assert wrong_bulb_pairs_wrong == [(1, 2, 1, 5), (1, 5, 2, 5), (2, 1, 3, 1)]
 
     # Test that illumination happens for a known wrong case
@@ -198,9 +199,80 @@ def test_illuminate_1() -> None:
         all_orientations(board_1_sol_illuminated_wrong),
         strict=True,
     ):
-        (wrong_bulb_pairs_wrong, illuminated_board_wrong) = illuminate(board)
+        (wrong_bulb_pairs_wrong, illuminated_board_wrong) = illuminate_all(board)
         assert len(wrong_bulb_pairs_wrong) == 3
         assert stringify_board(illuminated_board_wrong) == stringify_board(ref)
+
+
+def test_illuminate_one_1() -> None:
+    board = boardify_string(
+        cleandoc("""
+            -------
+            -.#...-
+            -..0.#-
+            -#2-1.-
+            -.#3#.-
+            -..#..-
+            -------
+            """)
+    )
+    lit_bulb_pairs = []
+    board_no_change = board.copy()
+    lit_bulb_pairs, board_no_change = illuminate_one(
+        board_no_change, lit_bulb_pairs, 1, 1
+    )
+    lit_bulb_pairs, board_no_change = illuminate_one(
+        board_no_change, lit_bulb_pairs, 1, 3
+    )
+    assert not lit_bulb_pairs
+    assert stringify_board(board_no_change) == stringify_board(board)
+
+    lit_bulb_pairs = []
+    board_change = board.copy()
+    lit_bulb_pairs, board_change = illuminate_one(board_change, lit_bulb_pairs, 1, 2)
+    assert not lit_bulb_pairs
+    assert stringify_board(board_change) == cleandoc("""
+            -------
+            -_#___-
+            -.|0.#-
+            -#2-1.-
+            -.#3#.-
+            -..#..-
+            -------
+            """)
+    lit_bulb_pairs, board_change = illuminate_one(board_change, lit_bulb_pairs, 3, 1)
+    assert not lit_bulb_pairs
+    assert stringify_board(board_change) == cleandoc("""
+            -------
+            -x#___-
+            -||0.#-
+            -#2-1.-
+            -|#3#.-
+            -|.#..-
+            -------
+            """)
+
+    # Test for detection of wrong pairs one time
+    board_wrong = board.copy()
+    lit_bulb_pairs, board_wrong = illuminate_one(board_wrong, lit_bulb_pairs, 3, 1)
+    lit_bulb_pairs, board_wrong = illuminate_one(board_wrong, lit_bulb_pairs, 1, 2)
+    board_wrong[2, 1] = "#"
+    board_wrong[1, 5] = "#"
+    assert not lit_bulb_pairs
+    lit_bulb_pairs, board_wrong = illuminate_one(board_wrong, lit_bulb_pairs, 2, 1)
+    print_board(board_wrong)
+    assert lit_bulb_pairs == [(2, 1, 3, 1)]
+    lit_bulb_pairs, board_wrong = illuminate_one(board_wrong, lit_bulb_pairs, 1, 5)
+    assert stringify_board(board_wrong) == cleandoc("""
+            -------
+            -x#__#-
+            -#x0.#-
+            -#2-1|-
+            -|#3#|-
+            -|.#.|-
+            -------
+            """)
+    assert lit_bulb_pairs == [(2, 1, 3, 1), (1, 5, 1, 2), (1, 5, 2, 5)]
 
 
 def test_check_unlit_cells_1() -> None:

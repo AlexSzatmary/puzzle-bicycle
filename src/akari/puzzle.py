@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from itertools import zip_longest
 
 import numpy as np
@@ -92,42 +93,49 @@ def check_number(board: np.ndarray) -> list[tuple[int, int]]:
     return wrong_bulbs
 
 
-def illuminate(  # noqa: C901 This level of complexity is fine.
-    board: np.ndarray,
+def illuminate_one(
+    board: np.ndarray, lit_bulb_pairs: list[tuple[int, int, int, int]], i: int, j: int
+) -> tuple[list[tuple[int, int, int, int]], np.ndarray]:
+    fill_chars = ["|", "_", "|", "_"]
+    if board[i, j] == "#":
+        iters = [
+            zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
+            zip_longest([], range(j - 1, 0, -1), fillvalue=i),
+            zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
+            zip_longest([], range(j + 1, np.size(board, 1) - 1), fillvalue=i),
+        ]
+        for it, fill_char in zip(iters, fill_chars, strict=True):
+            for i1, j1 in it:
+                if board[i1, j1] == "#":
+                    if (i1, j1, i, j) not in lit_bulb_pairs:
+                        lit_bulb_pairs.append((i, j, i1, j1))
+                elif board[i1, j1] == fill_char or board[i1, j1] == "x":
+                    # row or column already filled
+                    continue
+                elif board[i1, j1] == "_" or board[i1, j1] == "|":
+                    # this branch will only trigger if the char at this location
+                    # is not the same as the fill_char
+                    board[i1, j1] = "x"
+                elif board[i1, j1] in "01234-":  # type: ignore
+                    break
+                else:
+                    board[i1, j1] = fill_char
+    return (lit_bulb_pairs, board)
+
+
+def illuminate_all(
+    board: np.ndarray, ijs: tuple[Iterable[int], Iterable[int]] | None = None
 ) -> tuple[list[tuple[int, int, int, int]], np.ndarray]:
     """
     Takes board with bulbs. Returns a tuple with
     *a list of lists of tuples of coordinates of bulbs that shine on each other
     *board with light paths drawn (same object as input board)
     """
+    if ijs is None:
+        ijs = np.asarray(board == "#").nonzero()  # type: ignore
     lit_bulb_pairs = []
-    fill_chars = ["|", "_", "|", "_"]
-    for i in range(1, np.size(board, 0) - 1):
-        for j in range(1, np.size(board, 1) - 1):
-            if board[i, j] == "#":
-                iters = [
-                    zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
-                    zip_longest([], range(j - 1, 0, -1), fillvalue=i),
-                    zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
-                    zip_longest([], range(j + 1, np.size(board, 1) - 1), fillvalue=i),
-                ]
-                for it, fill_char in zip(iters, fill_chars, strict=True):
-                    for i1, j1 in it:
-                        if board[i1, j1] == "#":
-                            if i <= i1 and j <= j1:
-                                lit_bulb_pairs.append((i, j, i1, j1))
-                            break
-                        elif board[i1, j1] == fill_char or board[i1, j1] == "x":
-                            # row or column already filled
-                            continue
-                        elif board[i1, j1] == "_" or board[i1, j1] == "|":
-                            # this branch will only trigger if the char at this location
-                            # is not the same as the fill_char
-                            board[i1, j1] = "x"
-                        elif board[i1, j1] in "01234-":
-                            break
-                        else:
-                            board[i1, j1] = fill_char
+    for i, j in zip(*ijs, strict=True):
+        lit_bulb_pairs, board = illuminate_one(board, lit_bulb_pairs, i, j)
     return (lit_bulb_pairs, board)
 
 
@@ -269,7 +277,7 @@ def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is f
     implementation decision. If it's inefficient to run illuminate a lot, the fix is
     to allow illuminate to take an argument for the single i, j for the new bulb.
     """
-    board = illuminate(board)[1]
+    board = illuminate_all(board)[1]
     # we have to illuminate a lot because this logic ignores bulbs
     for i in range(1, np.size(board, 0) - 1):
         for j in range(1, np.size(board, 1) - 1):
@@ -299,7 +307,7 @@ def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is f
                         break
                 if sees_free and not sees_multiple_free:
                     board[free_i, free_j] = "#"
-                    board = illuminate(board)[1]
+                    board = illuminate_all(board)[1]
     return board
 
 
@@ -664,12 +672,12 @@ def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
     while not np.all(board == old_board):
         old_board = board.copy()
         if level >= 1:
-            board = illuminate(board)[1]
+            board = illuminate_all(board)[1]
         if level >= 2:
             board = mark_dots_around_full_numbers(board)
             board = mark_bulbs_around_dotted_numbers(board)
         if level >= 3:
-            board = illuminate(board)[1]
+            board = illuminate_all(board)[1]
             board = fill_holes(board)
             board = mark_unique_bulbs_for_dot_cells(board)
         if level >= 4:
@@ -692,7 +700,7 @@ def check_unlit_cells(board: np.ndarray) -> bool:
     """
     Returns True if a board has no unlit cells, False otherwise
     """
-    (_, board) = illuminate(board.copy())
+    (_, board) = illuminate_all(board.copy())
     return not np.any(np.logical_or(board == ".", board == "+")) == np.True_
 
 
@@ -700,7 +708,7 @@ def check_lit_bulbs(board: np.ndarray) -> bool:
     """
     Returns True if a board has no lit bulbs, False otherwise
     """
-    (wrong_bulb_pairs, board) = illuminate(board.copy())
+    (wrong_bulb_pairs, board) = illuminate_all(board.copy())
     return not bool(wrong_bulb_pairs)
 
 
@@ -780,7 +788,7 @@ def check_unsolved(board: np.ndarray) -> bool:
     """
     return not bool(
         find_wrong_numbers(board)
-        or illuminate(board)[0]
+        or illuminate_all(board)[0]
         or find_unilluminatable_cells(board)
     )
 
