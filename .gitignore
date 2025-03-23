@@ -163,3 +163,5 @@ cython_debug/
 .DS_Store
 scratch
 .vscode
+profile.html
+profile.json
