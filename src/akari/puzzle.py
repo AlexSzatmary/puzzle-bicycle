@@ -72,27 +72,6 @@ def transpose_board(board: np.ndarray) -> np.ndarray:
     return board
 
 
-def check_number(board: np.ndarray) -> list[tuple[int, int]]:
-    """
-    Checks numbered spaces to see if they have the correct number of bulbs.
-
-    Returns a list of tuples of coordinates of numbered spaces that touch the wrong
-    number of bulbs.
-    """
-    wrong_bulbs = []
-    for i in range(1, np.size(board, 0) - 1):
-        for j in range(1, np.size(board, 1) - 1):
-            if board[i, j] in "0123":
-                if not int(board[i, j]) == (
-                    (board[i - 1, j] == "#")
-                    + (board[i + 1, j] == "#")
-                    + (board[i, j - 1] == "#")
-                    + (board[i, j + 1] == "#")
-                ):
-                    wrong_bulbs.append((i, j))
-    return wrong_bulbs
-
-
 def illuminate_one(
     board: np.ndarray, lit_bulb_pairs: list[tuple[int, int, int, int]], i: int, j: int
 ) -> tuple[list[tuple[int, int, int, int]], np.ndarray]:
@@ -283,7 +262,6 @@ def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is f
     implementation decision. If it's inefficient to run illuminate a lot, the fix is
     to allow illuminate to take an argument for the single i, j for the new bulb.
     """
-    board = illuminate_all(board)[1]
     # we have to illuminate a lot because this logic ignores bulbs
     for i in range(1, np.size(board, 0) - 1):
         for j in range(1, np.size(board, 1) - 1):
@@ -663,15 +641,14 @@ def _dot_columns_same(
 
 def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
     old_board = np.zeros_like(board)
+    if level >= 1:
+        board = illuminate_all(board)[1]
     while not np.all(board == old_board):
         old_board = board.copy()
-        if level >= 1:
-            board = illuminate_all(board)[1]
         if level >= 2:
             board = mark_dots_around_full_numbers(board)
             board = mark_bulbs_around_dotted_numbers(board)
         if level >= 3:
-            board = illuminate_all(board)[1]
             board = fill_holes(board)
             board = mark_unique_bulbs_for_dot_cells(board)
         if level >= 4:
@@ -688,6 +665,27 @@ def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
             # print_board(board)
             board = guess_and_check(board, level)
     return board
+
+
+def check_number(board: np.ndarray) -> list[tuple[int, int]]:
+    """
+    Checks numbered spaces to see if they have the correct number of bulbs.
+
+    Returns a list of tuples of coordinates of numbered spaces that touch the wrong
+    number of bulbs.
+    """
+    wrong_bulbs = []
+    for i in range(1, np.size(board, 0) - 1):
+        for j in range(1, np.size(board, 1) - 1):
+            if board[i, j] in "0123":
+                if not int(board[i, j]) == (
+                    (board[i - 1, j] == "#")
+                    + (board[i + 1, j] == "#")
+                    + (board[i, j - 1] == "#")
+                    + (board[i, j + 1] == "#")
+                ):
+                    wrong_bulbs.append((i, j))
+    return wrong_bulbs
 
 
 def check_unlit_cells(board: np.ndarray) -> bool:
@@ -714,7 +712,7 @@ def check_all(board: np.ndarray) -> bool:
 
 def find_wrong_numbers(board: np.ndarray) -> list[tuple[int, int]]:
     """
-    Checks numbered spaces to see if they have the correct number of bulbs.
+    Checks numbered spaces to see if they have a feasible number of bulbs.
 
     Returns a list of tuples of coordinates of numbered spaces that touch the wrong
     number of bulbs.
