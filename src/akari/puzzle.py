@@ -149,18 +149,6 @@ def count_missing_bulbs_near_number(board: np.ndarray, i: int, j: int) -> int:
     return int(board[i, j]) - n_bulbs
 
 
-def mark_dots_around_full_numbers(board: np.ndarray) -> np.ndarray:
-    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
-    for i in range(1, np.size(board, 0) - 1):
-        for j in range(1, np.size(board, 1) - 1):
-            if board[i, j] in "01234":
-                if count_missing_bulbs_near_number(board, i, j) == 0:
-                    for di, dj in dirs:
-                        if board[i + di, j + dj] == ".":
-                            board[i + di, j + dj] = "+"
-    return board
-
-
 def mark_dots_at_corners(board: np.ndarray) -> np.ndarray:
     """
     Marks dots at free cells diagonal to numbers if a bulb in that cell would not work.
@@ -870,6 +858,15 @@ class ThoughtProcess:
                             if self.board[i + di, j + dj] == ".":
                                 self.maybe_set_bulb(i + di, j + dj)
 
+    def mark_dots_around_full_numbers(self, i: int, j: int) -> None:
+        dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+        for i in range(1, np.size(self.board, 0) - 1):
+            for j in range(1, np.size(self.board, 1) - 1):
+                if self.board[i, j] in "01234":
+                    if count_missing_bulbs_near_number(self.board, i, j) == 0:
+                        for di, dj in dirs:
+                            self.maybe_set_dot(i + di, j + dj)
+
     def transition_wrapper(self, func: Callable[[np.ndarray], np.ndarray]) -> None:
         old_board = self.board.copy()
         func(self.board)
@@ -884,9 +881,6 @@ class ThoughtProcess:
 
     def mark_dots_at_corners(self, i: int, j: int) -> None:
         self.transition_wrapper(mark_dots_at_corners)
-
-    def mark_dots_around_full_numbers(self, i: int, j: int) -> None:
-        self.transition_wrapper(mark_dots_around_full_numbers)
 
     def analyze_diagonally_adjacent_numbers(self, i: int, j: int) -> None:
         self.transition_wrapper(analyze_diagonally_adjacent_numbers)
