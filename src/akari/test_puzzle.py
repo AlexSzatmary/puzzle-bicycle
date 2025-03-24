@@ -19,7 +19,6 @@ from puzzle import (
     illuminate_all,
     # illuminate_one, no longer tested explicitly because it's on track to be removed.
     load_pzprv3,
-    mark_bulbs_around_dotted_numbers,
     mark_dots_around_full_numbers,
     mark_dots_at_corners,
     mark_unique_bulbs_for_dot_cells,
@@ -457,8 +456,10 @@ def test_mark_bulbs_around_dotted_numbers(
         all_orientations(board_mark_bulbs_around_dotted_numbers_sol),
         strict=True,
     ):
-        assert stringify_board(
-            mark_bulbs_around_dotted_numbers(board)
+        tp = ThoughtProcess(board)
+        for i, j in tp.all_interior_ij():
+            tp.mark_bulbs_around_dotted_numbers(i, j)
+        assert stringify_board(tp.board
         ) == stringify_board(ref)
 
 

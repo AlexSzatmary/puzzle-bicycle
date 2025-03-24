@@ -161,20 +161,6 @@ def mark_dots_around_full_numbers(board: np.ndarray) -> np.ndarray:
     return board
 
 
-def mark_bulbs_around_dotted_numbers(board: np.ndarray) -> np.ndarray:
-    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
-    for i in range(1, np.size(board, 0) - 1):
-        for j in range(1, np.size(board, 1) - 1):
-            if board[i, j] in "01234":
-                if count_free_near_number(
-                    board, i, j
-                ) == count_missing_bulbs_near_number(board, i, j):
-                    for di, dj in dirs:
-                        if board[i + di, j + dj] == ".":
-                            board_maybe_set_bulb(board, i + di, j + dj)
-    return board
-
-
 def mark_dots_at_corners(board: np.ndarray) -> np.ndarray:
     """
     Marks dots at free cells diagonal to numbers if a bulb in that cell would not work.
@@ -777,6 +763,13 @@ class ThoughtProcess:
             self.new_mark.append((i, j, "+"))
             # TODO check for relevant error
 
+    def all_interior_ij(self) -> list[tuple[int, int]]:
+        return [
+            (i, j)
+            for i in range(1, self.board.shape[0] - 1)
+            for j in range(1, self.board.shape[1] - 1)
+        ]
+
     def apply_methods(self, level: int) -> None:
         """
         Applies the various logical methods as set by the level.
@@ -785,11 +778,7 @@ class ThoughtProcess:
         new_mark queue.
         """
         if not self.new_mark:
-            self.new_mark = [
-                (i, j, ".")
-                for i in range(1, self.board.shape[0] - 1)
-                for j in range(1, self.board.shape[1] - 1)
-            ]
+            self.new_mark = [(i, j, ".") for (i, j) in self.all_interior_ij()]
         if level >= 1:
             self.lit_bulb_pairs, self.board = illuminate_all(self.board)
         while self.new_mark:
@@ -869,14 +858,23 @@ class ThoughtProcess:
         for i, j in zip(*ijs, strict=True):
             self.illuminate_one(i, j)
 
+    def mark_bulbs_around_dotted_numbers(self, i: int, j: int) -> None:
+        dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+        for i in range(1, np.size(self.board, 0) - 1):
+            for j in range(1, np.size(self.board, 1) - 1):
+                if self.board[i, j] in "01234":
+                    if count_free_near_number(
+                        self.board, i, j
+                    ) == count_missing_bulbs_near_number(self.board, i, j):
+                        for di, dj in dirs:
+                            if self.board[i + di, j + dj] == ".":
+                                self.maybe_set_bulb(i + di, j + dj)
+
     def transition_wrapper(self, func: Callable[[np.ndarray], np.ndarray]) -> None:
         old_board = self.board.copy()
         func(self.board)
         for i, j in zip(*(old_board != self.board).nonzero(), strict=True):
             self.new_mark.append((i, j, cast(str, self.board[i, j])))
-
-    def mark_bulbs_around_dotted_numbers(self, i: int, j: int) -> None:
-        self.transition_wrapper(mark_bulbs_around_dotted_numbers)
 
     def fill_holes(self, i: int, j: int) -> None:
         self.transition_wrapper(fill_holes)
