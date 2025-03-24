@@ -17,7 +17,7 @@ from puzzle import (
     find_unilluminatable_cells,
     find_wrong_numbers,
     illuminate_all,
-    illuminate_one,
+    # illuminate_one, no longer tested explicitly because it's on track to be removed.
     load_pzprv3,
     mark_bulbs_around_dotted_numbers,
     mark_dots_around_full_numbers,
@@ -216,22 +216,17 @@ def test_illuminate_one_1() -> None:
             -------
             """)
     )
-    lit_bulb_pairs = []
-    board_no_change = board.copy()
-    lit_bulb_pairs, board_no_change = illuminate_one(
-        board_no_change, lit_bulb_pairs, 1, 1
-    )
-    lit_bulb_pairs, board_no_change = illuminate_one(
-        board_no_change, lit_bulb_pairs, 1, 3
-    )
-    assert not lit_bulb_pairs
-    assert stringify_board(board_no_change) == stringify_board(board)
+    tp_no_change = ThoughtProcess(board)
+    tp_no_change.illuminate_one(1, 1)
+    tp_no_change.illuminate_one(1, 3)
 
-    lit_bulb_pairs = []
-    board_change = board.copy()
-    lit_bulb_pairs, board_change = illuminate_one(board_change, lit_bulb_pairs, 1, 2)
-    assert not lit_bulb_pairs
-    assert stringify_board(board_change) == cleandoc("""
+    assert not tp_no_change.lit_bulb_pairs
+    assert stringify_board(tp_no_change.board) == stringify_board(board)
+
+    tp_change = ThoughtProcess(board)
+    tp_change.illuminate_one(1, 2)
+    assert not tp_change.lit_bulb_pairs
+    assert stringify_board(tp_change.board) == cleandoc("""
             -------
             -_#___-
             -.|0.#-
@@ -240,9 +235,9 @@ def test_illuminate_one_1() -> None:
             -..#..-
             -------
             """)
-    lit_bulb_pairs, board_change = illuminate_one(board_change, lit_bulb_pairs, 3, 1)
-    assert not lit_bulb_pairs
-    assert stringify_board(board_change) == cleandoc("""
+    tp_change.illuminate_one(3, 1)
+    assert not tp_change.lit_bulb_pairs
+    assert stringify_board(tp_change.board) == cleandoc("""
             -------
             -x#___-
             -||0.#-
@@ -253,17 +248,17 @@ def test_illuminate_one_1() -> None:
             """)
 
     # Test for detection of wrong pairs one time
-    board_wrong = board.copy()
-    lit_bulb_pairs, board_wrong = illuminate_one(board_wrong, lit_bulb_pairs, 3, 1)
-    lit_bulb_pairs, board_wrong = illuminate_one(board_wrong, lit_bulb_pairs, 1, 2)
-    board_wrong[2, 1] = "#"
-    board_wrong[1, 5] = "#"
-    assert not lit_bulb_pairs
-    lit_bulb_pairs, board_wrong = illuminate_one(board_wrong, lit_bulb_pairs, 2, 1)
-    print_board(board_wrong)
-    assert lit_bulb_pairs == [(2, 1, 3, 1)]
-    lit_bulb_pairs, board_wrong = illuminate_one(board_wrong, lit_bulb_pairs, 1, 5)
-    assert stringify_board(board_wrong) == cleandoc("""
+    tp_wrong = ThoughtProcess(board)
+    tp_wrong.illuminate_one(3, 1)
+    tp_wrong.illuminate_one(1, 2)
+    tp_wrong.board[2, 1] = "#"
+    tp_wrong.board[1, 5] = "#"
+    assert not tp_wrong.lit_bulb_pairs
+    tp_wrong.illuminate_one(2, 1)
+    print_board(tp_wrong.board)
+    assert tp_wrong.lit_bulb_pairs == [(2, 1, 3, 1)]
+    tp_wrong.illuminate_one(1, 5)
+    assert stringify_board(tp_wrong.board) == cleandoc("""
             -------
             -x#__#-
             -#x0.#-
@@ -272,7 +267,7 @@ def test_illuminate_one_1() -> None:
             -|.#.|-
             -------
             """)
-    assert lit_bulb_pairs == [(2, 1, 3, 1), (1, 5, 1, 2), (1, 5, 2, 5)]
+    assert tp_wrong.lit_bulb_pairs == [(2, 1, 3, 1), (1, 5, 1, 2), (1, 5, 2, 5)]
 
 
 def test_check_unlit_cells_1() -> None:

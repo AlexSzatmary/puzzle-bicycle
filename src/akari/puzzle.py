@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from itertools import zip_longest
 from typing import cast
 
@@ -73,58 +73,28 @@ def transpose_board(board: np.ndarray) -> np.ndarray:
     return board
 
 
-def illuminate_one(
-    board: np.ndarray, lit_bulb_pairs: list[tuple[int, int, int, int]], i: int, j: int
-) -> tuple[list[tuple[int, int, int, int]], np.ndarray]:
-    fill_chars = ["|", "_", "|", "_"]
-    if board[i, j] == "#":
-        iters = [
-            zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
-            zip_longest([], range(j - 1, 0, -1), fillvalue=i),
-            zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
-            zip_longest([], range(j + 1, np.size(board, 1) - 1), fillvalue=i),
-        ]
-        for it, fill_char in zip(iters, fill_chars, strict=True):
-            for i1, j1 in it:
-                if board[i1, j1] == "#":
-                    if (i1, j1, i, j) not in lit_bulb_pairs:
-                        lit_bulb_pairs.append((i, j, i1, j1))
-                elif board[i1, j1] == fill_char or board[i1, j1] == "x":
-                    # row or column already filled
-                    continue
-                elif board[i1, j1] == "_" or board[i1, j1] == "|":
-                    # this branch will only trigger if the char at this location
-                    # is not the same as the fill_char
-                    board[i1, j1] = "x"
-                elif board[i1, j1] in "01234-":  # type: ignore
-                    break
-                else:
-                    board[i1, j1] = fill_char
-    return (lit_bulb_pairs, board)
-
-
 def illuminate_all(
-    board: np.ndarray, ijs: tuple[Iterable[int], Iterable[int]] | None = None
+    board: np.ndarray,
 ) -> tuple[list[tuple[int, int, int, int]], np.ndarray]:
-    """
-    Takes board with bulbs. Returns a tuple with
-    *a list of lists of tuples of coordinates of bulbs that shine on each other
-    *board with light paths drawn (same object as input board)
-    """
-    if ijs is None:
-        # numpy likes to give indices as np.int64, not int, which is gross.
-        ijs_np_int64 = np.asarray(board == "#").nonzero()
-        ijs = (map(int, ijs_np_int64[0]), map(int, ijs_np_int64[1]))
-    lit_bulb_pairs = []
-    for i, j in zip(*ijs, strict=True):
-        lit_bulb_pairs, board = illuminate_one(board, lit_bulb_pairs, i, j)
-    return (lit_bulb_pairs, board)
+    tp = ThoughtProcess(board)
+    tp.illuminate_all()
+    board[:] = tp.board[:]
+    return tp.lit_bulb_pairs, tp.board
+
+
+def illuminate_one(
+    board: np.ndarray, i: int, j: int
+) -> tuple[list[tuple[int, int, int, int]], np.ndarray]:
+    tp = ThoughtProcess(board)
+    tp.illuminate_one(i, j)
+    board[:] = tp.board[:]
+    return tp.lit_bulb_pairs, tp.board
 
 
 def board_maybe_set_bulb(board: np.ndarray, i: int, j: int) -> None:
     if board[i, j] == ".":
         board[i, j] = "#"
-        illuminate_one(board, [], i, j)
+        illuminate_one(board, i, j)
 
 
 def fill_holes(board: np.ndarray) -> np.ndarray:
@@ -776,6 +746,7 @@ class ThoughtProcess:
     (either too high or too many dots to ever have enough) The last 3 items are the
     error lists.
     """
+
     def __init__(self, board: np.ndarray) -> None:
         self.board = board.copy()
         self.new_mark = []
@@ -791,10 +762,9 @@ class ThoughtProcess:
         """
         if self.board[i, j] == ".":
             self.board[i, j] = "#"
-            illuminate_one(self.board, [], i, j)
-            # TODO convert illuminate_one to a method, which would stash check_lit_bulbs
-            # TODO call self.find_wrong_numbers
             self.new_mark.append((i, j, "#"))
+            self.illuminate_one(i, j)
+            # TODO call self.find_wrong_numbers
 
     def maybe_set_dot(self, i: int, j: int) -> None:
         """
@@ -857,6 +827,47 @@ class ThoughtProcess:
             self.analyze_diagonally_adjacent_numbers(i, j)
         if level >= 6:
             self.trace_shared_lanes(i, j)
+
+    def illuminate_one(self, i: int, j: int) -> None:
+        """
+        Illuminate the bulb at i, j
+        """
+        fill_chars = ["|", "_", "|", "_"]
+        if self.board[i, j] == "#":
+            iters = [
+                zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
+                zip_longest([], range(j - 1, 0, -1), fillvalue=i),
+                zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
+                zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
+            ]
+            for it, fill_char in zip(iters, fill_chars, strict=True):
+                for i1, j1 in it:
+                    if self.board[i1, j1] == "#":
+                        if (i1, j1, i, j) not in self.lit_bulb_pairs:
+                            self.lit_bulb_pairs.append((i, j, i1, j1))
+                    elif self.board[i1, j1] == fill_char or self.board[i1, j1] == "x":
+                        # row or column already filled
+                        continue
+                    elif self.board[i1, j1] == "_" or self.board[i1, j1] == "|":
+                        # this branch will only trigger if the char at this location
+                        # is not the same as the fill_char
+                        self.board[i1, j1] = "x"
+                    elif self.board[i1, j1] in "01234-":  # type: ignore
+                        break
+                    else:
+                        self.maybe_set_dot(i1, j1)
+                        self.board[i1, j1] = fill_char  # this assignment is cosmetic,
+                        # making the light rays but not functionally changing state.
+
+    def illuminate_all(self) -> None:
+        """
+        Illuminates the whole board
+        """
+        # numpy likes to give indices as np.int64, not int, which is gross.
+        ijs_np_int64 = np.asarray(self.board == "#").nonzero()
+        ijs = (map(int, ijs_np_int64[0]), map(int, ijs_np_int64[1]))
+        for i, j in zip(*ijs, strict=True):
+            self.illuminate_one(i, j)
 
     def transition_wrapper(self, func: Callable[[np.ndarray], np.ndarray]) -> None:
         old_board = self.board.copy()
