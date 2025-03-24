@@ -1,5 +1,6 @@
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from itertools import zip_longest
+from typing import cast
 
 import numpy as np
 
@@ -111,7 +112,9 @@ def illuminate_all(
     *board with light paths drawn (same object as input board)
     """
     if ijs is None:
-        ijs = np.asarray(board == "#").nonzero()  # type: ignore
+        # numpy likes to give indices as np.int64, not int, which is gross.
+        ijs_np_int64 = np.asarray(board == "#").nonzero()
+        ijs = (map(int, ijs_np_int64[0]), map(int, ijs_np_int64[1]))
     lit_bulb_pairs = []
     for i, j in zip(*ijs, strict=True):
         lit_bulb_pairs, board = illuminate_one(board, lit_bulb_pairs, i, j)
@@ -639,34 +642,6 @@ def _dot_columns_same(
     return board
 
 
-def apply_methods(board: np.ndarray, level: int) -> np.ndarray:
-    old_board = np.zeros_like(board)
-    if level >= 1:
-        board = illuminate_all(board)[1]
-    while not np.all(board == old_board):
-        old_board = board.copy()
-        if level >= 2:
-            board = mark_dots_around_full_numbers(board)
-            board = mark_bulbs_around_dotted_numbers(board)
-        if level >= 3:
-            board = fill_holes(board)
-            board = mark_unique_bulbs_for_dot_cells(board)
-        if level >= 4:
-            board = mark_dots_at_corners(board)
-        if level >= 5:
-            board = analyze_diagonally_adjacent_numbers(board)
-        if level >= 6:
-            board = trace_shared_lanes(board)
-        if not check_unsolved(board):
-            return board
-        if level >= 9 and np.all(board == old_board):
-            # guess and check is orders of magnitude more expensive than other methods
-            # and should only be called if all else has been tried.
-            # print_board(board)
-            board = guess_and_check(board, level)
-    return board
-
-
 def check_number(board: np.ndarray) -> list[tuple[int, int]]:
     """
     Checks numbered spaces to see if they have the correct number of bulbs.
@@ -785,23 +760,162 @@ def check_unsolved(board: np.ndarray) -> bool:
     )
 
 
-def guess_and_check(board: np.ndarray, level: int) -> np.ndarray:
+class ThoughtProcess:
     """
-    Guesses at every blank cell and uses apply_methods to eliminate impossible options.
+    The main state held is: board: np.ndarray
+
+    new_mark: list[tuple[int, int, str]], a queue of new dots "+" or bulbs "#", which
+    will later trigger methods to run
+
+    lit_bulb_pairs: list[tuple[int, int, int, int]], coordinates of pairs of bulbs that
+    see each other
+
+    unilluminatable_cells: list[tuple[int, int]], cells that cannot be lit
+
+    wrong_numbers: list[tuple[int, int]], numbers that have infeasible numbers of bulbs
+    (either too high or too many dots to ever have enough) The last 3 items are the
+    error lists.
     """
-    for i, j in zip(*np.asarray(board == ".").nonzero(), strict=True):
-        if board[i, j] == ".":
-            try_board_dot = board.copy()
-            try_board_dot[i, j] = "+"
-            try_board_dot = apply_methods(try_board_dot, min(level, 8))
-            if not check_unsolved(try_board_dot):
-                board_maybe_set_bulb(board, i, j)
-                board = apply_methods(board, min(level, 8))
-                continue  # continue for this branch because we already know the cell
-            try_board_bulb = board.copy()
-            board_maybe_set_bulb(try_board_bulb, i, j)
-            try_board_bulb = apply_methods(try_board_bulb, min(level, 8))
-            if not check_unsolved(try_board_bulb):
-                board[i, j] = "+"
-                board = apply_methods(board, min(level, 8))
-    return board
+    def __init__(self, board: np.ndarray) -> None:
+        self.board = board.copy()
+        self.new_mark = []
+        self.lit_bulb_pairs = []
+        self.unilluminatable_cells = []
+        self.wrong_numbers = []
+
+    def maybe_set_bulb(self, i: int, j: int) -> None:
+        """
+        Confirms that board[i, j] is free; if so, board[i, j] = "#" and runs updates
+
+        Runs illuminate and updates the queue.
+        """
+        if self.board[i, j] == ".":
+            self.board[i, j] = "#"
+            illuminate_one(self.board, [], i, j)
+            # TODO convert illuminate_one to a method, which would stash check_lit_bulbs
+            # TODO call self.find_wrong_numbers
+            self.new_mark.append((i, j, "#"))
+
+    def maybe_set_dot(self, i: int, j: int) -> None:
+        """
+        Confirms that board[i, j] is free; if so, board[i, j] = "." and runs updates
+
+        Updates the queue.
+        """
+        if self.board[i, j] == ".":
+            self.board[i, j] = "+"
+            self.new_mark.append((i, j, "+"))
+            # TODO check for relevant error
+
+    def apply_methods(self, level: int) -> None:
+        """
+        Applies the various logical methods as set by the level.
+
+        If the queue is empty, it first, scans everything; otherwise, it just does the
+        new_mark queue.
+        """
+        if not self.new_mark:
+            self.new_mark = [
+                (i, j, ".")
+                for i in range(1, self.board.shape[0] - 1)
+                for j in range(1, self.board.shape[1] - 1)
+            ]
+        if level >= 1:
+            self.lit_bulb_pairs, self.board = illuminate_all(self.board)
+        while self.new_mark:
+            i, j, mark = self.new_mark.pop()
+            if mark == ".":
+                self.apply_bulb_methods(i, j, level)
+                self.apply_dot_methods(i, j, level)
+            elif mark == "+":
+                self.apply_dot_methods(i, j, level)
+            elif mark == "#":
+                self.apply_bulb_methods(i, j, level)
+            self.apply_dot_and_bulb_methods(i, j, level)
+            if not self.check_unsolved(i, j):
+                break
+            if level >= 9 and not self.new_mark:
+                # guess and check is orders of magnitude more expensive than other
+                # methods and should only be called if all else has been tried.
+                self.guess_and_check(level)
+
+    def apply_dot_methods(self, i: int, j: int, level: int) -> None:
+        if level >= 2:
+            self.mark_bulbs_around_dotted_numbers(i, j)
+        if level >= 3:
+            self.fill_holes(i, j)
+            self.mark_unique_bulbs_for_dot_cells(i, j)
+        if level >= 4:
+            self.mark_dots_at_corners(i, j)
+
+    def apply_bulb_methods(self, i: int, j: int, level: int) -> None:
+        if level >= 2:
+            self.mark_dots_around_full_numbers(i, j)
+
+    def apply_dot_and_bulb_methods(self, i: int, j: int, level: int) -> None:
+        if level >= 5:
+            self.analyze_diagonally_adjacent_numbers(i, j)
+        if level >= 6:
+            self.trace_shared_lanes(i, j)
+
+    def transition_wrapper(self, func: Callable[[np.ndarray], np.ndarray]) -> None:
+        old_board = self.board.copy()
+        func(self.board)
+        for i, j in zip(*(old_board != self.board).nonzero(), strict=True):
+            self.new_mark.append((i, j, cast(str, self.board[i, j])))
+
+    def mark_bulbs_around_dotted_numbers(self, i: int, j: int) -> None:
+        self.transition_wrapper(mark_bulbs_around_dotted_numbers)
+
+    def fill_holes(self, i: int, j: int) -> None:
+        self.transition_wrapper(fill_holes)
+
+    def mark_unique_bulbs_for_dot_cells(self, i: int, j: int) -> None:
+        self.transition_wrapper(mark_unique_bulbs_for_dot_cells)
+
+    def mark_dots_at_corners(self, i: int, j: int) -> None:
+        self.transition_wrapper(mark_dots_at_corners)
+
+    def mark_dots_around_full_numbers(self, i: int, j: int) -> None:
+        self.transition_wrapper(mark_dots_around_full_numbers)
+
+    def analyze_diagonally_adjacent_numbers(self, i: int, j: int) -> None:
+        self.transition_wrapper(analyze_diagonally_adjacent_numbers)
+
+    def trace_shared_lanes(self, i: int, j: int) -> None:
+        self.transition_wrapper(trace_shared_lanes)
+
+    def check_unsolved(self, i: int, j: int) -> bool:
+        self.wrong_numbers.extend(find_wrong_numbers(self.board))
+        self.lit_bulb_pairs = illuminate_all(self.board)[0]
+        self.unilluminatable_cells.extend(find_unilluminatable_cells(self.board))
+        return not any(
+            [self.wrong_numbers, self.lit_bulb_pairs, self.unilluminatable_cells]
+        )
+
+    def guess_and_check(self, level: int) -> None:
+        """
+        Guesses at every blank cell and uses apply_methods to eliminate impossible
+        options.
+        """
+        level_to_use = min(level, 8)
+        while True:
+            old_board = self.board.copy()
+            for i, j in zip(*np.asarray(self.board == ".").nonzero(), strict=True):
+                if self.board[i, j] == ".":
+                    try_tp_dot = ThoughtProcess(self.board)
+                    try_tp_dot.maybe_set_dot(i, j)
+                    try_tp_dot.apply_methods(level_to_use)
+                    if not check_unsolved(try_tp_dot.board):
+                        self.maybe_set_bulb(i, j)
+                        self.apply_methods(level_to_use)
+                        continue
+                    # continue for this branch because we already know the cell
+                    try_tp_bulb = ThoughtProcess(self.board)
+                    try_tp_bulb.maybe_set_bulb(i, j)
+                    try_tp_bulb.apply_methods(level_to_use)
+                    if not check_unsolved(try_tp_bulb.board):
+                        self.maybe_set_dot(i, j)
+                        self.apply_methods(level_to_use)
+            if np.all(self.board == old_board):
+                break

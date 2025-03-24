@@ -413,9 +413,9 @@ class MainWindow(QMainWindow):
                 hout.write(pzprv3)
 
     def apply_methods(self) -> None:
-        new_board_auto = puzzle.apply_methods(
-            self.board.copy(), self.auto_apply_methods_level
-        )
+        thought_process = puzzle.ThoughtProcess(self.board.copy())
+        thought_process.apply_methods(self.auto_apply_methods_level)
+        new_board_auto = thought_process.board
 
         old_puzzle_complete = self.puzzle_complete
         self.puzzle_complete = puzzle.check_all(new_board_auto)
@@ -442,7 +442,7 @@ class MainWindow(QMainWindow):
                     c.correct = True  # presume correct then indicate if not below
                     c.update()
 
-        self.indicate_contradictions(new_board_auto)
+        self.indicate_contradictions(thought_process)
         self.board_auto = new_board_auto
         if self.puzzle_complete and not old_puzzle_complete:
             self.animate_puzzle_complete()
@@ -457,15 +457,15 @@ class MainWindow(QMainWindow):
                 c.correct = True  # presume correct then indicate if not elsewhere
                 c.update()
 
-    def indicate_contradictions(self, new_board_auto: np.ndarray) -> None:
-        for i, j in puzzle.find_wrong_numbers(new_board_auto):
+    def indicate_contradictions(self, thought_process: puzzle.ThoughtProcess) -> None:
+        for i, j in thought_process.wrong_numbers:
             ci = self.grid.itemAtPosition(i - 1, j - 1)
             assert ci is not None
             c = ci.widget()
             c.correct = False
             c.update()
 
-        for i1, j1, i2, j2 in puzzle.illuminate_all(new_board_auto)[0]:
+        for i1, j1, i2, j2 in thought_process.lit_bulb_pairs:
             if i1 == i2:
                 ijs = [(i1, j) for j in range(j1, j2 + 1)]
             else:
@@ -477,7 +477,7 @@ class MainWindow(QMainWindow):
                 c.correct = False
                 c.update()
 
-        for i, j in puzzle.find_unilluminatable_cells(new_board_auto):
+        for i, j in thought_process.unilluminatable_cells:
             ci = self.grid.itemAtPosition(i - 1, j - 1)
             assert ci is not None
             c = ci.widget()

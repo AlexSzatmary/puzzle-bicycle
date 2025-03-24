@@ -4,8 +4,8 @@ from inspect import cleandoc
 import numpy as np
 import pytest
 from puzzle import (
+    ThoughtProcess,
     analyze_diagonally_adjacent_numbers,
-    apply_methods,
     boardify_string,
     check_all,
     check_lit_bulbs,
@@ -753,7 +753,7 @@ def test_apply_methods(
     board_apply_methods: np.ndarray,
     boards_apply_methods_sol: np.ndarray,
 ) -> None:
-    for i, board_ref in zip(
+    for level, board_ref in zip(
         range(1, len(boards_apply_methods_sol) + 1),
         boards_apply_methods_sol,
         strict=True,
@@ -763,7 +763,9 @@ def test_apply_methods(
             all_orientations(board_ref),
             strict=True,
         ):
-            assert stringify_board(apply_methods(board, i)) == stringify_board(ref)
+            tp = ThoughtProcess(board)
+            tp.apply_methods(level)
+            assert stringify_board(tp.board) == stringify_board(ref)
 
 
 @pytest.fixture
@@ -1124,5 +1126,8 @@ def test_find_unilluminatable_cells() -> None:
             ----
             """)
     )
-    board = apply_methods(board, 6)
-    assert set(find_unilluminatable_cells(board)) == {(1, 2), (5, 2)}
+    tp = ThoughtProcess(board)
+    for i, j in zip(*(tp.board == ".").nonzero(), strict=True):
+        tp.apply_bulb_methods(i, j, 6)
+    tp.apply_methods(6)
+    assert set(find_unilluminatable_cells(tp.board)) == {(1, 2), (5, 2)}

@@ -13,14 +13,17 @@ def main(argv: list[str] | None = None) -> None:
         if text:
             board = puzzle.load_pzprv3(text)
             boards.append(board.copy())
-            board_solved = puzzle.apply_methods(board.copy(), 9)
+            tp = puzzle.ThoughtProcess(board)
+            tp.apply_methods(9)
             print()
             print(name)
-            puzzle.print_board(board_solved)
-            print(f"solved: {puzzle.check_all(board_solved)}")
-    for _i in range(10):
-        for board in boards:
-            puzzle.apply_methods(board.copy(), 9)
+            puzzle.print_board(tp.board)
+            print(f"solved: {puzzle.check_all(tp.board)}")
+    # for _i in range(10):
+    #     print(_i)
+    #     for board in boards:
+    #         tp = puzzle.ThoughtProcess(board)
+    #         tp.apply_methods(9)
 
 
 if __name__ == "__main__":
