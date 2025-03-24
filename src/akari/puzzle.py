@@ -97,47 +97,6 @@ def board_maybe_set_bulb(board: np.ndarray, i: int, j: int) -> None:
         illuminate_one(board, i, j)
 
 
-def fill_holes(board: np.ndarray) -> np.ndarray:
-    """
-    Takes annotated and possibly illuminated board.
-    Returns the board with holes filled in.
-
-    A hole is a free cell that must be a bulb because no bulb can possibly reach it.
-
-    Holes:      Not holes:
-    -------     -------
-    -.-+.+-     -..-..-
-    -------     ----0--
-     ^  ^        ^^  *
-
-    Cases marked ^ are simple. Case * is not a hole because this method does not see
-    the 0; after a + is marked above the 0, the * would then be a hole.
-    """
-
-    for i in range(1, np.size(board, 0) - 1):
-        for j in range(1, np.size(board, 1) - 1):
-            if board[i, j] == ".":
-                is_hole = True  # presume a hole
-                iters = [
-                    zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
-                    zip_longest([], range(j - 1, 0, -1), fillvalue=i),
-                    zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
-                    zip_longest([], range(j + 1, np.size(board, 1) - 1), fillvalue=i),
-                ]
-                for it in iters:
-                    for i1, j1 in it:
-                        if board[i1, j1] == ".":
-                            is_hole = False
-                            break
-                        elif board[i1, j1] in "01234-":
-                            break
-                    if not is_hole:
-                        break
-                if is_hole:
-                    board_maybe_set_bulb(board, i, j)
-    return board
-
-
 def count_free_near_number(board: np.ndarray, i: int, j: int) -> int:
     dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
     return sum(board[i + di, j + dj] == "." for (di, dj) in dirs)
@@ -185,59 +144,6 @@ def mark_dots_at_corners(board: np.ndarray) -> np.ndarray:
                             and board[i, j + dj] == "."
                         ):
                             board[i + di, j + dj] = "+"
-    return board
-
-
-def mark_unique_bulbs_for_dot_cells(  # noqa: C901 This level of complexity is fine.
-    board: np.ndarray,
-) -> np.ndarray:
-    """
-    Takes annotated and possibly illuminated board. Marks cells that must be bulbs for
-    a dotted cell to be illuminated. For example, if we have,
-    -0--
-    -+.-
-    --.-
-    ----
-    we must obtain,
-    -0--
-    -+#-
-    --.-
-    ----
-    Because otherwise the + below the 0 could not be illuminated.
-
-    This function runs illuminate a lot and it's not obvious to me if that's an
-    implementation decision. If it's inefficient to run illuminate a lot, the fix is
-    to allow illuminate to take an argument for the single i, j for the new bulb.
-    """
-    # we have to illuminate a lot because this logic ignores bulbs
-    for i in range(1, np.size(board, 0) - 1):
-        for j in range(1, np.size(board, 1) - 1):
-            if board[i, j] == "+":
-                sees_free = False
-                sees_multiple_free = False
-                free_i = free_j = -1
-                iters = [
-                    zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
-                    zip_longest([], range(j - 1, 0, -1), fillvalue=i),
-                    zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
-                    zip_longest([], range(j + 1, np.size(board, 1) - 1), fillvalue=i),
-                ]
-                for it in iters:
-                    for i1, j1 in it:
-                        if board[i1, j1] == ".":
-                            if sees_free:
-                                sees_multiple_free = True
-                                break
-                            else:
-                                sees_free = True
-                                free_i = i1
-                                free_j = j1
-                        elif board[i1, j1] in "01234-":
-                            break
-                    if sees_multiple_free:
-                        break
-                if sees_free and not sees_multiple_free:
-                    board_maybe_set_bulb(board, free_i, free_j)
     return board
 
 
@@ -867,17 +773,89 @@ class ThoughtProcess:
                         for di, dj in dirs:
                             self.maybe_set_dot(i + di, j + dj)
 
+    def fill_holes(self, i: int, j: int) -> None:
+        """
+        Takes annotated and possibly illuminated board.
+        Returns the board with holes filled in.
+
+        A hole is a free cell that must be a bulb because no bulb can possibly reach it.
+
+        Holes:      Not holes:
+        -------     -------
+        -.-+.+-     -..-..-
+        -------     ----0--
+        ^  ^        ^^  *
+
+        Cases marked ^ are simple. Case * is not a hole because this method does not see
+        the 0; after a + is marked above the 0, the * would then be a hole.
+        """
+        if self.board[i, j] == ".":
+            is_hole = True  # presume a hole
+            iters = [
+                zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
+                zip_longest([], range(j - 1, 0, -1), fillvalue=i),
+                zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
+                zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
+            ]
+            for it in iters:
+                for i1, j1 in it:
+                    if self.board[i1, j1] == ".":
+                        is_hole = False
+                        break
+                    elif self.board[i1, j1] in "01234-":
+                        break
+                if not is_hole:
+                    break
+            if is_hole:
+                self.maybe_set_bulb(i, j)
+
+    def mark_unique_bulbs_for_dot_cells(self, i: int, j: int) -> None:
+        """
+        Takes annotated and possibly illuminated board. Marks cells that must be bulbs
+        for a dotted cell to be illuminated. For example, if we have,
+        -0--
+        -+.-
+        --.-
+        ----
+        we must obtain,
+        -0--
+        -+#-
+        --|-
+        ----
+        Because otherwise the + below the 0 could not be illuminated.
+        """
+        if self.board[i, j] == "+":
+            sees_free = False
+            sees_multiple_free = False
+            free_i = free_j = -1
+            iters = [
+                zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
+                zip_longest([], range(j - 1, 0, -1), fillvalue=i),
+                zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
+                zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
+            ]
+            for it in iters:
+                for i1, j1 in it:
+                    if self.board[i1, j1] == ".":
+                        if sees_free:
+                            sees_multiple_free = True
+                            break
+                        else:
+                            sees_free = True
+                            free_i = i1
+                            free_j = j1
+                    elif self.board[i1, j1] in "01234-":
+                        break
+                if sees_multiple_free:
+                    break
+            if sees_free and not sees_multiple_free:
+                self.maybe_set_bulb(free_i, free_j)
+
     def transition_wrapper(self, func: Callable[[np.ndarray], np.ndarray]) -> None:
         old_board = self.board.copy()
         func(self.board)
         for i, j in zip(*(old_board != self.board).nonzero(), strict=True):
             self.new_mark.append((i, j, cast(str, self.board[i, j])))
-
-    def fill_holes(self, i: int, j: int) -> None:
-        self.transition_wrapper(fill_holes)
-
-    def mark_unique_bulbs_for_dot_cells(self, i: int, j: int) -> None:
-        self.transition_wrapper(mark_unique_bulbs_for_dot_cells)
 
     def mark_dots_at_corners(self, i: int, j: int) -> None:
         self.transition_wrapper(mark_dots_at_corners)

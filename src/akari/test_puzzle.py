@@ -13,14 +13,12 @@ from puzzle import (
     check_unlit_cells,
     count_free_near_number,
     count_missing_bulbs_near_number,
-    fill_holes,
     find_unilluminatable_cells,
     find_wrong_numbers,
     illuminate_all,
     # illuminate_one, no longer tested explicitly because it's on track to be removed.
     load_pzprv3,
     mark_dots_at_corners,
-    mark_unique_bulbs_for_dot_cells,
     print_board,
     save_pzprv3,
     stringify_board,
@@ -309,7 +307,10 @@ def test_fill_holes() -> None:
         all_orientations(board_test_fill_holes_sol),
         strict=True,
     ):
-        assert stringify_board(fill_holes(board) == ref)
+        tp = ThoughtProcess(board)
+        for i, j in tp.all_interior_ij():
+            tp.fill_holes(i, j)
+        assert stringify_board(tp.board == ref)
 
 
 board_count_near_pzprv3 = """
@@ -560,9 +561,10 @@ def test_mark_unique_bulbs_for_dot_cells(
         all_orientations(board_mark_unique_bulbs_for_dot_cells_sol),
         strict=True,
     ):
-        assert stringify_board(
-            mark_unique_bulbs_for_dot_cells(board)
-        ) == stringify_board(ref)
+        tp = ThoughtProcess(board)
+        for i, j in tp.all_interior_ij():
+            tp.mark_unique_bulbs_for_dot_cells(i, j)
+        assert stringify_board(tp.board) == stringify_board(ref)
 
 
 @pytest.fixture
