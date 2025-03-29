@@ -753,23 +753,24 @@ class ThoughtProcess:
             self.illuminate_one(i, j)
 
     def mark_bulbs_around_dotted_numbers(self, i: int, j: int) -> None:
-        for i in range(1, np.size(self.board, 0) - 1):
-            for j in range(1, np.size(self.board, 1) - 1):
-                if self.board[i, j] in "01234":
-                    if count_free_near_number(
-                        self.board, i, j
-                    ) == count_missing_bulbs_near_number(self.board, i, j):
-                        for di, dj in ORTHO_DIRS:
-                            if self.board[i + di, j + dj] == ".":
-                                self.maybe_set_bulb(i + di, j + dj)
+        for di1, dj1 in ORTHO_DIRS:
+            i_number = i + di1
+            j_number = j + dj1
+            if self.board[i_number, j_number] in "01234":
+                if count_free_near_number(
+                    self.board, i_number, j_number
+                ) == count_missing_bulbs_near_number(self.board, i_number, j_number):
+                    for di, dj in ORTHO_DIRS:
+                        self.maybe_set_bulb(i_number + di, j_number + dj)
 
     def mark_dots_around_full_numbers(self, i: int, j: int) -> None:
-        for i in range(1, np.size(self.board, 0) - 1):
-            for j in range(1, np.size(self.board, 1) - 1):
-                if self.board[i, j] in "01234":
-                    if count_missing_bulbs_near_number(self.board, i, j) == 0:
-                        for di, dj in ORTHO_DIRS:
-                            self.maybe_set_dot(i + di, j + dj)
+        for di1, dj1 in ORTHO_DIRS:
+            i_number = i + di1
+            j_number = j + dj1
+            if self.board[i_number, j_number] in "01234":
+                if count_missing_bulbs_near_number(self.board, i_number, j_number) == 0:
+                    for di2, dj2 in ORTHO_DIRS:
+                        self.maybe_set_dot(i_number + di2, j_number + dj2)
 
     def fill_holes(self, i: int, j: int) -> None:
         """

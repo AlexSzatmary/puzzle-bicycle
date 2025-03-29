@@ -1127,5 +1127,5 @@ def test_find_unilluminatable_cells() -> None:
     tp = ThoughtProcess(board)
     for i, j in zip(*(tp.board == ".").nonzero(), strict=True):
         tp.apply_bulb_methods(i, j, 6)
-    tp.apply_methods(6)
+        tp.apply_dot_methods(i, j, 6)
     assert set(find_unilluminatable_cells(tp.board)) == {(1, 2), (5, 2)}
