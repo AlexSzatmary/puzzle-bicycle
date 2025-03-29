@@ -109,71 +109,6 @@ def count_missing_bulbs_near_number(board: np.ndarray, i: int, j: int) -> int:
     return int(board[i, j]) - n_bulbs
 
 
-def analyze_diagonally_adjacent_numbers(board: np.ndarray) -> np.ndarray:
-    """
-    Adds dots and bulbs for certain diagonally adjacent numbers sharing 2 free spaces.
-
-    Finds this kind of thing:
-    ----
-    -1..
-    -.1.
-    -...
-    and sees that we add + as shown:
-    ----
-    -1..
-    -.1+
-    -.+.
-    Likewise,
-    -----
-    -....
-    -.3..
-    -..1.
-    -....
-    becomes
-    -----
-    -.#..
-    -#3..
-    -..1+
-    -..+.
-    We also account for what happens if a bulb or dot is already known.
-    """
-    for iA in range(1, np.size(board, 0) - 1):
-        for jA in range(1, np.size(board, 1) - 1):
-            if board[iA, jA] in "01234" and board[iA + 1, jA] == ".":
-                # only analyze numbered cells diagonally down and to the left or right
-                iB = iA + 1
-                for jB in [jA + 1, jA - 1]:
-                    if board[iB, jB] in "01234" and board[iA, jB] == ".":
-                        missing_A = count_missing_bulbs_near_number(board, iA, jA)
-                        free_A = count_free_near_number(board, iA, jA)
-                        missing_B = count_missing_bulbs_near_number(board, iB, jB)
-                        free_B = count_free_near_number(board, iB, jB)
-                        if missing_A == 1 and missing_B + 1 == free_B:
-                            analyze_diagonally_adjacent_numbers_update_board(
-                                board, iA, jA, iB, jB
-                            )
-                        elif missing_B == 1 and missing_A + 1 == free_A:
-                            analyze_diagonally_adjacent_numbers_update_board(
-                                board, iB, jB, iA, jA
-                            )
-    return board
-
-
-def analyze_diagonally_adjacent_numbers_update_board(
-    board: np.ndarray, iC: int, jC: int, iD: int, jD: int
-) -> np.ndarray:
-    # point C has 1 missing bulb and point D has one free space more
-    di = iD - iC
-    dj = jD - jC
-    if board[iC - di, jC] == ".":
-        board[iC - di, jC] = "+"
-    if board[iC, jC - dj] == ".":
-        board[iC, jC - dj] = "+"
-    board_maybe_set_bulb(board, iD + di, jD)
-    board_maybe_set_bulb(board, iD, jD + dj)
-    return board
-
-
 def trace_shared_lanes(board: np.ndarray) -> np.ndarray:
     """
     If we have,
@@ -861,7 +796,67 @@ class ThoughtProcess:
                             self.board[i_number + di, j_number + dj] = "+"
 
     def analyze_diagonally_adjacent_numbers(self, i: int, j: int) -> None:
-        self.transition_wrapper(analyze_diagonally_adjacent_numbers)
+        """
+        Adds dots and bulbs for certain diagonally adjacent numbers sharing 2 free
+        spaces.
+
+        Finds this kind of thing:
+        ----
+        -1..
+        -.1.
+        -...
+        and sees that we add + as shown:
+        ----
+        -1..
+        -.1+
+        -.+.
+        Likewise,
+        -----
+        -....
+        -.3..
+        -..1.
+        -....
+        becomes
+        -----
+        -.#..
+        -#3..
+        -..1+
+        -..+.
+        We also account for what happens if a bulb or dot is already known.
+        """
+        for di1, dj1 in ORTHO_DIRS:
+            iA = i + di1
+            jA = j + dj1
+            if self.board[iA, jA] in "01234" and self.board[iA + 1, jA] == ".":
+                # only analyze numbered cells diagonally down and to the left or right
+                iB = iA + 1
+                for jB in [jA + 1, jA - 1]:
+                    if self.board[iB, jB] in "01234" and self.board[iA, jB] == ".":
+                        missing_A = count_missing_bulbs_near_number(self.board, iA, jA)
+                        free_A = count_free_near_number(self.board, iA, jA)
+                        missing_B = count_missing_bulbs_near_number(self.board, iB, jB)
+                        free_B = count_free_near_number(self.board, iB, jB)
+                        if missing_A == 1 and missing_B + 1 == free_B:
+                            self.analyze_diagonally_adjacent_numbers_update_board(
+                                iA, jA, iB, jB
+                            )
+                        elif missing_B == 1 and missing_A + 1 == free_A:
+                            self.analyze_diagonally_adjacent_numbers_update_board(
+                                iB, jB, iA, jA
+                            )
+
+    def analyze_diagonally_adjacent_numbers_update_board(
+        self, iC: int, jC: int, iD: int, jD: int
+    ) -> None:
+        # point C has 1 missing bulb and point D has one free space more
+        di = iD - iC
+        dj = jD - jC
+        if self.board[iC - di, jC] == ".":
+            self.board[iC - di, jC] = "+"
+        if self.board[iC, jC - dj] == ".":
+            self.board[iC, jC - dj] = "+"
+        self.maybe_set_bulb(iD + di, jD)
+        self.maybe_set_bulb(iD, jD + dj)
 
     def trace_shared_lanes(self, i: int, j: int) -> None:
         self.transition_wrapper(trace_shared_lanes)

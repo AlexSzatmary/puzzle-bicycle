@@ -5,7 +5,6 @@ import numpy as np
 import pytest
 from puzzle import (
     ThoughtProcess,
-    analyze_diagonally_adjacent_numbers,
     boardify_string,
     check_all,
     check_lit_bulbs,
@@ -628,9 +627,10 @@ def test_analyze_diagonally_adjacent_numbers(
         all_orientations(board_analyze_diagonally_adjacent_numbers_sol),
         strict=True,
     ):
-        assert stringify_board(
-            analyze_diagonally_adjacent_numbers(board)
-        ) == stringify_board(ref)
+        tp = ThoughtProcess(board)
+        for i, j in tp.all_interior_ij():
+            tp.analyze_diagonally_adjacent_numbers(i, j)
+        assert stringify_board(tp.board) == stringify_board(ref)
 
 
 def test_find_wrong_numbers() -> None:
