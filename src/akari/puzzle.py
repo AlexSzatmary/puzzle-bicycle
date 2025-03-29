@@ -15,6 +15,9 @@ import numpy as np
 # _, |, x: indicate light paths, x shows both directions,
 # +: "dotted", indicates no bulb but direction not indicated
 
+ORTHO_DIRS = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+DIAG_DIRS = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
+
 
 def load_pzprv3(pzprv3: str) -> np.ndarray:
     """
@@ -98,13 +101,11 @@ def board_maybe_set_bulb(board: np.ndarray, i: int, j: int) -> None:
 
 
 def count_free_near_number(board: np.ndarray, i: int, j: int) -> int:
-    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
-    return sum(board[i + di, j + dj] == "." for (di, dj) in dirs)
+    return sum(board[i + di, j + dj] == "." for (di, dj) in ORTHO_DIRS)
 
 
 def count_missing_bulbs_near_number(board: np.ndarray, i: int, j: int) -> int:
-    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
-    n_bulbs = sum(board[i + di, j + dj] == "#" for (di, dj) in dirs)
+    n_bulbs = sum(board[i + di, j + dj] == "#" for (di, dj) in ORTHO_DIRS)
     return int(board[i, j]) - n_bulbs
 
 
@@ -127,17 +128,15 @@ def mark_dots_at_corners(board: np.ndarray) -> np.ndarray:
     -..
     because that case should already be caught by mark_bulbs_around_dotted_numbers.
     """
-    ortho_dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
-    diag_dirs = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
     for i in range(1, np.size(board, 0) - 1):
         for j in range(1, np.size(board, 1) - 1):
             if board[i, j] in "01234":
-                n_free = sum(board[i + di, j + dj] == "." for (di, dj) in ortho_dirs)
+                n_free = sum(board[i + di, j + dj] == "." for (di, dj) in ORTHO_DIRS)
                 n_bulbs_already = sum(
-                    board[i + di, j + dj] == "#" for (di, dj) in ortho_dirs
+                    board[i + di, j + dj] == "#" for (di, dj) in ORTHO_DIRS
                 )
                 if n_free + n_bulbs_already == int(board[i, j]) + 1:
-                    for di, dj in diag_dirs:
+                    for di, dj in DIAG_DIRS:
                         if (
                             board[i + di, j + dj] == "."
                             and board[i + di, j] == "."
@@ -543,12 +542,13 @@ def find_wrong_numbers(board: np.ndarray) -> list[tuple[int, int]]:
     number of bulbs.
     """
     wrong_numbers = []
-    dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
     for i in range(1, np.size(board, 0) - 1):
         for j in range(1, np.size(board, 1) - 1):
             if board[i, j] in "0123":
-                n_free = sum(board[i + di, j + dj] == "." for (di, dj) in dirs)
-                n_bulbs_already = sum(board[i + di, j + dj] == "#" for (di, dj) in dirs)
+                n_free = sum(board[i + di, j + dj] == "." for (di, dj) in ORTHO_DIRS)
+                n_bulbs_already = sum(
+                    board[i + di, j + dj] == "#" for (di, dj) in ORTHO_DIRS
+                )
                 if n_bulbs_already > int(board[i, j]) or n_free + n_bulbs_already < int(
                     board[i, j]
                 ):
@@ -708,8 +708,8 @@ class ThoughtProcess:
     def apply_dot_and_bulb_methods(self, i: int, j: int, level: int) -> None:
         if level >= 5:
             self.analyze_diagonally_adjacent_numbers(i, j)
-        if level >= 6:
-            self.trace_shared_lanes(i, j)
+        # if level >= 6:
+        #     self.trace_shared_lanes(i, j)
 
     def illuminate_one(self, i: int, j: int) -> None:
         """
@@ -753,24 +753,22 @@ class ThoughtProcess:
             self.illuminate_one(i, j)
 
     def mark_bulbs_around_dotted_numbers(self, i: int, j: int) -> None:
-        dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
         for i in range(1, np.size(self.board, 0) - 1):
             for j in range(1, np.size(self.board, 1) - 1):
                 if self.board[i, j] in "01234":
                     if count_free_near_number(
                         self.board, i, j
                     ) == count_missing_bulbs_near_number(self.board, i, j):
-                        for di, dj in dirs:
+                        for di, dj in ORTHO_DIRS:
                             if self.board[i + di, j + dj] == ".":
                                 self.maybe_set_bulb(i + di, j + dj)
 
     def mark_dots_around_full_numbers(self, i: int, j: int) -> None:
-        dirs = [(1, 0), (0, -1), (-1, 0), (0, 1)]
         for i in range(1, np.size(self.board, 0) - 1):
             for j in range(1, np.size(self.board, 1) - 1):
                 if self.board[i, j] in "01234":
                     if count_missing_bulbs_near_number(self.board, i, j) == 0:
-                        for di, dj in dirs:
+                        for di, dj in ORTHO_DIRS:
                             self.maybe_set_dot(i + di, j + dj)
 
     def fill_holes(self, i: int, j: int) -> None:
