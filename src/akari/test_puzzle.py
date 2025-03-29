@@ -18,7 +18,6 @@ from puzzle import (
     illuminate_all,
     # illuminate_one, no longer tested explicitly because it's on track to be removed.
     load_pzprv3,
-    mark_dots_at_corners,
     print_board,
     save_pzprv3,
     stringify_board,
@@ -509,7 +508,10 @@ def test_mark_dots_at_corners(
         all_orientations(board_mark_dots_at_corners_sol),
         strict=True,
     ):
-        assert stringify_board(mark_dots_at_corners(board)) == stringify_board(ref)
+        tp = ThoughtProcess(board)
+        for i, j in tp.all_interior_ij():
+            tp.mark_dots_at_corners(i, j)
+        assert stringify_board(tp.board) == stringify_board(ref)
 
 
 @pytest.fixture

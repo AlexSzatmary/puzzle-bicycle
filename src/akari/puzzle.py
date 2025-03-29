@@ -109,43 +109,6 @@ def count_missing_bulbs_near_number(board: np.ndarray, i: int, j: int) -> int:
     return int(board[i, j]) - n_bulbs
 
 
-def mark_dots_at_corners(board: np.ndarray) -> np.ndarray:
-    """
-    Marks dots at free cells diagonal to numbers if a bulb in that cell would not work.
-
-    Will fire for
-    ---
-    -1.
-    -..
-    to do
-    ---
-    -1.
-    -.+
-
-    But will not fire at all for
-    ---
-    -2.
-    -..
-    because that case should already be caught by mark_bulbs_around_dotted_numbers.
-    """
-    for i in range(1, np.size(board, 0) - 1):
-        for j in range(1, np.size(board, 1) - 1):
-            if board[i, j] in "01234":
-                n_free = sum(board[i + di, j + dj] == "." for (di, dj) in ORTHO_DIRS)
-                n_bulbs_already = sum(
-                    board[i + di, j + dj] == "#" for (di, dj) in ORTHO_DIRS
-                )
-                if n_free + n_bulbs_already == int(board[i, j]) + 1:
-                    for di, dj in DIAG_DIRS:
-                        if (
-                            board[i + di, j + dj] == "."
-                            and board[i + di, j] == "."
-                            and board[i, j + dj] == "."
-                        ):
-                            board[i + di, j + dj] = "+"
-    return board
-
-
 def analyze_diagonally_adjacent_numbers(board: np.ndarray) -> np.ndarray:
     """
     Adds dots and bulbs for certain diagonally adjacent numbers sharing 2 free spaces.
@@ -857,7 +820,45 @@ class ThoughtProcess:
             self.new_mark.append((i, j, cast(str, self.board[i, j])))
 
     def mark_dots_at_corners(self, i: int, j: int) -> None:
-        self.transition_wrapper(mark_dots_at_corners)
+        """
+        Marks dots at free cells diagonal to numbers if a bulb in that cell would not
+        work.
+
+        Will fire for
+        ---
+        -1.
+        -..
+        to do
+        ---
+        -1.
+        -.+
+
+        But will not fire at all for
+        ---
+        -2.
+        -..
+        because that case should already be caught by mark_bulbs_around_dotted_numbers.
+        """
+        for di1, dj1 in DIAG_DIRS:
+            i_number = i + di1
+            j_number = j + dj1
+            if self.board[i_number, j_number] in "01234":
+                n_free = sum(
+                    self.board[i_number + di2, j_number + dj2] == "."
+                    for (di2, dj2) in ORTHO_DIRS
+                )
+                n_bulbs_already = sum(
+                    self.board[i_number + di, j_number + dj] == "#"
+                    for (di, dj) in ORTHO_DIRS
+                )
+                if n_free + n_bulbs_already == int(self.board[i_number, j_number]) + 1:
+                    for di, dj in DIAG_DIRS:
+                        if (
+                            self.board[i_number + di, j_number + dj] == "."
+                            and self.board[i_number + di, j_number] == "."
+                            and self.board[i_number, j_number + dj] == "."
+                        ):
+                            self.board[i_number + di, j_number + dj] = "+"
 
     def analyze_diagonally_adjacent_numbers(self, i: int, j: int) -> None:
         self.transition_wrapper(analyze_diagonally_adjacent_numbers)
