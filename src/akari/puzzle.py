@@ -583,6 +583,8 @@ class ThoughtProcess:
             elif mark == "#":
                 self.apply_bulb_methods(i, j, level)
             self.apply_dot_and_bulb_methods(i, j, level)
+            # TODO modify this break with the condition that we're not in the initial
+            # scan
             if not self.check_unsolved(i, j):
                 break
             if level >= 9 and not self.new_mark:
@@ -827,11 +829,15 @@ class ThoughtProcess:
         for di1, dj1 in ORTHO_DIRS:
             iA = i + di1
             jA = j + dj1
-            if self.board[iA, jA] in "01234" and self.board[iA + 1, jA] == ".":
-                # only analyze numbered cells diagonally down and to the left or right
-                iB = iA + 1
-                for jB in [jA + 1, jA - 1]:
-                    if self.board[iB, jB] in "01234" and self.board[iA, jB] == ".":
+            if self.board[iA, jA] in "01234":
+                for di2, dj2 in DIAG_DIRS:
+                    iB = iA + di2
+                    jB = jA + dj2
+                    if (
+                        self.board[iB, jB] in "01234"
+                        and self.board[iA, jB] == "."
+                        and self.board[iB, jA] == "."
+                    ):
                         missing_A = count_missing_bulbs_near_number(self.board, iA, jA)
                         free_A = count_free_near_number(self.board, iA, jA)
                         missing_B = count_missing_bulbs_near_number(self.board, iB, jB)
@@ -851,10 +857,8 @@ class ThoughtProcess:
         # point C has 1 missing bulb and point D has one free space more
         di = iD - iC
         dj = jD - jC
-        if self.board[iC - di, jC] == ".":
-            self.board[iC - di, jC] = "+"
-        if self.board[iC, jC - dj] == ".":
-            self.board[iC, jC - dj] = "+"
+        self.maybe_set_dot(iC - di, jC)
+        self.maybe_set_dot(iC, jC - dj)
         self.maybe_set_bulb(iD + di, jD)
         self.maybe_set_bulb(iD, jD + dj)
 
