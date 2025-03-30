@@ -12,8 +12,6 @@ from puzzle import (
     check_unlit_cells,
     count_free_near_number,
     count_missing_bulbs_near_number,
-    find_unilluminatable_cells,
-    find_wrong_numbers,
     illuminate_all,
     # illuminate_one, no longer tested explicitly because it's on track to be removed.
     load_pzprv3,
@@ -635,13 +633,21 @@ def test_analyze_diagonally_adjacent_numbers(
 
 def test_find_wrong_numbers() -> None:
     for board in all_orientations(board_1_sol):
-        assert not find_wrong_numbers(board)
+        tp = ThoughtProcess(board)
+        for i, j in tp.all_interior_ij():
+            tp.find_wrong_numbers(i, j)
+        # tp.apply_methods(6)
+        assert not tp.wrong_numbers
     board_1_sol_1 = board_1_sol.copy()
     board_1_sol_1[2, 2] = "#"
     board_1_sol_1[5, 3] = "+"
     board_1_sol_1[2, 4] = "#"
     print_board(board_1_sol_1)
-    assert find_wrong_numbers(board_1_sol_1) == [(2, 3), (3, 2), (3, 4), (4, 3)]
+    tp = ThoughtProcess(board_1_sol_1)
+    for i, j in tp.all_interior_ij():
+        tp.find_wrong_numbers(i, j)
+    # tp.apply_methods(6)
+    assert tp.wrong_numbers == {(2, 3), (3, 2), (3, 4), (4, 3)}
 
 
 @pytest.fixture
@@ -1115,8 +1121,8 @@ def test_find_unilluminatable_cells() -> None:
             ----
             -0.-
             ----
-            -2.-
-            -.--
+            -2#-
+            -#--
             -..-
             -.0-
             ----
@@ -1127,7 +1133,13 @@ def test_find_unilluminatable_cells() -> None:
             """)
     )
     tp = ThoughtProcess(board)
+    tp.apply_methods(6)
+    # we should find one unilluminatable cell and then terminate immediately
+    assert set(tp.unilluminatable_cells) == {(5, 2)}
+    print_board(tp.board)
     for i, j in zip(*(tp.board == ".").nonzero(), strict=True):
         tp.apply_bulb_methods(i, j, 6)
         tp.apply_dot_methods(i, j, 6)
-    assert set(find_unilluminatable_cells(tp.board)) == {(1, 2), (5, 2)}
+        tp.find_unilluminatable_cells(i, j)
+    # if we force it to keep going, we should also find another unilluminatable cell
+    assert set(tp.unilluminatable_cells) == {(1, 2), (5, 2)}

@@ -1,3 +1,4 @@
+# TODO use a deque
 from collections.abc import Callable
 from itertools import zip_longest
 from typing import cast
@@ -432,82 +433,6 @@ def check_all(board: np.ndarray) -> bool:
     )
 
 
-def find_wrong_numbers(board: np.ndarray) -> list[tuple[int, int]]:
-    """
-    Checks numbered spaces to see if they have a feasible number of bulbs.
-
-    Returns a list of tuples of coordinates of numbered spaces that touch the wrong
-    number of bulbs.
-    """
-    wrong_numbers = []
-    for i in range(1, np.size(board, 0) - 1):
-        for j in range(1, np.size(board, 1) - 1):
-            if board[i, j] in "0123":
-                n_free = sum(board[i + di, j + dj] == "." for (di, dj) in ORTHO_DIRS)
-                n_bulbs_already = sum(
-                    board[i + di, j + dj] == "#" for (di, dj) in ORTHO_DIRS
-                )
-                if n_bulbs_already > int(board[i, j]) or n_free + n_bulbs_already < int(
-                    board[i, j]
-                ):
-                    wrong_numbers.append((i, j))
-    return wrong_numbers
-
-
-def find_unilluminatable_cells(board: np.ndarray) -> list[tuple[int, int]]:
-    """
-    Takes annotated board.
-    Returns the coordinates of holes that cannot be illuminated and cannot be bulbs.
-
-    Examples:
-    ---
-    0*-
-    ---
-
-    -----
-    -2..-
-    -.-.0
-    -----
-
-    illuminate should be run before calling this function, which only checks + cells.
-    """
-    unilluminatable_cells = []
-
-    for i in range(1, np.size(board, 0) - 1):
-        for j in range(1, np.size(board, 1) - 1):
-            if board[i, j] == "+":
-                is_unilluminatable = True  # presume a hole
-                iters = [
-                    zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
-                    zip_longest([], range(j - 1, 0, -1), fillvalue=i),
-                    zip_longest(range(i + 1, np.size(board, 0) - 1), [], fillvalue=j),
-                    zip_longest([], range(j + 1, np.size(board, 1) - 1), fillvalue=i),
-                ]
-                for it in iters:
-                    for i1, j1 in it:
-                        if board[i1, j1] == ".":
-                            is_unilluminatable = False
-                            break
-                        elif board[i1, j1] in "01234-":
-                            break
-                    if not is_unilluminatable:
-                        break
-                if is_unilluminatable:
-                    unilluminatable_cells.append((i, j))
-    return unilluminatable_cells
-
-
-def check_unsolved(board: np.ndarray) -> bool:
-    """
-    Returns true if a partial solution is not observably incorrect
-    """
-    return not bool(
-        find_wrong_numbers(board)
-        or illuminate_all(board)[0]
-        or find_unilluminatable_cells(board)
-    )
-
-
 class ThoughtProcess:
     """
     The main state held is: board: np.ndarray
@@ -530,7 +455,7 @@ class ThoughtProcess:
         self.new_mark = []
         self.lit_bulb_pairs = []
         self.unilluminatable_cells = []
-        self.wrong_numbers = []
+        self.wrong_numbers = set()
 
     def maybe_set_bulb(self, i: int, j: int) -> None:
         """
@@ -542,7 +467,7 @@ class ThoughtProcess:
             self.board[i, j] = "#"
             self.new_mark.append((i, j, "#"))
             self.illuminate_one(i, j)
-            # TODO call self.find_wrong_numbers
+            self.find_wrong_numbers(i, j)
 
     def maybe_set_dot(self, i: int, j: int) -> None:
         """
@@ -553,7 +478,8 @@ class ThoughtProcess:
         if self.board[i, j] == ".":
             self.board[i, j] = "+"
             self.new_mark.append((i, j, "+"))
-            # TODO check for relevant error
+            self.find_wrong_numbers(i, j)
+            self.find_unilluminatable_cells(i, j)
 
     def all_interior_ij(self) -> list[tuple[int, int]]:
         return [
@@ -585,7 +511,7 @@ class ThoughtProcess:
             self.apply_dot_and_bulb_methods(i, j, level)
             # TODO modify this break with the condition that we're not in the initial
             # scan
-            if not self.check_unsolved(i, j):
+            if not self.check_unsolved():
                 break
             if level >= 9 and not self.new_mark:
                 # guess and check is orders of magnitude more expensive than other
@@ -750,12 +676,6 @@ class ThoughtProcess:
             if sees_free and not sees_multiple_free:
                 self.maybe_set_bulb(free_i, free_j)
 
-    def transition_wrapper(self, func: Callable[[np.ndarray], np.ndarray]) -> None:
-        old_board = self.board.copy()
-        func(self.board)
-        for i, j in zip(*(old_board != self.board).nonzero(), strict=True):
-            self.new_mark.append((i, j, cast(str, self.board[i, j])))
-
     def mark_dots_at_corners(self, i: int, j: int) -> None:
         """
         Marks dots at free cells diagonal to numbers if a bulb in that cell would not
@@ -791,11 +711,10 @@ class ThoughtProcess:
                 if n_free + n_bulbs_already == int(self.board[i_number, j_number]) + 1:
                     for di, dj in DIAG_DIRS:
                         if (
-                            self.board[i_number + di, j_number + dj] == "."
-                            and self.board[i_number + di, j_number] == "."
+                            self.board[i_number + di, j_number] == "."
                             and self.board[i_number, j_number + dj] == "."
                         ):
-                            self.board[i_number + di, j_number + dj] = "+"
+                            self.maybe_set_dot(i_number + di, j_number + dj)
 
     def analyze_diagonally_adjacent_numbers(self, i: int, j: int) -> None:
         """
@@ -862,13 +781,90 @@ class ThoughtProcess:
         self.maybe_set_bulb(iD + di, jD)
         self.maybe_set_bulb(iD, jD + dj)
 
+    def transition_wrapper(self, func: Callable[[np.ndarray], np.ndarray]) -> None:
+        old_board = self.board.copy()
+        func(self.board)
+        for i, j in zip(*(old_board != self.board).nonzero(), strict=True):
+            self.new_mark.append((i, j, cast(str, self.board[i, j])))
+
     def trace_shared_lanes(self, i: int, j: int) -> None:
         self.transition_wrapper(trace_shared_lanes)
 
-    def check_unsolved(self, i: int, j: int) -> bool:
-        self.wrong_numbers.extend(find_wrong_numbers(self.board))
-        self.lit_bulb_pairs = illuminate_all(self.board)[0]
-        self.unilluminatable_cells.extend(find_unilluminatable_cells(self.board))
+    def find_wrong_numbers(self, i: int, j: int) -> None:
+        """
+        Checks numbered spaces to see if they have a feasible number of bulbs.
+
+        Returns a list of tuples of coordinates of numbered spaces that touch the wrong
+        number of bulbs.
+        """
+        for di1, dj1 in ORTHO_DIRS:
+            i_number = i + di1
+            j_number = j + dj1
+            if self.board[i_number, j_number] in "01234":
+                n_free = sum(
+                    self.board[i_number + di, j_number + dj] == "."
+                    for (di, dj) in ORTHO_DIRS
+                )
+                n_bulbs_already = sum(
+                    self.board[i_number + di, j_number + dj] == "#"
+                    for (di, dj) in ORTHO_DIRS
+                )
+                if n_bulbs_already > int(
+                    self.board[i_number, j_number]
+                ) or n_free + n_bulbs_already < int(self.board[i_number, j_number]):
+                    self.wrong_numbers.add((i_number, j_number))
+
+    def find_unilluminatable_cells(self, i: int, j: int) -> None:
+        """
+        Finds cells that cannot be illuminated and cannot be bulbs.
+
+        Scans over line of sight from i, j for dotted cells, and checks those
+
+        Examples are *:
+        ----
+        -0*-
+        ----
+
+        -----
+        -2#_-
+        -#-*0
+        -----
+        """
+        self.check_this_cell_unilluminatable(i, j)
+        iters1 = [
+            zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
+            zip_longest([], range(j - 1, 0, -1), fillvalue=i),
+            zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
+            zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
+        ]
+        for it1 in iters1:
+            for i1, j1 in it1:
+                if self.board[i1, j1] in "01234-":
+                    break
+                self.check_this_cell_unilluminatable(i1, j1)
+
+    def check_this_cell_unilluminatable(self, i: int, j: int) -> None:
+        if self.board[i, j] == "+":
+            is_unilluminatable = True
+            iters = [
+                zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
+                zip_longest([], range(j - 1, 0, -1), fillvalue=i),
+                zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
+                zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
+            ]
+            for it2 in iters:
+                for i2, j2 in it2:
+                    if self.board[i2, j2] in ".#":
+                        is_unilluminatable = False
+                        break
+                    elif self.board[i2, j2] in "01234-":
+                        break
+                if not is_unilluminatable:
+                    break
+            if is_unilluminatable:
+                self.unilluminatable_cells.append((i, j))
+
+    def check_unsolved(self) -> bool:
         return not any(
             [self.wrong_numbers, self.lit_bulb_pairs, self.unilluminatable_cells]
         )
@@ -886,7 +882,7 @@ class ThoughtProcess:
                     try_tp_dot = ThoughtProcess(self.board)
                     try_tp_dot.maybe_set_dot(i, j)
                     try_tp_dot.apply_methods(level_to_use)
-                    if not check_unsolved(try_tp_dot.board):
+                    if not try_tp_dot.check_unsolved():
                         self.maybe_set_bulb(i, j)
                         self.apply_methods(level_to_use)
                         continue
@@ -894,7 +890,7 @@ class ThoughtProcess:
                     try_tp_bulb = ThoughtProcess(self.board)
                     try_tp_bulb.maybe_set_bulb(i, j)
                     try_tp_bulb.apply_methods(level_to_use)
-                    if not check_unsolved(try_tp_bulb.board):
+                    if not try_tp_bulb.check_unsolved():
                         self.maybe_set_dot(i, j)
                         self.apply_methods(level_to_use)
             if np.all(self.board == old_board):
