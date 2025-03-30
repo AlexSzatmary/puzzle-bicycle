@@ -1,4 +1,5 @@
 # TODO use a deque
+from collections import deque
 from collections.abc import Callable
 from itertools import zip_longest
 from typing import cast
@@ -437,7 +438,7 @@ class ThoughtProcess:
     """
     The main state held is: board: np.ndarray
 
-    new_mark: list[tuple[int, int, str]], a queue of new dots "+" or bulbs "#", which
+    new_mark: deque[tuple[int, int, str]], a queue of new dots "+" or bulbs "#", which
     will later trigger methods to run
 
     lit_bulb_pairs: list[tuple[int, int, int, int]], coordinates of pairs of bulbs that
@@ -452,7 +453,7 @@ class ThoughtProcess:
 
     def __init__(self, board: np.ndarray) -> None:
         self.board = board.copy()
-        self.new_mark = []
+        self.new_mark = deque()
         self.lit_bulb_pairs = []
         self.unilluminatable_cells = []
         self.wrong_numbers = set()
@@ -496,11 +497,11 @@ class ThoughtProcess:
         new_mark queue.
         """
         if not self.new_mark:
-            self.new_mark = [(i, j, ".") for (i, j) in self.all_interior_ij()]
+            self.new_mark = deque((i, j, ".") for (i, j) in self.all_interior_ij())
         if level >= 1:
             self.lit_bulb_pairs, self.board = illuminate_all(self.board)
         while self.new_mark:
-            i, j, mark = self.new_mark.pop()
+            i, j, mark = self.new_mark.popleft()
             if mark == ".":
                 self.apply_bulb_methods(i, j, level)
                 self.apply_dot_methods(i, j, level)
@@ -509,9 +510,7 @@ class ThoughtProcess:
             elif mark == "#":
                 self.apply_bulb_methods(i, j, level)
             self.apply_dot_and_bulb_methods(i, j, level)
-            # TODO modify this break with the condition that we're not in the initial
-            # scan
-            if not self.check_unsolved():
+            if not self.check_unsolved() and not mark == ".":
                 break
             if level >= 9 and not self.new_mark:
                 # guess and check is orders of magnitude more expensive than other

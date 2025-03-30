@@ -1135,7 +1135,7 @@ def test_find_unilluminatable_cells() -> None:
     tp = ThoughtProcess(board)
     tp.apply_methods(6)
     # we should find one unilluminatable cell and then terminate immediately
-    assert set(tp.unilluminatable_cells) == {(5, 2)}
+    assert set(tp.unilluminatable_cells) == {(1, 2)}
     print_board(tp.board)
     for i, j in zip(*(tp.board == ".").nonzero(), strict=True):
         tp.apply_bulb_methods(i, j, 6)
