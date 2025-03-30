@@ -469,6 +469,8 @@ class ThoughtProcess:
             self.new_mark.append((i, j, "#"))
             self.illuminate_one(i, j)
             self.find_wrong_numbers(i, j)
+            # print()
+            # print_board(self.board)
 
     def maybe_set_dot(self, i: int, j: int) -> None:
         """
@@ -481,6 +483,10 @@ class ThoughtProcess:
             self.new_mark.append((i, j, "+"))
             self.find_wrong_numbers(i, j)
             self.find_unilluminatable_cells(i, j)
+            # print()
+            # print(self.new_mark)
+            # print()
+            # print_board(self.board)
 
     def all_interior_ij(self) -> list[tuple[int, int]]:
         return [
@@ -489,52 +495,58 @@ class ThoughtProcess:
             for j in range(1, self.board.shape[1] - 1)
         ]
 
-    def apply_methods(self, level: int) -> None:
+    def line_of_sight(self, i: int, j: int) -> list[tuple[int, int]]:
+        line_of_sight_cells = []
+        iters = [
+            zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
+            zip_longest([], range(j - 1, 0, -1), fillvalue=i),
+            zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
+            zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
+        ]
+        for it in iters:
+            for i, j in it:
+                if self.board[i, j] in "01234-":
+                    break
+                line_of_sight_cells.append((i, j))
+        return line_of_sight_cells
+
+    def apply_methods(self, level: int) -> None:  # noqa: C901
+        # The complexity here is fine
         """
         Applies the various logical methods as set by the level.
 
         If the queue is empty, it first, scans everything; otherwise, it just does the
         new_mark queue.
         """
+        if level < 1:
+            return
         if not self.new_mark:
             self.new_mark = deque((i, j, ".") for (i, j) in self.all_interior_ij())
-        if level >= 1:
             self.lit_bulb_pairs, self.board = illuminate_all(self.board)
+            for i, j in self.all_interior_ij():
+                self.find_wrong_numbers_at_cell(i, j)
+                self.check_this_cell_unilluminatable(i, j)
         while self.new_mark:
             i, j, mark = self.new_mark.popleft()
-            if mark == ".":
-                self.apply_bulb_methods(i, j, level)
-                self.apply_dot_methods(i, j, level)
-            elif mark == "+":
-                self.apply_dot_methods(i, j, level)
-            elif mark == "#":
-                self.apply_bulb_methods(i, j, level)
-            self.apply_dot_and_bulb_methods(i, j, level)
+            if level >= 2:
+                self.mark_bulbs_around_dotted_numbers(i, j, mark)
+                self.mark_dots_around_full_numbers(i, j, mark)
+            if level >= 3:
+                self.fill_holes(i, j, mark)
+                self.mark_unique_bulbs_for_dot_cells(i, j, mark)
+            if level >= 4:
+                self.mark_dots_at_corners(i, j, mark)
+            if level >= 5:
+                self.analyze_diagonally_adjacent_numbers(i, j, mark)
+            if level >= 6:
+                ...
+            #     self.trace_shared_lanes(i, j)
             if not self.check_unsolved() and not mark == ".":
                 break
             if level >= 9 and not self.new_mark:
                 # guess and check is orders of magnitude more expensive than other
                 # methods and should only be called if all else has been tried.
                 self.guess_and_check(level)
-
-    def apply_dot_methods(self, i: int, j: int, level: int) -> None:
-        if level >= 2:
-            self.mark_bulbs_around_dotted_numbers(i, j)
-        if level >= 3:
-            self.fill_holes(i, j)
-            self.mark_unique_bulbs_for_dot_cells(i, j)
-        if level >= 4:
-            self.mark_dots_at_corners(i, j)
-
-    def apply_bulb_methods(self, i: int, j: int, level: int) -> None:
-        if level >= 2:
-            self.mark_dots_around_full_numbers(i, j)
-
-    def apply_dot_and_bulb_methods(self, i: int, j: int, level: int) -> None:
-        if level >= 5:
-            self.analyze_diagonally_adjacent_numbers(i, j)
-        # if level >= 6:
-        #     self.trace_shared_lanes(i, j)
 
     def illuminate_one(self, i: int, j: int) -> None:
         """
@@ -577,10 +589,14 @@ class ThoughtProcess:
         for i, j in zip(*ijs, strict=True):
             self.illuminate_one(i, j)
 
-    def mark_bulbs_around_dotted_numbers(self, i: int, j: int) -> None:
-        for di1, dj1 in ORTHO_DIRS:
-            i_number = i + di1
-            j_number = j + dj1
+    def mark_bulbs_around_dotted_numbers(self, i: int, j: int, mark: str) -> None:
+        if mark == ".":
+            cells_to_check = [(i, j)]
+        elif mark in ".+_|x":
+            cells_to_check = [(i + di1, j + dj1) for di1, dj1 in ORTHO_DIRS]
+        else:
+            return
+        for i_number, j_number in cells_to_check:
             if self.board[i_number, j_number] in "01234":
                 if count_free_near_number(
                     self.board, i_number, j_number
@@ -588,16 +604,20 @@ class ThoughtProcess:
                     for di, dj in ORTHO_DIRS:
                         self.maybe_set_bulb(i_number + di, j_number + dj)
 
-    def mark_dots_around_full_numbers(self, i: int, j: int) -> None:
-        for di1, dj1 in ORTHO_DIRS:
-            i_number = i + di1
-            j_number = j + dj1
+    def mark_dots_around_full_numbers(self, i: int, j: int, mark: str) -> None:
+        if mark == ".":
+            cells_to_check = [(i, j)]
+        elif mark in "#":
+            cells_to_check = [(i + di1, j + dj1) for di1, dj1 in ORTHO_DIRS]
+        else:
+            return
+        for i_number, j_number in cells_to_check:
             if self.board[i_number, j_number] in "01234":
                 if count_missing_bulbs_near_number(self.board, i_number, j_number) == 0:
                     for di2, dj2 in ORTHO_DIRS:
                         self.maybe_set_dot(i_number + di2, j_number + dj2)
 
-    def fill_holes(self, i: int, j: int) -> None:
+    def fill_holes(self, i0: int, j0: int, mark: str) -> None:
         """
         Takes annotated and possibly illuminated board.
         Returns the board with holes filled in.
@@ -613,8 +633,16 @@ class ThoughtProcess:
         Cases marked ^ are simple. Case * is not a hole because this method does not see
         the 0; after a + is marked above the 0, the * would then be a hole.
         """
+        if mark == ".":
+            self._fill_holes_cell(i0, j0)
+        elif mark == "+":
+            for i, j in self.line_of_sight(i0, j0):
+                self._fill_holes_cell(i, j)
+
+    def _fill_holes_cell(self, i: int, j: int) -> None:
         if self.board[i, j] == ".":
             is_hole = True  # presume a hole
+            # TODO use line of sight function here
             iters = [
                 zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
                 zip_longest([], range(j - 1, 0, -1), fillvalue=i),
@@ -633,7 +661,7 @@ class ThoughtProcess:
             if is_hole:
                 self.maybe_set_bulb(i, j)
 
-    def mark_unique_bulbs_for_dot_cells(self, i: int, j: int) -> None:
+    def mark_unique_bulbs_for_dot_cells(self, i0: int, j0: int, mark: str) -> None:
         """
         Takes annotated and possibly illuminated board. Marks cells that must be bulbs
         for a dotted cell to be illuminated. For example, if we have,
@@ -648,6 +676,13 @@ class ThoughtProcess:
         ----
         Because otherwise the + below the 0 could not be illuminated.
         """
+        if mark == ".":
+            self._mark_unique_bulbs_for_dot_cells_at_cell(i0, j0)
+        elif mark == "+":
+            for i, j in self.line_of_sight(i0, j0):
+                self._mark_unique_bulbs_for_dot_cells_at_cell(i, j)
+
+    def _mark_unique_bulbs_for_dot_cells_at_cell(self, i: int, j: int) -> None:
         if self.board[i, j] == "+":
             sees_free = False
             sees_multiple_free = False
@@ -675,7 +710,7 @@ class ThoughtProcess:
             if sees_free and not sees_multiple_free:
                 self.maybe_set_bulb(free_i, free_j)
 
-    def mark_dots_at_corners(self, i: int, j: int) -> None:
+    def mark_dots_at_corners(self, i: int, j: int, mark: str) -> None:
         """
         Marks dots at free cells diagonal to numbers if a bulb in that cell would not
         work.
@@ -695,27 +730,28 @@ class ThoughtProcess:
         -..
         because that case should already be caught by mark_bulbs_around_dotted_numbers.
         """
-        for di1, dj1 in DIAG_DIRS:
-            i_number = i + di1
-            j_number = j + dj1
-            if self.board[i_number, j_number] in "01234":
-                n_free = sum(
-                    self.board[i_number + di2, j_number + dj2] == "."
-                    for (di2, dj2) in ORTHO_DIRS
-                )
-                n_bulbs_already = sum(
-                    self.board[i_number + di, j_number + dj] == "#"
-                    for (di, dj) in ORTHO_DIRS
-                )
-                if n_free + n_bulbs_already == int(self.board[i_number, j_number]) + 1:
-                    for di, dj in DIAG_DIRS:
-                        if (
-                            self.board[i_number + di, j_number] == "."
-                            and self.board[i_number, j_number + dj] == "."
-                        ):
-                            self.maybe_set_dot(i_number + di, j_number + dj)
+        if mark == ".":
+            self._mark_dots_at_corners_at_cell(i, j)
+        elif mark == "+":
+            for di1, dj1 in ORTHO_DIRS:
+                i_corner = i + di1
+                j_corner = j + dj1
+                self._mark_dots_at_corners_at_cell(i_corner, j_corner)
 
-    def analyze_diagonally_adjacent_numbers(self, i: int, j: int) -> None:
+    def _mark_dots_at_corners_at_cell(self, i: int, j: int) -> None:
+        if self.board[i, j] in "01234":
+            n_free = sum(
+                self.board[i + di2, j + dj2] == "." for (di2, dj2) in ORTHO_DIRS
+            )
+            n_bulbs_already = sum(
+                self.board[i + di, j + dj] == "#" for (di, dj) in ORTHO_DIRS
+            )
+            if n_free + n_bulbs_already == int(self.board[i, j]) + 1:
+                for di, dj in DIAG_DIRS:
+                    if self.board[i + di, j] == "." and self.board[i, j + dj] == ".":
+                        self.maybe_set_dot(i + di, j + dj)
+
+    def analyze_diagonally_adjacent_numbers(self, i: int, j: int, mark: str) -> None:
         """
         Adds dots and bulbs for certain diagonally adjacent numbers sharing 2 free
         spaces.
@@ -744,9 +780,11 @@ class ThoughtProcess:
         -..+.
         We also account for what happens if a bulb or dot is already known.
         """
-        for di1, dj1 in ORTHO_DIRS:
-            iA = i + di1
-            jA = j + dj1
+        if mark == ".":
+            cells_to_check = [(i, j)]
+        else:
+            cells_to_check = [(i + di1, j + dj1) for di1, dj1 in ORTHO_DIRS]
+        for iA, jA in cells_to_check:
             if self.board[iA, jA] in "01234":
                 for di2, dj2 in DIAG_DIRS:
                     iB = iA + di2
@@ -761,15 +799,15 @@ class ThoughtProcess:
                         missing_B = count_missing_bulbs_near_number(self.board, iB, jB)
                         free_B = count_free_near_number(self.board, iB, jB)
                         if missing_A == 1 and missing_B + 1 == free_B:
-                            self.analyze_diagonally_adjacent_numbers_update_board(
+                            self._analyze_diagonally_adjacent_numbers_update_board(
                                 iA, jA, iB, jB
                             )
                         elif missing_B == 1 and missing_A + 1 == free_A:
-                            self.analyze_diagonally_adjacent_numbers_update_board(
+                            self._analyze_diagonally_adjacent_numbers_update_board(
                                 iB, jB, iA, jA
                             )
 
-    def analyze_diagonally_adjacent_numbers_update_board(
+    def _analyze_diagonally_adjacent_numbers_update_board(
         self, iC: int, jC: int, iD: int, jD: int
     ) -> None:
         # point C has 1 missing bulb and point D has one free space more
@@ -799,19 +837,22 @@ class ThoughtProcess:
         for di1, dj1 in ORTHO_DIRS:
             i_number = i + di1
             j_number = j + dj1
-            if self.board[i_number, j_number] in "01234":
-                n_free = sum(
-                    self.board[i_number + di, j_number + dj] == "."
-                    for (di, dj) in ORTHO_DIRS
-                )
-                n_bulbs_already = sum(
-                    self.board[i_number + di, j_number + dj] == "#"
-                    for (di, dj) in ORTHO_DIRS
-                )
-                if n_bulbs_already > int(
-                    self.board[i_number, j_number]
-                ) or n_free + n_bulbs_already < int(self.board[i_number, j_number]):
-                    self.wrong_numbers.add((i_number, j_number))
+            self.find_wrong_numbers_at_cell(i_number, j_number)
+
+    def find_wrong_numbers_at_cell(self, i_number: int, j_number: int) -> None:
+        if self.board[i_number, j_number] in "01234":
+            n_free = sum(
+                self.board[i_number + di, j_number + dj] == "."
+                for (di, dj) in ORTHO_DIRS
+            )
+            n_bulbs_already = sum(
+                self.board[i_number + di, j_number + dj] == "#"
+                for (di, dj) in ORTHO_DIRS
+            )
+            if n_bulbs_already > int(
+                self.board[i_number, j_number]
+            ) or n_free + n_bulbs_already < int(self.board[i_number, j_number]):
+                self.wrong_numbers.add((i_number, j_number))
 
     def find_unilluminatable_cells(self, i: int, j: int) -> None:
         """

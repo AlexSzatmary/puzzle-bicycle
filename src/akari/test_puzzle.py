@@ -305,7 +305,7 @@ def test_fill_holes() -> None:
     ):
         tp = ThoughtProcess(board)
         for i, j in tp.all_interior_ij():
-            tp.fill_holes(i, j)
+            tp.fill_holes(i, j, ".")
         assert stringify_board(tp.board == ref)
 
 
@@ -403,7 +403,7 @@ def test_mark_dots_around_full_numbers(
     ):
         tp = ThoughtProcess(board)
         for i, j in tp.all_interior_ij():
-            tp.mark_dots_around_full_numbers(i, j)
+            tp.mark_dots_around_full_numbers(i, j, ".")
         assert stringify_board(tp.board) == stringify_board(ref)
 
 
@@ -456,7 +456,7 @@ def test_mark_bulbs_around_dotted_numbers(
     ):
         tp = ThoughtProcess(board)
         for i, j in tp.all_interior_ij():
-            tp.mark_bulbs_around_dotted_numbers(i, j)
+            tp.mark_bulbs_around_dotted_numbers(i, j, ".")
         assert stringify_board(tp.board) == stringify_board(ref)
 
 
@@ -507,7 +507,7 @@ def test_mark_dots_at_corners(
     ):
         tp = ThoughtProcess(board)
         for i, j in tp.all_interior_ij():
-            tp.mark_dots_at_corners(i, j)
+            tp.mark_dots_at_corners(i, j, ".")
         assert stringify_board(tp.board) == stringify_board(ref)
 
 
@@ -562,7 +562,7 @@ def test_mark_unique_bulbs_for_dot_cells(
     ):
         tp = ThoughtProcess(board)
         for i, j in tp.all_interior_ij():
-            tp.mark_unique_bulbs_for_dot_cells(i, j)
+            tp.mark_unique_bulbs_for_dot_cells(i, j, ".")
         assert stringify_board(tp.board) == stringify_board(ref)
 
 
@@ -627,7 +627,7 @@ def test_analyze_diagonally_adjacent_numbers(
     ):
         tp = ThoughtProcess(board)
         for i, j in tp.all_interior_ij():
-            tp.analyze_diagonally_adjacent_numbers(i, j)
+            tp.analyze_diagonally_adjacent_numbers(i, j, ".")
         assert stringify_board(tp.board) == stringify_board(ref)
 
 
@@ -1123,7 +1123,7 @@ def test_find_unilluminatable_cells() -> None:
             ----
             -2#-
             -#--
-            -..-
+            -.+-
             -.0-
             ----
             -0.-
@@ -1134,12 +1134,5 @@ def test_find_unilluminatable_cells() -> None:
     )
     tp = ThoughtProcess(board)
     tp.apply_methods(6)
-    # we should find one unilluminatable cell and then terminate immediately
-    assert set(tp.unilluminatable_cells) == {(1, 2)}
     print_board(tp.board)
-    for i, j in zip(*(tp.board == ".").nonzero(), strict=True):
-        tp.apply_bulb_methods(i, j, 6)
-        tp.apply_dot_methods(i, j, 6)
-        tp.find_unilluminatable_cells(i, j)
-    # if we force it to keep going, we should also find another unilluminatable cell
     assert set(tp.unilluminatable_cells) == {(1, 2), (5, 2)}
