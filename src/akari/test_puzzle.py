@@ -1096,23 +1096,15 @@ def board_pairs_trace_shared_lanes(
 def test_trace_shared_lanes_all(
     board_pairs_trace_shared_lanes: list[tuple[np.ndarray, np.ndarray]],
 ) -> None:
-    print(f"len(board_pairs_trace_shared_lanes) {len(board_pairs_trace_shared_lanes)}")
-    j = 0
     for pre, post in board_pairs_trace_shared_lanes:
-        i = 0
         for pre_rotated, post_rotated in zip(
             all_orientations(pre),
             all_orientations(post),
             strict=True,
         ):
-            print(f"HI i{i}")
-            if j == 0:
-                print(pre_rotated)
-            i += 1
             assert stringify_board(trace_shared_lanes(pre_rotated)) == stringify_board(
                 post_rotated
             )
-        j = 1
 
 
 def test_find_unilluminatable_cells() -> None:

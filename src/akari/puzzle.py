@@ -1,4 +1,3 @@
-# TODO use a deque
 from collections import deque
 from collections.abc import Callable
 from itertools import zip_longest
@@ -469,8 +468,6 @@ class ThoughtProcess:
             self.new_mark.append((i, j, "#"))
             self.illuminate_one(i, j)
             self.find_wrong_numbers(i, j)
-            # print()
-            # print_board(self.board)
 
     def maybe_set_dot(self, i: int, j: int) -> None:
         """
@@ -483,10 +480,6 @@ class ThoughtProcess:
             self.new_mark.append((i, j, "+"))
             self.find_wrong_numbers(i, j)
             self.find_unilluminatable_cells(i, j)
-            # print()
-            # print(self.new_mark)
-            # print()
-            # print_board(self.board)
 
     def all_interior_ij(self) -> list[tuple[int, int]]:
         return [
