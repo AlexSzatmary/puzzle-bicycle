@@ -635,7 +635,6 @@ class ThoughtProcess:
     def _fill_holes_cell(self, i: int, j: int) -> None:
         if self.board[i, j] == ".":
             is_hole = True  # presume a hole
-            # TODO use line of sight function here
             iters = [
                 zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
                 zip_longest([], range(j - 1, 0, -1), fillvalue=i),
