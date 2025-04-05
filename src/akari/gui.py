@@ -247,23 +247,68 @@ class Cell(QWidget):
         p.end()
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        mwb = self.main_window.board
+        """
+        Sends events based on mode
+        """
+        match self.main_window.edit_mode:
+            case "play":
+                self.click_play_mode(event)
+            case "block":
+                self.click_block_mode(event)
+            case "number":
+                self.click_number_mode(event)
+
+    def set_state_user_and_mwb(self, value: str) -> None:
+        self.state_user = value
+        self.main_window.board[self.i + 1, self.j + 1] = self.state_user
+
+    def click_play_mode(self, event: QMouseEvent) -> None:
+        """
+        Toggles white cells between free, dot, and bulb, for solving puzzles
+        """
         match self.state_user:
             case "#":
-                self.state_user = "."
-                mwb[self.i + 1, self.j + 1] = self.state_user
+                self.set_state_user_and_mwb(".")
             case ".":
-                self.state_user = "+"
-                mwb[self.i + 1, self.j + 1] = self.state_user
+                self.set_state_user_and_mwb("+")
             case "+":
-                self.state_user = "#"
-                mwb[self.i + 1, self.j + 1] = self.state_user
+                self.set_state_user_and_mwb("#")
             case _:
                 return super().mouseReleaseEvent(event)
         self.clicked.emit()
         self.update()
         self.main_window.apply_methods()
         return super().mouseReleaseEvent(event)
+
+    def click_block_mode(self, event: QMouseEvent) -> None:
+        """
+        Toggles white and black cells for editing puzzles
+
+        Numbered cells lose numbers, white cells lose marks
+        """
+        if self.state_user in "-01234":
+            self.set_state_user_and_mwb(".")
+        else:
+            self.set_state_user_and_mwb("-")
+        self.clicked.emit()
+        self.update()
+        self.main_window.apply_methods()
+        return super().mouseReleaseEvent(event)
+
+    def click_number_mode(self, event: QMouseEvent) -> None:
+        """
+        Edits block numbers, and toggles white cells for test solves
+        """
+        black = "-01234"
+        if (i := black.find(self.state_user)) != -1:
+            self.set_state_user_and_mwb(black[(i + 1) % len(black)])
+            self.clicked.emit()
+            self.update()
+            self.main_window.apply_methods()
+            return super().mouseReleaseEvent(event)
+        else:
+            # have identical behavior to play mode for white cells
+            return self.click_play_mode(event)
 
 
 pzprv3_1 = """
@@ -327,6 +372,28 @@ class MainWindow(QMainWindow):
             action.setCheckable(True)
             action.setChecked(level == AUTO_APPLY_METHODS_LEVEL)
             settings_menu.addAction(action)
+
+        settings_menu.addSeparator()
+        self.edit_mode_group = QActionGroup(self)
+        action = QAction("Play", self.edit_mode_group)
+        action.triggered.connect(self.edit_mode_changed)
+        action.setShortcut(QKeySequence("Ctrl+E"))
+        action.setCheckable(True)
+        action.setChecked(True)
+        settings_menu.addAction(action)
+        action = QAction("Edit blocks", self.edit_mode_group)
+        action.triggered.connect(self.edit_mode_changed)
+        action.setShortcut(QKeySequence("Ctrl+R"))
+        action.setCheckable(True)
+        action.setChecked(False)
+        settings_menu.addAction(action)
+        action = QAction("Edit numbers", self.edit_mode_group)
+        action.triggered.connect(self.edit_mode_changed)
+        action.setShortcut(QKeySequence("Ctrl+T"))
+        action.setCheckable(True)
+        action.setChecked(False)
+        settings_menu.addAction(action)
+
         self.board = puzzle.load_pzprv3(pzprv3_1)
         self.board_auto = self.board.copy()
         self.initialize_grid()
@@ -377,6 +444,22 @@ class MainWindow(QMainWindow):
         )
         if self.auto_apply_methods_level + 1 == len(self.methods_group.actions()):
             self.auto_apply_methods_level = 9
+        self.update_all(self.board)
+        self.board_auto = self.board
+        self.apply_methods()
+
+    def edit_mode_changed(self) -> None:
+        """
+        Toggles mode between Play, Block, and Number
+        """
+        modes = ["play", "block", "number"]
+        self.edit_mode = modes[
+            next(
+                i
+                for (i, action) in enumerate(self.edit_mode_group.actions())
+                if action.isChecked()
+            )
+        ]
         self.update_all(self.board)
         self.board_auto = self.board
         self.apply_methods()
