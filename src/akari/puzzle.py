@@ -629,6 +629,7 @@ class ThoughtProcess:
         if mark == ".":
             self._fill_holes_cell(i0, j0)
         elif mark == "+":
+            self._fill_holes_cell(i0, j0)
             for i, j in self.line_of_sight(i0, j0):
                 self._fill_holes_cell(i, j)
 
@@ -671,6 +672,7 @@ class ThoughtProcess:
         if mark == ".":
             self._mark_unique_bulbs_for_dot_cells_at_cell(i0, j0)
         elif mark == "+":
+            self._mark_unique_bulbs_for_dot_cells_at_cell(i0, j0)
             for i, j in self.line_of_sight(i0, j0):
                 self._mark_unique_bulbs_for_dot_cells_at_cell(i, j)
 

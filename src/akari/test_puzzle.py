@@ -566,6 +566,38 @@ def test_mark_unique_bulbs_for_dot_cells(
         assert stringify_board(tp.board) == stringify_board(ref)
 
 
+def test_mark_unique_bulbs_for_dot_cells2() -> None:
+    board2 = boardify_string(
+        cleandoc(
+            """
+            -------
+            -.....-
+            -.-.-.-
+            -..0..-
+            -.-.-.-
+            -.....-
+            -------
+            """
+        )
+    )
+
+    board2_sol_str = cleandoc(
+        """
+            -------
+            -x_#_x-
+            -|-|-|-
+            -#_0_#-
+            -|-|-|-
+            -x_#_x-
+            -------
+            """
+    )
+
+    tp2 = ThoughtProcess(board2)
+    tp2.apply_methods(5)
+    assert stringify_board(tp2.board) == board2_sol_str
+
+
 @pytest.fixture
 def board_analyze_diagonally_adjacent_numbers() -> np.ndarray:
     return boardify_string(
