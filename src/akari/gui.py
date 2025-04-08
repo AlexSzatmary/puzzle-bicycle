@@ -354,6 +354,14 @@ class MainWindow(QMainWindow):
 
         settings_menu = menu.addMenu("&Settings")
 
+        self.clear_board_action = QAction("Clear board")
+        self.clear_board_action.triggered.connect(self.clear_board)
+        self.clear_board_action.setShortcut(QKeySequence("Ctrl+K"))
+        # self.clear_board_action.setCheckable(True)
+        # self.clear_board_action.setChecked(False)
+        settings_menu.addAction(self.clear_board_action)
+
+        settings_menu.addSeparator()
         self.methods_group = QActionGroup(self)
         for level in range(10):
             if 6 < level < 9:
@@ -455,6 +463,18 @@ class MainWindow(QMainWindow):
         if self.auto_apply_methods_level + 1 == len(self.methods_group.actions()):
             self.auto_apply_methods_level = 9
         self.update_all(self.board)
+        self.board_auto = self.board
+        self.apply_methods()
+
+    def clear_board(self) -> None:
+        self.board = puzzle.clear_board(self.board)
+        self.update_all(self.board)
+        for i in range(self.board_auto.shape[0] - 2):
+            for j in range(self.board_auto.shape[1] - 2):
+                ci = self.grid.itemAtPosition(i, j)
+                assert ci is not None
+                c = ci.widget()
+                c.state_user = "."
         self.board_auto = self.board
         self.apply_methods()
 

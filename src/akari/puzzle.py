@@ -65,6 +65,17 @@ def print_board(board: np.ndarray) -> None:
     print(stringify_board(board))
 
 
+def clear_board(board: np.ndarray) -> np.ndarray:
+    """
+    Removes annotations from board
+    """
+    for i in range(board.shape[0]):
+        for j in range(board.shape[1]):
+            if cast(str, board[i, j]) in "+_|x#":
+                board[i, j] = "."
+    return board
+
+
 def transpose_board(board: np.ndarray) -> np.ndarray:
     """
     Returns the board transposed, accounting for swapping the _ and | symbols
