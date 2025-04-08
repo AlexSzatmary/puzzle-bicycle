@@ -374,7 +374,17 @@ class MainWindow(QMainWindow):
             settings_menu.addAction(action)
 
         settings_menu.addSeparator()
+        self.contradiction_checker_enabled = False
+        self.contradiction_action = QAction("Check for contradictions")
+        self.contradiction_action.triggered.connect(self.set_contradiction_checker_mode)
+        self.contradiction_action.setShortcut(QKeySequence("Ctrl+D"))
+        self.contradiction_action.setCheckable(True)
+        self.contradiction_action.setChecked(False)
+        settings_menu.addAction(self.contradiction_action)
+
+        settings_menu.addSeparator()
         self.edit_mode_group = QActionGroup(self)
+        self.edit_mode = "play"
         action = QAction("Play", self.edit_mode_group)
         action.triggered.connect(self.edit_mode_changed)
         action.setShortcut(QKeySequence("Ctrl+E"))
@@ -448,6 +458,15 @@ class MainWindow(QMainWindow):
         self.board_auto = self.board
         self.apply_methods()
 
+    def set_contradiction_checker_mode(self) -> None:
+        """
+        Toggles contradiction checker mode
+        """
+        self.contradiction_checker_enabled = self.contradiction_action.isChecked()
+        self.update_all(self.board)
+        self.board_auto = self.board
+        self.apply_methods()
+
     def edit_mode_changed(self) -> None:
         """
         Toggles mode between Play, Block, and Number
@@ -498,6 +517,12 @@ class MainWindow(QMainWindow):
     def apply_methods(self) -> None:
         thought_process = puzzle.ThoughtProcess(self.board.copy())
         thought_process.apply_methods(self.auto_apply_methods_level)
+
+        # if the contradiction checker is on, run a full solve and, if a contradiction
+        # is detected, hijack the render
+        if self.contradiction_checker_enabled:
+            thought_process = self.handle_contradiction(thought_process)
+
         new_board_auto = thought_process.board
 
         old_puzzle_complete = self.puzzle_complete
@@ -526,9 +551,20 @@ class MainWindow(QMainWindow):
                     c.update()
 
         self.indicate_contradictions(thought_process)
+
         self.board_auto = new_board_auto
         if self.puzzle_complete and not old_puzzle_complete:
             self.animate_puzzle_complete()
+
+    def handle_contradiction(
+        self,
+        thought_process: puzzle.ThoughtProcess,
+    ) -> puzzle.ThoughtProcess:
+        thought_process_contradiction = puzzle.ThoughtProcess(self.board.copy())
+        thought_process_contradiction.apply_methods(9)
+        if not thought_process_contradiction.check_unsolved():
+            thought_process = thought_process_contradiction
+        return thought_process
 
     def update_all(self, board: np.ndarray) -> None:
         for i in range(self.board_auto.shape[0] - 2):
