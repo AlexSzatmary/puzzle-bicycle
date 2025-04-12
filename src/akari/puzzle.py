@@ -418,7 +418,7 @@ def check_number(board: np.ndarray) -> list[tuple[int, int]]:
     wrong_bulbs = []
     for i in range(1, np.size(board, 0) - 1):
         for j in range(1, np.size(board, 1) - 1):
-            if board[i, j] in "0123":
+            if board[i, j] in "01234":
                 if not int(board[i, j]) == (
                     (board[i - 1, j] == "#")
                     + (board[i + 1, j] == "#")
