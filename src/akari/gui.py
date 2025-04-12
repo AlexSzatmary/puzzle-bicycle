@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
     QLayout,
     QLineEdit,
     QMainWindow,
+    QPushButton,
     QSizePolicy,
     QSpacerItem,
     QVBoxLayout,
@@ -318,13 +319,16 @@ class Cell(QWidget):
 class NewPuzzleDialog(QDialog):
     def __init__(self) -> None:
         super().__init__()
+        self.setWindowTitle("New puzzle")
         layout = QGridLayout()
         layout.addWidget(QLabel("Rows"), 0, 0)
         self.n_rows = QLineEdit()
-        self.n_rows.setValidator(QIntValidator(1, 100))
+        self.n_rows.setValidator(QIntValidator(1, 99))
+        self.n_rows.setMaxLength(2)
         layout.addWidget(self.n_rows, 0, 1)
         self.n_cols = QLineEdit()
-        self.n_cols.setValidator(QIntValidator(1, 100))
+        self.n_cols.setValidator(QIntValidator(1, 99))
+        self.n_rows.setMaxLength(2)
         layout.addWidget(QLabel("Columns"), 1, 0)
         layout.addWidget(self.n_cols, 1, 1)
         self.buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -332,6 +336,70 @@ class NewPuzzleDialog(QDialog):
         self.buttonbox.rejected.connect(self.reject)
         layout.addWidget(self.buttonbox, 2, 0, 1, 2)
         self.setLayout(layout)
+
+
+class ResizeDialog(QDialog):
+    def __init__(self, parent: "MainWindow") -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Resize")
+        self.p = parent
+        layout = QVBoxLayout()
+        dpad = QGridLayout()
+
+        b = QPushButton("+")
+        b.clicked.connect(self.add_top)
+        dpad.addWidget(b, 0, 2)
+        b = QPushButton("+")
+        b.clicked.connect(self.add_left)
+        dpad.addWidget(b, 2, 0)
+        b = QPushButton("+")
+        b.clicked.connect(self.add_bottom)
+        dpad.addWidget(b, 4, 2)
+        b = QPushButton("+")
+        b.clicked.connect(self.add_right)
+        dpad.addWidget(b, 2, 4)
+        b = QPushButton("-")
+        b.clicked.connect(self.rem_top)
+        dpad.addWidget(b, 1, 2)
+        b = QPushButton("-")
+        b.clicked.connect(self.rem_left)
+        dpad.addWidget(b, 2, 1)
+        b = QPushButton("-")
+        b.clicked.connect(self.rem_bottom)
+        dpad.addWidget(b, 3, 2)
+        b = QPushButton("-")
+        b.clicked.connect(self.rem_right)
+        dpad.addWidget(b, 2, 3)
+        layout.addLayout(dpad)
+        self.buttonbox = QDialogButtonBox(QDialogButtonBox.Close)
+        self.buttonbox.clicked.connect(self.close)
+        layout.addWidget(self.buttonbox)
+        self.setLayout(layout)
+        self.p.show()
+
+    def add_top(self) -> None:
+        self.p.resize_board(1, 0, 0, 0)
+
+    def add_left(self) -> None:
+        self.p.resize_board(0, 1, 0, 0)
+
+    def add_bottom(self) -> None:
+        self.p.resize_board(0, 0, 1, 0)
+
+    def add_right(self) -> None:
+        self.p.resize_board(0, 0, 0, 1)
+
+    def rem_top(self) -> None:
+        self.p.resize_board(-1, 0, 0, 0)
+
+    def rem_left(self) -> None:
+        self.p.resize_board(0, -1, 0, 0)
+
+    def rem_bottom(self) -> None:
+        self.p.resize_board(0, 0, -1, 0)
+
+    def rem_right(self) -> None:
+        self.p.resize_board(0, 0, 0, -1)
 
 
 pzprv3_1 = """
@@ -365,10 +433,10 @@ class MainWindow(QMainWindow):
 
         menu = self.menuBar()
         file_menu = menu.addMenu("&File")
-        open_action = QAction("New", self)
-        open_action.triggered.connect(self.new_pressed)
-        open_action.setShortcut(QKeySequence("Ctrl+N"))
-        file_menu.addAction(open_action)
+        new_action = QAction("New", self)
+        new_action.triggered.connect(self.new_pressed)
+        new_action.setShortcut(QKeySequence("Ctrl+N"))
+        file_menu.addAction(new_action)
         open_action = QAction("Open", self)
         open_action.triggered.connect(self.open_pressed)
         open_action.setShortcut(QKeySequence("Ctrl+o"))
@@ -379,6 +447,10 @@ class MainWindow(QMainWindow):
         file_menu.addAction(save_action)
 
         edit_menu = menu.addMenu("&Edit")
+        resize_action = QAction("Resize", self)
+        resize_action.triggered.connect(self.resize_pressed)
+        resize_action.setShortcut(QKeySequence("Ctrl+U"))
+        edit_menu.addAction(resize_action)
         self.clear_board_action = QAction("Clear board")
         self.clear_board_action.triggered.connect(self.clear_board)
         self.clear_board_action.setShortcut(QKeySequence("Ctrl+K"))
@@ -521,6 +593,26 @@ class MainWindow(QMainWindow):
                 c.state_user = "."
         self.board_auto = self.board
         self.apply_methods()
+
+    def resize_pressed(self) -> None:
+        dlg = ResizeDialog(self)
+        if dlg.show():
+            print("resize closed")
+
+    def resize_board(
+        self, delta_top: int, delta_left: int, delta_bottom: int, delta_right: int
+    ) -> None:
+        self.board = puzzle.resize_board(
+            self.board, delta_top, delta_left, delta_bottom, delta_right
+        )
+        self.board_auto = self.board.copy()
+        self.puzzle_complete = False
+        self.puzzle_status.setText("")
+        self.puzzle_status.setVisible(False)
+        clearLayout(self.grid)
+        self.initialize_grid()
+        self.apply_methods()
+        QTimer.singleShot(0, self.adjustSize)
 
     def set_contradiction_checker_mode(self) -> None:
         """

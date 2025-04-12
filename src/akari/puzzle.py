@@ -27,6 +27,27 @@ def new_blank_board(rows: int, cols: int) -> np.ndarray:
     return board
 
 
+def resize_board(
+    board: np.ndarray,
+    delta_top: int,
+    delta_left: int,
+    delta_bottom: int,
+    delta_right: int,
+) -> np.ndarray:
+    new_board = new_blank_board(
+        board.shape[0] + delta_top + delta_bottom - 2,
+        board.shape[1] + delta_left + delta_right - 2,
+    )
+    new_board[
+        1 + max(0, delta_top) : -1 - max(0, delta_bottom),
+        1 + max(0, delta_left) : -1 - max(0, delta_right),
+    ] = board[
+        1 + max(0, -delta_top) : -1 - max(0, -delta_bottom),
+        1 + max(0, -delta_left) : -1 - max(0, -delta_right),
+    ]
+    return new_board
+
+
 def load_pzprv3(pzprv3: str) -> np.ndarray:
     """
     Loads PUZ-PRE v3 text and returns an Akari board
