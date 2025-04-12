@@ -20,6 +20,13 @@ ORTHO_DIRS = [(1, 0), (0, -1), (-1, 0), (0, 1)]
 DIAG_DIRS = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
 
 
+def new_blank_board(rows: int, cols: int) -> np.ndarray:
+    board = np.zeros((rows + 2, cols + 2), dtype="str")
+    board[:, :] = "-"
+    board[1:-1, 1:-1] = "."
+    return board
+
+
 def load_pzprv3(pzprv3: str) -> np.ndarray:
     """
     Loads PUZ-PRE v3 text and returns an Akari board

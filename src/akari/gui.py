@@ -16,6 +16,7 @@ from PySide6.QtGui import (
     QAction,
     QActionGroup,
     QBrush,
+    QIntValidator,
     QKeySequence,
     QMouseEvent,
     QPainter,
@@ -24,11 +25,14 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
+    QDialogButtonBox,
     QFileDialog,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QLayout,
+    QLineEdit,
     QMainWindow,
     QSizePolicy,
     QSpacerItem,
@@ -311,6 +315,25 @@ class Cell(QWidget):
             return self.click_play_mode(event)
 
 
+class NewPuzzleDialog(QDialog):
+    def __init__(self) -> None:
+        super().__init__()
+        layout = QGridLayout()
+        layout.addWidget(QLabel("Rows"), 0, 0)
+        self.n_rows = QLineEdit()
+        self.n_rows.setValidator(QIntValidator(1, 100))
+        layout.addWidget(self.n_rows, 0, 1)
+        self.n_cols = QLineEdit()
+        self.n_cols.setValidator(QIntValidator(1, 100))
+        layout.addWidget(QLabel("Columns"), 1, 0)
+        layout.addWidget(self.n_cols, 1, 1)
+        self.buttonbox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        self.buttonbox.accepted.connect(self.accept)
+        self.buttonbox.rejected.connect(self.reject)
+        layout.addWidget(self.buttonbox, 2, 0, 1, 2)
+        self.setLayout(layout)
+
+
 pzprv3_1 = """
 pzprv3/
 lightup/
@@ -342,24 +365,50 @@ class MainWindow(QMainWindow):
 
         menu = self.menuBar()
         file_menu = menu.addMenu("&File")
+        open_action = QAction("New", self)
+        open_action.triggered.connect(self.new_pressed)
+        open_action.setShortcut(QKeySequence("Ctrl+N"))
+        file_menu.addAction(open_action)
         open_action = QAction("Open", self)
         open_action.triggered.connect(self.open_pressed)
         open_action.setShortcut(QKeySequence("Ctrl+o"))
         file_menu.addAction(open_action)
-
         save_action = QAction("Save", self)
         save_action.triggered.connect(self.save_pressed)
         save_action.setShortcut(QKeySequence("Ctrl+s"))
         file_menu.addAction(save_action)
 
-        settings_menu = menu.addMenu("&Settings")
-
+        edit_menu = menu.addMenu("&Edit")
         self.clear_board_action = QAction("Clear board")
         self.clear_board_action.triggered.connect(self.clear_board)
         self.clear_board_action.setShortcut(QKeySequence("Ctrl+K"))
         # self.clear_board_action.setCheckable(True)
         # self.clear_board_action.setChecked(False)
-        settings_menu.addAction(self.clear_board_action)
+        edit_menu.addAction(self.clear_board_action)
+
+        settings_menu = menu.addMenu("&Settings")
+
+        edit_menu.addSeparator()
+        self.edit_mode_group = QActionGroup(self)
+        self.edit_mode = "play"
+        action = QAction("Play", self.edit_mode_group)
+        action.triggered.connect(self.edit_mode_changed)
+        action.setShortcut(QKeySequence("Ctrl+E"))
+        action.setCheckable(True)
+        action.setChecked(True)
+        edit_menu.addAction(action)
+        action = QAction("Edit blocks", self.edit_mode_group)
+        action.triggered.connect(self.edit_mode_changed)
+        action.setShortcut(QKeySequence("Ctrl+R"))
+        action.setCheckable(True)
+        action.setChecked(False)
+        edit_menu.addAction(action)
+        action = QAction("Edit numbers", self.edit_mode_group)
+        action.triggered.connect(self.edit_mode_changed)
+        action.setShortcut(QKeySequence("Ctrl+T"))
+        action.setCheckable(True)
+        action.setChecked(False)
+        edit_menu.addAction(action)
 
         settings_menu.addSeparator()
         self.methods_group = QActionGroup(self)
@@ -390,28 +439,6 @@ class MainWindow(QMainWindow):
         self.contradiction_action.setChecked(False)
         settings_menu.addAction(self.contradiction_action)
 
-        settings_menu.addSeparator()
-        self.edit_mode_group = QActionGroup(self)
-        self.edit_mode = "play"
-        action = QAction("Play", self.edit_mode_group)
-        action.triggered.connect(self.edit_mode_changed)
-        action.setShortcut(QKeySequence("Ctrl+E"))
-        action.setCheckable(True)
-        action.setChecked(True)
-        settings_menu.addAction(action)
-        action = QAction("Edit blocks", self.edit_mode_group)
-        action.triggered.connect(self.edit_mode_changed)
-        action.setShortcut(QKeySequence("Ctrl+R"))
-        action.setCheckable(True)
-        action.setChecked(False)
-        settings_menu.addAction(action)
-        action = QAction("Edit numbers", self.edit_mode_group)
-        action.triggered.connect(self.edit_mode_changed)
-        action.setShortcut(QKeySequence("Ctrl+T"))
-        action.setCheckable(True)
-        action.setChecked(False)
-        settings_menu.addAction(action)
-
         self.board = puzzle.load_pzprv3(pzprv3_1)
         self.board_auto = self.board.copy()
         self.initialize_grid()
@@ -434,6 +461,23 @@ class MainWindow(QMainWindow):
         self.adjustSize()
         self.show()
         self.resize(self.sizeHint())
+
+    def new_pressed(self) -> None:
+        dlg = NewPuzzleDialog()
+        if dlg.exec():
+            n_rows = int(dlg.n_rows.text())
+            n_cols = int(dlg.n_cols.text())
+            if n_rows < 1 or n_cols < 1:
+                return
+            self.board = puzzle.new_blank_board(n_rows, n_cols)
+            self.board_auto = self.board.copy()
+            self.puzzle_complete = False
+            self.puzzle_status.setText("")
+            self.puzzle_status.setVisible(False)
+            clearLayout(self.grid)
+            self.initialize_grid()
+            self.apply_methods()
+            QTimer.singleShot(0, self.adjustSize)
 
     def open_pressed(self) -> None:
         qfd = QFileDialog()
