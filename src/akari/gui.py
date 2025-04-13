@@ -451,14 +451,14 @@ class MainWindow(QMainWindow):
         resize_action.triggered.connect(self.resize_pressed)
         resize_action.setShortcut(QKeySequence("Ctrl+U"))
         edit_menu.addAction(resize_action)
+        self.check_board_action = QAction("Check board")
+        self.check_board_action.triggered.connect(self.check_board)
+        self.check_board_action.setShortcut(QKeySequence("Ctrl+I"))
+        edit_menu.addAction(self.check_board_action)
         self.clear_board_action = QAction("Clear board")
         self.clear_board_action.triggered.connect(self.clear_board)
         self.clear_board_action.setShortcut(QKeySequence("Ctrl+K"))
-        # self.clear_board_action.setCheckable(True)
-        # self.clear_board_action.setChecked(False)
         edit_menu.addAction(self.clear_board_action)
-
-        settings_menu = menu.addMenu("&Settings")
 
         edit_menu.addSeparator()
         self.edit_mode_group = QActionGroup(self)
@@ -482,6 +482,7 @@ class MainWindow(QMainWindow):
         action.setChecked(False)
         edit_menu.addAction(action)
 
+        settings_menu = menu.addMenu("&Settings")
         settings_menu.addSeparator()
         self.methods_group = QActionGroup(self)
         for level in range(10):
@@ -562,6 +563,9 @@ class MainWindow(QMainWindow):
             self.puzzle_file_name = filename
             self.board = puzzle.load_pzprv3(text)
             self.board_auto = puzzle.illuminate_all(self.board)[1]
+            self.most_recent_good_board = puzzle.clear_board(self.board.copy())
+            # the default good board is cleared; if the puzzle is loaded in a valid
+            # state, then that state gets set in apply_methods
             self.puzzle_complete = False
             self.puzzle_status.setText("")
             self.puzzle_status.setVisible(False)
@@ -593,6 +597,21 @@ class MainWindow(QMainWindow):
                 c.state_user = "."
         self.board_auto = self.board
         self.apply_methods()
+
+    def check_board(self) -> None:
+        thought_process_correct = puzzle.ThoughtProcess(self.board.copy())
+        thought_process_correct.apply_methods(9)
+        if not thought_process_correct.check_unsolved():
+            self.board = self.most_recent_good_board.copy()
+            self.update_all(self.board)
+            for i in range(self.board_auto.shape[0] - 2):
+                for j in range(self.board_auto.shape[1] - 2):
+                    ci = self.grid.itemAtPosition(i, j)
+                    assert ci is not None
+                    c = ci.widget()
+                    c.state_user = self.board[i + 1, j + 1]
+            self.board_auto = self.board
+            self.apply_methods()
 
     def resize_pressed(self) -> None:
         dlg = ResizeDialog(self)
@@ -645,6 +664,7 @@ class MainWindow(QMainWindow):
             for j in range(self.board_auto.shape[1] - 2):
                 c = Cell(self, i, j, self.board_auto[i + 1, j + 1])
                 self.grid.addWidget(c, i, j)
+                c.correct = True
                 c.update()
         self.grid.setSpacing(0)
         self.grid.addItem(
@@ -674,11 +694,14 @@ class MainWindow(QMainWindow):
         thought_process = puzzle.ThoughtProcess(self.board.copy())
         thought_process.apply_methods(self.auto_apply_methods_level)
 
-        # if the contradiction checker is on, run a full solve and, if a contradiction
-        # is detected, hijack the render
-        if self.contradiction_checker_enabled:
-            thought_process = self.handle_contradiction(thought_process)
-
+        # run a full solve
+        thought_process_correct = puzzle.ThoughtProcess(self.board.copy())
+        thought_process_correct.apply_methods(9)
+        if thought_process_correct.check_unsolved():
+            self.most_recent_good_board = self.board.copy()
+        elif self.contradiction_checker_enabled:
+            # if a contradiction is detected, hijack the render
+            thought_process = thought_process_correct
         new_board_auto = thought_process.board
 
         old_puzzle_complete = self.puzzle_complete
@@ -718,9 +741,10 @@ class MainWindow(QMainWindow):
     ) -> puzzle.ThoughtProcess:
         thought_process_contradiction = puzzle.ThoughtProcess(self.board.copy())
         thought_process_contradiction.apply_methods(9)
-        if not thought_process_contradiction.check_unsolved():
-            thought_process = thought_process_contradiction
-        return thought_process
+        if thought_process_contradiction.check_unsolved():
+            return thought_process
+        else:
+            return thought_process_contradiction
 
     def update_all(self, board: np.ndarray) -> None:
         for i in range(self.board_auto.shape[0] - 2):
