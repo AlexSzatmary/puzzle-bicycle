@@ -104,6 +104,22 @@ def clear_board(board: np.ndarray) -> np.ndarray:
     return board
 
 
+def intersect_boards(board1: np.ndarray, board2: np.ndarray) -> np.ndarray:
+    """
+    Intersection of 2 boards, that is, the cells that agree; other cells are free
+    """
+    for i in range(1, board1.shape[0] - 1):
+        for j in range(1, board1.shape[1] - 1):
+            if board1[i, j] == board2[i, j]:
+                pass  # no change needed
+            elif board1[i, j] in "+_|x" and board2[i, j] in "+_|x":
+                board1[i, j] = "+"  # if both boards are basically dots but not the same
+                # symbol, do a dot
+            else:
+                board1[i, j] = "."
+    return board1
+
+
 def transpose_board(board: np.ndarray) -> np.ndarray:
     """
     Returns the board transposed, accounting for swapping the _ and | symbols

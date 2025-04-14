@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
     QLayout,
     QLineEdit,
     QMainWindow,
+    QMessageBox,
     QPushButton,
     QSizePolicy,
     QSpacerItem,
@@ -602,16 +603,66 @@ class MainWindow(QMainWindow):
         thought_process_correct = puzzle.ThoughtProcess(self.board.copy())
         thought_process_correct.apply_methods(9)
         if not thought_process_correct.check_unsolved():
-            self.board = self.most_recent_good_board.copy()
-            self.update_all(self.board)
-            for i in range(self.board_auto.shape[0] - 2):
-                for j in range(self.board_auto.shape[1] - 2):
-                    ci = self.grid.itemAtPosition(i, j)
-                    assert ci is not None
-                    c = ci.widget()
-                    c.state_user = self.board[i + 1, j + 1]
-            self.board_auto = self.board
-            self.apply_methods()
+            thought_process_solved = puzzle.ThoughtProcess(
+                puzzle.clear_board(self.board.copy())
+            )
+            thought_process_solved.apply_methods(9)
+            if not thought_process_solved.check_unsolved():
+                msg = QMessageBox(
+                    QMessageBox.Icon.Warning,
+                    "title",
+                    "No solution exists to this puzzle",
+                    buttons=QMessageBox.StandardButton.Ok,
+                )
+                msg.exec()
+                return
+            msg = QMessageBox(
+                QMessageBox.Icon.NoIcon,
+                "title",
+                "Your solution has mistakes",
+                buttons=QMessageBox.StandardButton.Cancel,
+            )
+            erase_all_button = msg.addButton(
+                "Erase all mistakes but keep all other work", QMessageBox.ActionRole
+            )
+            first_mistake_button = msg.addButton(
+                "Go to before first mistake", QMessageBox.ActionRole
+            )
+            msg.setDefaultButton(first_mistake_button)
+            msg.exec()
+            if msg.clickedButton() == first_mistake_button:
+                self.board = self.most_recent_good_board.copy()
+                self.update_all(self.board)
+                for i in range(self.board_auto.shape[0] - 2):
+                    for j in range(self.board_auto.shape[1] - 2):
+                        ci = self.grid.itemAtPosition(i, j)
+                        assert ci is not None
+                        c = ci.widget()
+                        c.state_user = self.board[i + 1, j + 1]
+                self.board_auto = self.board
+                self.apply_methods()
+            elif msg.clickedButton() == erase_all_button:
+                # intersect with the true solution
+                self.board = puzzle.intersect_boards(
+                    self.board.copy(), thought_process_solved.board
+                )
+                self.update_all(self.board)
+                for i in range(self.board_auto.shape[0] - 2):
+                    for j in range(self.board_auto.shape[1] - 2):
+                        ci = self.grid.itemAtPosition(i, j)
+                        assert ci is not None
+                        c = ci.widget()
+                        c.state_user = self.board[i + 1, j + 1]
+                self.board_auto = self.board
+                self.apply_methods()
+        else:
+            msg = QMessageBox(
+                QMessageBox.Icon.NoIcon,
+                "title",
+                "No mistakes",
+                buttons=QMessageBox.StandardButton.Ok,
+            )
+            msg.exec()
 
     def resize_pressed(self) -> None:
         dlg = ResizeDialog(self)
