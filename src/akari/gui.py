@@ -1,4 +1,5 @@
 import os
+from collections.abc import Generator
 from typing import Any, cast
 
 import numpy as np
@@ -588,6 +589,14 @@ class MainWindow(QMainWindow):
         self.board_auto = self.board
         self.apply_methods()
 
+    def i_j_cell(self) -> Generator[tuple[int, int, Cell]]:
+        for i in range(self.board_auto.shape[0] - 2):
+            for j in range(self.board_auto.shape[1] - 2):
+                ci = self.grid.itemAtPosition(i, j)
+                assert ci is not None
+                c = ci.widget()
+                yield i, j, cast(Cell, c)
+
     def auto_level_checked(self) -> None:
         self.auto_apply_methods_level = next(
             i
@@ -600,12 +609,8 @@ class MainWindow(QMainWindow):
 
     def clear_board(self) -> None:
         self.board = puzzle.clear_board(self.board)
-        for i in range(self.board_auto.shape[0] - 2):
-            for j in range(self.board_auto.shape[1] - 2):
-                ci = self.grid.itemAtPosition(i, j)
-                assert ci is not None
-                c = ci.widget()
-                c.state_user = "."
+        for _i, _j, c in self.i_j_cell():
+            c.state_user = "."
         self.refresh_board()
 
     def check_board(self) -> None:
@@ -641,29 +646,17 @@ class MainWindow(QMainWindow):
             msg.exec()
             if msg.clickedButton() == first_mistake_button:
                 self.board = self.most_recent_good_board.copy()
-                self.update_all_cells(self.board)
-                for i in range(self.board_auto.shape[0] - 2):
-                    for j in range(self.board_auto.shape[1] - 2):
-                        ci = self.grid.itemAtPosition(i, j)
-                        assert ci is not None
-                        c = ci.widget()
-                        c.state_user = self.board[i + 1, j + 1]
-                self.board_auto = self.board
-                self.apply_methods()
+                for i, j, c in self.i_j_cell():
+                    c.state_user = self.board[i + 1, j + 1]
+                self.refresh_board()
             elif msg.clickedButton() == erase_all_button:
                 # intersect with the true solution
                 self.board = puzzle.intersect_boards(
                     self.board.copy(), thought_process_solved.board
                 )
-                self.update_all_cells(self.board)
-                for i in range(self.board_auto.shape[0] - 2):
-                    for j in range(self.board_auto.shape[1] - 2):
-                        ci = self.grid.itemAtPosition(i, j)
-                        assert ci is not None
-                        c = ci.widget()
-                        c.state_user = self.board[i + 1, j + 1]
-                self.board_auto = self.board
-                self.apply_methods()
+                for i, j, c in self.i_j_cell():
+                    c.state_user = self.board[i + 1, j + 1]
+                self.refresh_board()
         else:
             msg = QMessageBox(
                 QMessageBox.Icon.NoIcon,
@@ -691,9 +684,7 @@ class MainWindow(QMainWindow):
         Toggles contradiction checker mode
         """
         self.contradiction_checker_enabled = self.contradiction_action.isChecked()
-        self.update_all_cells(self.board)
-        self.board_auto = self.board
-        self.apply_methods()
+        self.refresh_board()
 
     def edit_mode_changed(self) -> None:
         """
@@ -707,9 +698,6 @@ class MainWindow(QMainWindow):
                 if action.isChecked()
             )
         ]
-        self.update_all_cells(self.board)
-        self.board_auto = self.board
-        self.apply_methods()
 
     def initialize_grid(self) -> None:
         self.grid = QGridLayout()
@@ -757,19 +745,15 @@ class MainWindow(QMainWindow):
                 self.puzzle_status.setVisible(False)
                 QTimer.singleShot(0, self.adjustSize)
 
-        for i in range(self.board_auto.shape[0] - 2):
-            for j in range(self.board_auto.shape[1] - 2):
-                ci = self.grid.itemAtPosition(i, j)
-                assert ci is not None
-                c = ci.widget()
-                if (
-                    new_board_auto[i + 1, j + 1] != self.board_auto[i + 1, j + 1]
-                    or not c.correct
-                    or old_puzzle_complete != self.puzzle_complete
-                ):
-                    c.state_auto = new_board_auto[i + 1, j + 1]
-                    c.correct = True  # presume correct then indicate if not below
-                    c.update()
+        for i, j, c in self.i_j_cell():
+            if (
+                new_board_auto[i + 1, j + 1] != self.board_auto[i + 1, j + 1]
+                or not c.correct
+                or old_puzzle_complete != self.puzzle_complete
+            ):
+                c.state_auto = new_board_auto[i + 1, j + 1]
+                c.correct = True  # presume correct then indicate if not below
+                c.update()
 
         self.indicate_contradictions(thought_process)
 
@@ -778,14 +762,10 @@ class MainWindow(QMainWindow):
             self.animate_puzzle_complete()
 
     def update_all_cells(self, board: np.ndarray) -> None:
-        for i in range(self.board_auto.shape[0] - 2):
-            for j in range(self.board_auto.shape[1] - 2):
-                ci = self.grid.itemAtPosition(i, j)
-                assert ci is not None
-                c = ci.widget()
-                c.state_auto = board[i + 1, j + 1]
-                c.correct = True  # presume correct then indicate if not elsewhere
-                c.update()
+        for i, j, c in self.i_j_cell():
+            c.state_auto = board[i + 1, j + 1]
+            c.correct = True  # presume correct then indicate if not elsewhere
+            c.update()
 
     def indicate_contradictions(self, thought_process: puzzle.ThoughtProcess) -> None:
         for i, j in thought_process.wrong_numbers:
@@ -816,17 +796,13 @@ class MainWindow(QMainWindow):
 
     def animate_puzzle_complete(self) -> None:
         pag = QParallelAnimationGroup()
-        for i in range(self.board_auto.shape[0] - 2):
-            for j in range(self.board_auto.shape[1] - 2):
-                ci = self.grid.itemAtPosition(i, j)
-                assert ci is not None
-                c = ci.widget()
-                if self.board_auto[i + 1, j + 1] in "_|x+":
-                    c.anim = QPropertyAnimation(c, b"white_out_step")
-                    c.anim.setStartValue(0)
-                    c.anim.setEndValue(6)
-                    c.anim.setDuration(500)
-                    pag.addAnimation(c.anim)
+        for i, j, c in self.i_j_cell():
+            if self.board_auto[i + 1, j + 1] in "_|x+":
+                c.anim = QPropertyAnimation(c, b"white_out_step")
+                c.anim.setStartValue(0)
+                c.anim.setEndValue(6)
+                c.anim.setDuration(500)
+                pag.addAnimation(c.anim)
         pag.start()
         self.pag = pag
 
