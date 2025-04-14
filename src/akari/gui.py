@@ -429,7 +429,6 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.w)
         self.auto_illuminate = True
         self.auto_apply_methods_level = AUTO_APPLY_METHODS_LEVEL
-        self.puzzle_complete = False
         self.puzzle_file_name = os.path.join(os.path.dirname(__file__), "default.txt")
 
         menu = self.menuBar()
@@ -514,12 +513,8 @@ class MainWindow(QMainWindow):
         settings_menu.addAction(self.contradiction_action)
 
         self.board = puzzle.load_pzprv3(pzprv3_1)
-        self.board_auto = self.board.copy()
-        self.initialize_grid()
 
         self.puzzle_status = QLabel()
-        self.puzzle_status.setText("")
-        self.puzzle_status.setVisible(False)
         labelhb = QHBoxLayout()
         labelhb.addItem(
             QSpacerItem(1, 1, QSizePolicy.Expanding, QSizePolicy.Minimum),
@@ -531,8 +526,7 @@ class MainWindow(QMainWindow):
         self.labelhb = labelhb
         self.vbr.addLayout(labelhb)
 
-        self.apply_methods()
-        self.adjustSize()
+        self.refresh_GUI()
         self.show()
         self.resize(self.sizeHint())
 
@@ -544,36 +538,55 @@ class MainWindow(QMainWindow):
             if n_rows < 1 or n_cols < 1:
                 return
             self.board = puzzle.new_blank_board(n_rows, n_cols)
-            self.board_auto = self.board.copy()
-            self.puzzle_complete = False
-            self.puzzle_status.setText("")
-            self.puzzle_status.setVisible(False)
-            clearLayout(self.grid)
-            self.initialize_grid()
-            self.apply_methods()
-            QTimer.singleShot(0, self.adjustSize)
+            self.refresh_GUI()
 
     def open_pressed(self) -> None:
         qfd = QFileDialog()
         filename, _ = qfd.getOpenFileName(
             self, "Open pzprv3", os.path.dirname(self.puzzle_file_name), "(*.txt)"
         )
+        if not filename:
+            return
         with open(filename) as hin:
             text = hin.read()
         if text:
             self.puzzle_file_name = filename
             self.board = puzzle.load_pzprv3(text)
-            self.board_auto = puzzle.illuminate_all(self.board)[1]
             self.most_recent_good_board = puzzle.clear_board(self.board.copy())
             # the default good board is cleared; if the puzzle is loaded in a valid
             # state, then that state gets set in apply_methods
-            self.puzzle_complete = False
-            self.puzzle_status.setText("")
-            self.puzzle_status.setVisible(False)
+            self.refresh_GUI()
+
+    def save_pressed(self) -> None:
+        qfd = QFileDialog()
+        qfd.open()
+        filename, _ = qfd.getSaveFileName(
+            self, "Save pzprv3", self.puzzle_file_name, "(*.txt)"
+        )
+        if filename:
+            pzprv3 = puzzle.save_pzprv3(self.board)
+            with open(filename, "w") as hout:
+                hout.write(pzprv3)
+
+    def refresh_GUI(self) -> None:
+        self.board_auto = puzzle.illuminate_all(self.board)[1]
+        self.puzzle_complete = False
+        self.puzzle_status.setText("")
+        self.puzzle_status.setVisible(False)
+        if hasattr(self, "grid"):
             clearLayout(self.grid)
-            self.initialize_grid()
-            self.apply_methods()
+            initializing = False
+        else:
+            initializing = True
+        self.initialize_grid()
+        self.apply_methods()
+        if not initializing:
             QTimer.singleShot(0, self.adjustSize)
+
+    def refresh_board(self) -> None:
+        self.update_all_cells(self.board)
+        self.board_auto = self.board
+        self.apply_methods()
 
     def auto_level_checked(self) -> None:
         self.auto_apply_methods_level = next(
@@ -583,21 +596,17 @@ class MainWindow(QMainWindow):
         )
         if self.auto_apply_methods_level + 1 == len(self.methods_group.actions()):
             self.auto_apply_methods_level = 9
-        self.update_all(self.board)
-        self.board_auto = self.board
-        self.apply_methods()
+        self.refresh_board()
 
     def clear_board(self) -> None:
         self.board = puzzle.clear_board(self.board)
-        self.update_all(self.board)
         for i in range(self.board_auto.shape[0] - 2):
             for j in range(self.board_auto.shape[1] - 2):
                 ci = self.grid.itemAtPosition(i, j)
                 assert ci is not None
                 c = ci.widget()
                 c.state_user = "."
-        self.board_auto = self.board
-        self.apply_methods()
+        self.refresh_board()
 
     def check_board(self) -> None:
         thought_process_correct = puzzle.ThoughtProcess(self.board.copy())
@@ -632,7 +641,7 @@ class MainWindow(QMainWindow):
             msg.exec()
             if msg.clickedButton() == first_mistake_button:
                 self.board = self.most_recent_good_board.copy()
-                self.update_all(self.board)
+                self.update_all_cells(self.board)
                 for i in range(self.board_auto.shape[0] - 2):
                     for j in range(self.board_auto.shape[1] - 2):
                         ci = self.grid.itemAtPosition(i, j)
@@ -646,7 +655,7 @@ class MainWindow(QMainWindow):
                 self.board = puzzle.intersect_boards(
                     self.board.copy(), thought_process_solved.board
                 )
-                self.update_all(self.board)
+                self.update_all_cells(self.board)
                 for i in range(self.board_auto.shape[0] - 2):
                     for j in range(self.board_auto.shape[1] - 2):
                         ci = self.grid.itemAtPosition(i, j)
@@ -675,21 +684,14 @@ class MainWindow(QMainWindow):
         self.board = puzzle.resize_board(
             self.board, delta_top, delta_left, delta_bottom, delta_right
         )
-        self.board_auto = self.board.copy()
-        self.puzzle_complete = False
-        self.puzzle_status.setText("")
-        self.puzzle_status.setVisible(False)
-        clearLayout(self.grid)
-        self.initialize_grid()
-        self.apply_methods()
-        QTimer.singleShot(0, self.adjustSize)
+        self.refresh_GUI()
 
     def set_contradiction_checker_mode(self) -> None:
         """
         Toggles contradiction checker mode
         """
         self.contradiction_checker_enabled = self.contradiction_action.isChecked()
-        self.update_all(self.board)
+        self.update_all_cells(self.board)
         self.board_auto = self.board
         self.apply_methods()
 
@@ -705,7 +707,7 @@ class MainWindow(QMainWindow):
                 if action.isChecked()
             )
         ]
-        self.update_all(self.board)
+        self.update_all_cells(self.board)
         self.board_auto = self.board
         self.apply_methods()
 
@@ -729,17 +731,6 @@ class MainWindow(QMainWindow):
             self.grid.columnCount(),
         )
         self.vbr.insertLayout(0, self.grid)
-
-    def save_pressed(self) -> None:
-        qfd = QFileDialog()
-        qfd.open()
-        filename, _ = qfd.getSaveFileName(
-            self, "Save pzprv3", self.puzzle_file_name, "(*.txt)"
-        )
-        if filename:
-            pzprv3 = puzzle.save_pzprv3(self.board)
-            with open(filename, "w") as hout:
-                hout.write(pzprv3)
 
     def apply_methods(self) -> None:
         thought_process = puzzle.ThoughtProcess(self.board.copy())
@@ -783,21 +774,10 @@ class MainWindow(QMainWindow):
         self.indicate_contradictions(thought_process)
 
         self.board_auto = new_board_auto
-        if self.puzzle_complete and not old_puzzle_complete:
+        if self.puzzle_complete:
             self.animate_puzzle_complete()
 
-    def handle_contradiction(
-        self,
-        thought_process: puzzle.ThoughtProcess,
-    ) -> puzzle.ThoughtProcess:
-        thought_process_contradiction = puzzle.ThoughtProcess(self.board.copy())
-        thought_process_contradiction.apply_methods(9)
-        if thought_process_contradiction.check_unsolved():
-            return thought_process
-        else:
-            return thought_process_contradiction
-
-    def update_all(self, board: np.ndarray) -> None:
+    def update_all_cells(self, board: np.ndarray) -> None:
         for i in range(self.board_auto.shape[0] - 2):
             for j in range(self.board_auto.shape[1] - 2):
                 ci = self.grid.itemAtPosition(i, j)
