@@ -610,7 +610,8 @@ class MainWindow(QMainWindow):
     def clear_board(self) -> None:
         self.board = puzzle.clear_board(self.board)
         for _i, _j, c in self.i_j_cell():
-            c.state_user = "."
+            if c.state_user in "#+_|x":
+                c.state_user = "."
         self.refresh_board()
 
     def check_board(self) -> None:
