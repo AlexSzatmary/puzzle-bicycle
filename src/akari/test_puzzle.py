@@ -18,7 +18,6 @@ from puzzle import (
     print_board,
     save_pzprv3,
     stringify_board,
-    trace_shared_lanes,
     transpose_board,
     zero_pad,
 )
@@ -916,30 +915,42 @@ def test_trace_shared_lanes() -> None:
         ----
         """)
     )
-    assert stringify_board(trace_shared_lanes(null)) == stringify_board(null)
+    tp = ThoughtProcess(null)
+    for i, j in tp.all_interior_ij():
+        tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+
+    assert stringify_board(tp.board) == stringify_board(null)
     pre = boardify_string(
         cleandoc("""
             ----
+            -..-
             -..-
             -2.-
             -..-
             -..-
             -.2-
+            -..-
             -..-
             ----
             """)
     )
     post = """
             ----
+            -|+-
             -#_-
             -2.-
             -.+-
             -+.-
             -.2-
             -_#-
+            -+|-
             ----
             """
-    assert stringify_board(trace_shared_lanes(pre)) == cleandoc(post)
+    tp = ThoughtProcess(pre)
+    for i, j in tp.all_interior_ij():
+        tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+    print_board(tp.board)
+    assert stringify_board(tp.board) == cleandoc(post)
 
 
 @pytest.fixture
@@ -1044,7 +1055,10 @@ def test_trace_shared_lanes_same_2(
     board_pairs_trace_shared_lanes_same_2: list[tuple[np.ndarray, np.ndarray]],
 ) -> None:
     pre, post = board_pairs_trace_shared_lanes_same_2[0]
-    assert stringify_board(trace_shared_lanes(pre)) == stringify_board(post)
+    tp = ThoughtProcess(pre)
+    for i, j in tp.all_interior_ij():
+        tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+    assert stringify_board(tp.board) == stringify_board(post)
 
 
 @pytest.fixture
@@ -1109,7 +1123,10 @@ def test_trace_shared_lanes_same_3(
     board_pairs_trace_shared_lanes_same_3: list[tuple[np.ndarray, np.ndarray]],
 ) -> None:
     pre, post = board_pairs_trace_shared_lanes_same_3[0]
-    assert stringify_board(trace_shared_lanes(pre)) == stringify_board(post)
+    tp = ThoughtProcess(pre)
+    for i, j in tp.all_interior_ij():
+        tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+    assert stringify_board(tp.board) == stringify_board(post)
 
 
 @pytest.fixture
@@ -1134,9 +1151,11 @@ def test_trace_shared_lanes_all(
             all_orientations(post),
             strict=True,
         ):
-            assert stringify_board(trace_shared_lanes(pre_rotated)) == stringify_board(
-                post_rotated
-            )
+            print_board(pre_rotated)
+            tp = ThoughtProcess(pre_rotated)
+            for i, j in tp.all_interior_ij():
+                tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+            assert stringify_board(tp.board) == stringify_board(post_rotated)
 
 
 def test_find_unilluminatable_cells() -> None:
