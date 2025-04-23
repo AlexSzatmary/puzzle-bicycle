@@ -1,5 +1,5 @@
 from collections import defaultdict, deque, namedtuple
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from itertools import zip_longest
 from typing import cast
 
@@ -259,102 +259,175 @@ class SharedLanesBot:
         self.shared_lanes: defaultdict[tuple[int, int], list[SharedLanesPair]] = (
             defaultdict(list)
         )
-        self._trace_down()
+        self._trace_shared_lanes(0)
+        self._trace_shared_lanes(1)
 
-    def _trace_down(self) -> None:
+    def _trace_shared_lanes(self, direction: int) -> None:
+        # v is a vector in the direction that we're tracing and w is a vector
+        # perpendicular to that
+        # A supposed point B is traced out from cell A either straight down or right
+        if direction == 0:
+            vi = 1
+            vj = 0
+            wi = 0
+            wj = 1
+        else:
+            vi = 0
+            vj = 1
+            wi = 1
+            wj = 0
         board = self.thought_process.board
         for iA in range(1, np.size(board, 0) - 1):
             for jA in range(1, np.size(board, 1) - 1):
                 if board[iA, jA] in "123":
-                    tracer_C = board[iA, jA - 1] == "."
-                    tracer_D = board[iA + 1, jA] == "."
-                    tracer_E = board[iA, jA + 1] == "."
-                    for iB in range(iA + 1, np.size(board, 0)):
-                        new_tracer_C = tracer_C and board[iB, jA - 1] in ".+_|x"
-                        new_tracer_D = tracer_D and board[iB, jA] in ".+_|x"
-                        new_tracer_E = tracer_E and board[iB, jA + 1] in ".+_|x"
-                        if (
-                            tracer_C
-                            and new_tracer_D
-                            and board[iB, jA - 1] in "123"
-                            and board[iB - 1, jA - 1] == "."
-                            and board[iB, jA] == "."
-                        ):
-                            self._add_adjacent_columns(board, iA, jA, iB, jA - 1)
-                        if (
-                            tracer_E
-                            and new_tracer_D
-                            and board[iB, jA + 1] in "123"
-                            and board[iB - 1, jA + 1] == "."
-                            and board[iB, jA] == "."
-                        ):
-                            self._add_adjacent_columns(board, iA, jA, iB, jA + 1)
-                        if board[iB, jA] in "123":
-                            fit_C = new_tracer_C and board[iB, jA - 1] == "."
-                            fit_D = tracer_D and board[iB - 1, jA] == "."
-                            fit_E = new_tracer_E and board[iB, jA + 1] == "."
-                            n_for_same = fit_C + fit_D + fit_E
-                            if n_for_same >= 2:
-                                self._add_same_columns(
-                                    board, iA, jA, iB, fit_C, fit_D, fit_E
-                                )
-                        tracer_C = new_tracer_C
-                        tracer_D = new_tracer_D
-                        tracer_E = new_tracer_E
-                        if tracer_C + tracer_D + tracer_E < 2:
-                            break
+                    # if direction == 0,
+                    # tracer_C is in column jA - 1
+                    # tracer_D is in column jA
+                    # tracer_E is in column jA + 1
+                    # other wise, the tracers are in rows iA - 1, iA, and iA + 1
+                    if direction == 0:
+                        cells_after_A = zip_longest(
+                            range(iA + 1, np.size(board, 0)), [], fillvalue=jA
+                        )
+                    else:
+                        cells_after_A = zip_longest(
+                            [], range(jA + 1, np.size(board, 1)), fillvalue=iA
+                        )
+                    self._trace_shared_lanes_at_cell(
+                        board, vi, vj, wi, wj, iA, jA, cells_after_A
+                    )
 
-    def _add_adjacent_columns(
+    def _trace_shared_lanes_at_cell(
+        self,
+        board: np.ndarray,
+        vi: int,
+        vj: int,
+        wi: int,
+        wj: int,
+        iA: int,
+        jA: int,
+        cells_after_A: Iterator[tuple[int, int]],
+    ) -> None:
+        tracer_C = board[iA - wi, jA - wj] == "."
+        tracer_D = board[iA + vi, jA + vj] == "."
+        tracer_E = board[iA + wi, jA + wj] == "."
+        for iB, jB in cells_after_A:
+            new_tracer_C = tracer_C and board[iB - wi, jB - wj] in ".+_|x"
+            new_tracer_D = tracer_D and board[iB, jB] in ".+_|x"
+            new_tracer_E = tracer_E and board[iB + wi, jB + wj] in ".+_|x"
+            if (
+                tracer_C
+                and new_tracer_D
+                and board[iB - wi, jB - wj] in "123"
+                and board[iB - vi - wi, jB - vj - wj] == "."
+                and board[iB, jB] == "."
+                and iB + jB > iA + jA + 1
+            ):
+                self._add_adjacent_lane(
+                    board, iA, jA, iB - wi, jB - wj, vi, vj, -wi, -wj
+                )
+            if (
+                tracer_E
+                and new_tracer_D
+                and board[iB + wi, jB + wj] in "123"
+                and board[iB - vi + wi, jB - vj + wj] == "."
+                and board[iB, jB] == "."
+                and iB + jB > iA + jA + 1
+            ):
+                self._add_adjacent_lane(board, iA, jA, iB + wi, jB + wj, vi, vj, wi, wj)
+            if board[iB, jB] in "123":
+                fit_C = new_tracer_C and board[iB - wi, jA - wj] == "."
+                fit_D = tracer_D and board[iB - vi, jA + vj] == "."
+                fit_E = new_tracer_E and board[iB + wi, jA + wj] == "."
+                n_for_same = fit_C + fit_D + fit_E
+                if n_for_same >= 2:
+                    self._add_same_lane(
+                        board,
+                        iA,
+                        jA,
+                        iB,
+                        jB,
+                        vi,
+                        vj,
+                        wi,
+                        wj,
+                        fit_C,
+                        fit_D,
+                        fit_E,
+                    )
+            tracer_C = new_tracer_C
+            tracer_D = new_tracer_D
+            tracer_E = new_tracer_E
+            if tracer_C + tracer_D + tracer_E < 2:
+                break
+
+    def _add_adjacent_lane(
         self,
         board: np.ndarray,
         iA: int,
         jA: int,
         iB: int,
         jB: int,
+        vi: int,
+        vj: int,
+        di: int,
+        dj: int,
     ) -> None:
-        dj = jB - jA
         sl = SharedLanesPair(
             A=(iA, jA),
             B=(iB, jB),
-            shared_pairs=[(iA + 1, jA, iB, jA), (iA, jB, iB - 1, jB)],
-            nonshared_cells=[(iA - 1, jA), (iA, jA - dj), (iB + 1, jB), (iB, jB + dj)],
+            shared_pairs=[
+                (iA + vi, jA + vj, iB - di, jB - dj),
+                (iA + di, jA + dj, iB - vi, jB - vj),
+            ],
+            nonshared_cells=[
+                (iA - vi, jA - vj),
+                (iA - di, jA - dj),
+                (iB + vi, jB + vj),
+                (iB + di, jB + dj),
+            ],
             needed_bulbs=int(board[iA, jA]) + int(board[iB, jB]),
         )
         for cell in sl.nonshared_cells:
             self.shared_lanes[cell].append(sl)
 
-    def _add_same_columns(
+    def _add_same_lane(
         self,
         board: np.ndarray,
         iA: int,
         jA: int,
         iB: int,
+        jB: int,
+        vi: int,
+        vj: int,
+        wi: int,
+        wj: int,
         fit_C: bool,  # noqa: FBT001
         fit_D: bool,  # noqa: FBT001
         fit_E: bool,  # noqa: FBT001
     ) -> None:
         sl = SharedLanesPair(
             A=(iA, jA),
-            B=(iB, jA),
+            B=(iB, jB),
             shared_pairs=[],
-            nonshared_cells=[(iA - 1, jA), (iB + 1, jA)],
-            needed_bulbs=int(board[iA, jA]) + int(board[iB, jA]),
+            nonshared_cells=[(iA - vi, jA - vj), (iB + vi, jB + vj)],
+            needed_bulbs=int(board[iA, jA]) + int(board[iB, jB]),
         )
         if fit_C:
-            sl.shared_pairs.append((iA, jA - 1, iB, jA - 1))
+            sl.shared_pairs.append((iA - wi, jA - wj, iB - wi, jB - wj))
         else:
-            sl.nonshared_cells.append((iA, jA - 1))
-            sl.nonshared_cells.append((iB, jA - 1))
-        if fit_D and iB != iA + 2:
-            sl.shared_pairs.append((iA + 1, jA, iB - 1, jA))
+            sl.nonshared_cells.append((iA - wi, jA - wj))
+            sl.nonshared_cells.append((iB - wi, jB - wj))
+        if fit_D and iB + jB != iA + jA + 2:
+            sl.shared_pairs.append((iA + vi, jA + vj, iB - vi, jB - vj))
         else:
-            sl.nonshared_cells.append((iA + 1, jA))
-            sl.nonshared_cells.append((iB - 1, jA))
+            sl.nonshared_cells.append((iA + vi, jA + vj))
+            sl.nonshared_cells.append((iB - vi, jB - vj))
         if fit_E:
-            sl.shared_pairs.append((iA, jA + 1, iB, jA + 1))
+            sl.shared_pairs.append((iA + wi, jA + wj, iB + wi, jB + wj))
         else:
-            sl.nonshared_cells.append((iA, jA + 1))
-            sl.nonshared_cells.append((iB, jA + 1))
+            sl.nonshared_cells.append((iA + wi, jA + wj))
+            sl.nonshared_cells.append((iB + wi, jB + wj))
         for cell in sl.nonshared_cells:
             self.shared_lanes[cell].append(sl)
 
