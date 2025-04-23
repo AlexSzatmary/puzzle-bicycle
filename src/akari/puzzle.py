@@ -1,5 +1,5 @@
 from collections import defaultdict, deque, namedtuple
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from itertools import zip_longest
 from typing import cast
 
@@ -141,21 +141,6 @@ def illuminate_all(
     return tp.lit_bulb_pairs, tp.board
 
 
-def illuminate_one(
-    board: np.ndarray, i: int, j: int
-) -> tuple[list[tuple[int, int, int, int]], np.ndarray]:
-    tp = ThoughtProcess(board)
-    tp.illuminate_one(i, j)
-    board[:] = tp.board[:]
-    return tp.lit_bulb_pairs, tp.board
-
-
-def board_maybe_set_bulb(board: np.ndarray, i: int, j: int) -> None:
-    if board[i, j] == ".":
-        board[i, j] = "#"
-        illuminate_one(board, i, j)
-
-
 def count_free_near_number(board: np.ndarray, i: int, j: int) -> int:
     return sum(board[i + di, j + dj] == "." for (di, dj) in ORTHO_DIRS)
 
@@ -259,8 +244,8 @@ class SharedLanesBot:
         self.shared_lanes: defaultdict[tuple[int, int], list[SharedLanesPair]] = (
             defaultdict(list)
         )
-        self._trace_shared_lanes(0)
-        self._trace_shared_lanes(1)
+        self._trace_shared_lanes(0)  # trace down
+        self._trace_shared_lanes(1)  # trace right
 
     def _trace_shared_lanes(self, direction: int) -> None:
         # v is a vector in the direction that we're tracing and w is a vector
@@ -451,9 +436,9 @@ class SharedLanesBot:
             ) + count_free_near_number(board, sl.B[0], sl.B[1]) - len(sl.shared_pairs):
                 for cell in sl.nonshared_cells:
                     self.thought_process.maybe_set_bulb(cell[0], cell[1])
-                self.dot_shared_lanes(board, sl)
+                self._dot_shared_lanes(board, sl)
 
-    def dot_shared_lanes(self, board: np.ndarray, sl: SharedLanesPair) -> None:
+    def _dot_shared_lanes(self, board: np.ndarray, sl: SharedLanesPair) -> None:
         for i1, j1, i2, j2 in sl.shared_pairs:
             if j1 == j2:
                 cells_after_1 = zip_longest(
@@ -474,206 +459,6 @@ class SharedLanesBot:
                 if board[ix, jx] in "-01234":
                     break
                 self.thought_process.maybe_set_dot(ix, jx)
-
-    def _trace_shared_lanes_down(self, board: np.ndarray) -> np.ndarray:
-        """
-        This helper for trace_shared_lanes only sweeps down.
-        """
-        for iA in range(1, np.size(board, 0) - 1):
-            for jA in range(1, np.size(board, 1) - 1):
-                if board[iA, jA] in "123" and count_missing_bulbs_near_number(
-                    board, iA, jA
-                ) + 2 >= count_free_near_number(board, iA, jA):
-                    tracer_C = board[iA, jA - 1] == "."
-                    tracer_D = board[iA + 1, jA] == "."
-                    tracer_E = board[iA, jA + 1] == "."
-                    for iB in range(iA + 1, np.size(board, 0)):
-                        if tracer_C + tracer_D + tracer_E >= 2:
-                            new_tracer_C = tracer_C and board[iB, jA - 1] in ".+_|x"
-                            new_tracer_D = tracer_D and board[iB, jA] in ".+_|x"
-                            new_tracer_E = tracer_E and board[iB, jA + 1] in ".+_|x"
-                            self._analyze_pairs_adjacent_columns(
-                                board,
-                                iA,
-                                jA,
-                                iB,
-                                jA - 1,
-                                tracer_C,
-                                new_tracer_D,
-                            )
-                            self._analyze_pairs_adjacent_columns(
-                                board,
-                                iA,
-                                jA,
-                                iB,
-                                jA + 1,
-                                tracer_E,
-                                new_tracer_D,
-                            )
-                            self._analyze_pairs_same_column(
-                                board, iA, jA, iB, new_tracer_C, tracer_D, new_tracer_E
-                            )
-                            tracer_C = new_tracer_C
-                            tracer_D = new_tracer_D
-                            tracer_E = new_tracer_E
-        return board
-
-    def _analyze_pairs_adjacent_columns(
-        self,
-        board: np.ndarray,
-        iA: int,
-        jA: int,
-        iB: int,
-        jB: int,
-        tracer_col_B: bool,  # noqa: FBT001
-        new_tracer_col_A: bool,  # noqa: FBT001
-    ) -> np.ndarray:
-        dj = jB - jA
-        if (
-            count_missing_bulbs_near_number(board, iA, jA) + 1
-            == count_free_near_number(board, iA, jA)
-            and tracer_col_B
-            and new_tracer_col_A
-            and board[iB, jB] in "123"
-            and board[iB - 1, jB] == "."
-            and board[iB, jA] == "."
-            and iB > iA + 1
-        ):
-            # points A and B are both numbers and share 2 lanes
-            if count_missing_bulbs_near_number(
-                board, iB, jB
-            ) + 1 == count_free_near_number(board, iB, jB):
-                board_maybe_set_bulb(board, iA - 1, jA)
-                board_maybe_set_bulb(board, iA, jA - dj)
-                board_maybe_set_bulb(board, iB + 1, jB)
-                board_maybe_set_bulb(board, iB, jB + dj)
-                self._dot_adjacent_columns(board, iA, jA, iB, jB)
-        return board
-
-    def _dot_adjacent_columns(
-        self, board: np.ndarray, iA: int, jA: int, iB: int, jB: int
-    ) -> np.ndarray:
-        for i in range(iA + 2, np.size(board, 0) - 1):
-            if board[i, jA] in "-01234":
-                break
-            elif i != iB and board[i, jA] == ".":
-                board[i, jA] = "+"
-        for i in range(iB - 2, 0, -1):
-            if board[i, jB] in "-01234":
-                break
-            elif i != iA and board[i, jB] == ".":
-                board[i, jB] = "+"
-        return board
-
-    def _analyze_pairs_same_column(
-        self,
-        board: np.ndarray,
-        iA: int,
-        j: int,
-        iB: int,
-        new_tracer_C: bool,  # noqa: FBT001
-        tracer_D: bool,  # noqa: FBT001
-        new_tracer_E: bool,  # noqa: FBT001
-    ) -> np.ndarray:
-        new_tracer_C = new_tracer_C and board[iB, j - 1] == "."
-        tracer_D = tracer_D and board[iB - 1, j] == "." and iB > iA + 2
-        new_tracer_E = new_tracer_E and board[iB, j + 1] == "."
-        if board[iB, j] in "123" and new_tracer_C + tracer_D + new_tracer_E >= 2:
-            # points A and B are both numbers and share 2 or 3 lanes
-            if new_tracer_C + tracer_D + new_tracer_E == 2:
-                self._analyze_pairs_same_column_2(
-                    board, iA, j, iB, new_tracer_C, tracer_D, new_tracer_E
-                )
-            elif new_tracer_C + tracer_D + new_tracer_E == 3:
-                self._analyze_pairs_same_column_3(
-                    board, iA, j, iB, new_tracer_C, tracer_D, new_tracer_E
-                )
-        return board
-
-    def _analyze_pairs_same_column_2(
-        self,
-        board: np.ndarray,
-        iA: int,
-        j: int,
-        iB: int,
-        new_tracer_C: bool,  # noqa: FBT001
-        tracer_D: bool,  # noqa: FBT001
-        new_tracer_E: bool,  # noqa: FBT001
-    ) -> np.ndarray:
-        if count_missing_bulbs_near_number(board, iA, j) + 1 == count_free_near_number(
-            board, iA, j
-        ) and count_missing_bulbs_near_number(
-            board, iB, j
-        ) + 1 == count_free_near_number(board, iB, j):
-            board_maybe_set_bulb(board, iA - 1, j)
-            if not new_tracer_C:
-                board_maybe_set_bulb(board, iA, j - 1)
-            if not tracer_D or iA + 2 == iB:
-                board_maybe_set_bulb(board, iA + 1, j)
-            if not new_tracer_E:
-                board_maybe_set_bulb(board, iA, j + 1)
-
-            board_maybe_set_bulb(board, iB + 1, j)
-            if not new_tracer_C:
-                board_maybe_set_bulb(board, iB, j - 1)
-            if not tracer_D:
-                board_maybe_set_bulb(board, iB - 1, j)
-            if not new_tracer_E:
-                board_maybe_set_bulb(board, iB, j + 1)
-            self._dot_columns_same(board, iA, j - 1, iB, new_tracer_C)
-            self._dot_columns_same(board, iA + 1, j, iB - 1, tracer_D)
-            self._dot_columns_same(board, iA, j + 1, iB, new_tracer_E)
-        return board
-
-    def _analyze_pairs_same_column_3(
-        self,
-        board: np.ndarray,
-        iA: int,
-        j: int,
-        iB: int,
-        new_tracer_C: bool,  # noqa: FBT001
-        tracer_D: bool,  # noqa: FBT001
-        new_tracer_E: bool,  # noqa: FBT001
-    ) -> np.ndarray:
-        if (
-            count_free_near_number(board, iA, j)
-            + count_free_near_number(board, iB, j)
-            - count_missing_bulbs_near_number(board, iA, j)
-            - +count_missing_bulbs_near_number(board, iB, j)
-            - 3
-            == 0
-        ):
-            board_maybe_set_bulb(board, iA - 1, j)
-            board_maybe_set_bulb(board, iB + 1, j)
-
-            self._dot_columns_same(board, iA, j - 1, iB, new_tracer_C)
-            # _dot_columns_same(board, iA, j, iB, tracer_D)
-            for i in range(iA + 2, iB - 1):
-                if board[i, j] == ".":
-                    board[i, j] = "+"
-            self._dot_columns_same(board, iA, j + 1, iB, new_tracer_E)
-        return board
-
-    def _dot_columns_same(
-        self,
-        board: np.ndarray,
-        iA: int,
-        j: int,
-        iB: int,
-        tracer: bool,  # noqa: FBT001
-    ) -> np.ndarray:
-        if tracer:
-            for r in [
-                range(iA - 1, 0, -1),
-                range(iA + 1, iB),
-                range(iB + 1, np.size(board, 0)),
-            ]:
-                for i in r:
-                    if board[i, j] in "-01234":
-                        break
-                    elif board[i, j] == ".":
-                        board[i, j] = "+"
-        return board
 
 
 def check_number(board: np.ndarray) -> list[tuple[int, int]]:
@@ -1097,15 +882,6 @@ class ThoughtProcess:
         self.maybe_set_dot(iC, jC - dj)
         self.maybe_set_bulb(iD + di, jD)
         self.maybe_set_bulb(iD, jD + dj)
-
-    def transition_wrapper(self, func: Callable[[np.ndarray], np.ndarray]) -> None:
-        old_board = self.board.copy()
-        func(self.board)
-        for i, j in zip(*(old_board != self.board).nonzero(), strict=True):
-            self.new_mark.append((i, j, cast(str, self.board[i, j])))
-
-    # def trace_shared_lanes(self, i: int, j: int) -> None:
-    #     self.transition_wrapper(trace_shared_lanes)
 
     def find_wrong_numbers(self, i: int, j: int) -> None:
         """

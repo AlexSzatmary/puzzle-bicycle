@@ -13,7 +13,6 @@ from puzzle import (
     count_free_near_number,
     count_missing_bulbs_near_number,
     illuminate_all,
-    # illuminate_one, no longer tested explicitly because it's on track to be removed.
     load_pzprv3,
     print_board,
     save_pzprv3,
