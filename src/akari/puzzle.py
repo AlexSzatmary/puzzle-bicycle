@@ -527,7 +527,15 @@ class ThoughtProcess:
         self.lit_bulb_pairs = []
         self.unilluminatable_cells = []
         self.wrong_numbers = set()
-        self.shared_lanes_bot = SharedLanesBot(self)
+        if not hasattr(self, "shared_lanes_bot"):
+            self.shared_lanes_bot = SharedLanesBot(self)
+
+    def __copy__(self) -> "ThoughtProcess":
+        cls = self.__class__
+        new = cls.__new__(cls)
+        new.shared_lanes_bot = self.shared_lanes_bot
+        new.__init__(self.board)
+        return new
 
     def maybe_set_bulb(self, i: int, j: int) -> None:
         """
@@ -975,7 +983,7 @@ class ThoughtProcess:
             old_board = self.board.copy()
             for i, j in zip(*np.asarray(self.board == ".").nonzero(), strict=True):
                 if self.board[i, j] == ".":
-                    try_tp_dot = ThoughtProcess(self.board)
+                    try_tp_dot = self.__copy__()
                     try_tp_dot.maybe_set_dot(i, j)
                     try_tp_dot.apply_methods(level_to_use)
                     if not try_tp_dot.check_unsolved():
@@ -983,7 +991,7 @@ class ThoughtProcess:
                         self.apply_methods(level_to_use)
                         continue
                     # continue for this branch because we already know the cell
-                    try_tp_bulb = ThoughtProcess(self.board)
+                    try_tp_bulb = self.__copy__()
                     try_tp_bulb.maybe_set_bulb(i, j)
                     try_tp_bulb.apply_methods(level_to_use)
                     if not try_tp_bulb.check_unsolved():
