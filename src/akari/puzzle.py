@@ -429,7 +429,7 @@ class SharedLanesBot:
                 board, sl.B[0], sl.B[1]
             ) == count_free_near_number(
                 board, sl.A[0], sl.A[1]
-            ) + count_free_near_number(board, sl.B[0], sl.B[1]) - len(sl.shared_pairs):
+            ) + count_free_near_number(board, sl.B[0], sl.B[1]) - len(active_lanes):
                 for cell in sl.nonshared_cells:
                     self.thought_process.maybe_set_bulb(cell[0], cell[1])
                 self._dot_shared_lanes(board, sl)

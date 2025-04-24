@@ -1121,11 +1121,12 @@ def board_pairs_trace_shared_lanes_same_3() -> list[tuple[np.ndarray, np.ndarray
 def test_trace_shared_lanes_same_3(
     board_pairs_trace_shared_lanes_same_3: list[tuple[np.ndarray, np.ndarray]],
 ) -> None:
-    pre, post = board_pairs_trace_shared_lanes_same_3[0]
-    tp = ThoughtProcess(pre)
-    for i, j in tp.all_interior_ij():
-        tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
-    assert stringify_board(tp.board) == stringify_board(post)
+    for pre, post in board_pairs_trace_shared_lanes_same_3:
+        tp = ThoughtProcess(pre)
+        for i, j in tp.all_interior_ij():
+            tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+        print_board(tp.board)
+        assert stringify_board(tp.board) == stringify_board(post)
 
 
 @pytest.fixture
@@ -1156,6 +1157,34 @@ def test_trace_shared_lanes_all(
             for i, j in tp.all_interior_ij():
                 tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
             assert stringify_board(tp.board) == stringify_board(post_rotated)
+
+
+def test_trace_shared_lanes_same_3_bug_1() -> None:
+    # done to confirm fix of a specific bug that should not arise again
+    pre = boardify_string(
+        cleandoc("""
+    --------
+    -2.....-
+    -.2..2.-
+    -......-
+    --------
+    """)
+    )
+    post = boardify_string(
+        cleandoc("""
+    --------
+    -2#____-
+    -#2..2.-
+    -|.....-
+    --------
+    """)
+    )
+    tp = ThoughtProcess(pre)
+    tp.maybe_set_bulb(2, 1)
+    tp.maybe_set_bulb(1, 2)
+    for i, j in tp.all_interior_ij():
+        tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+    assert stringify_board(tp.board) == stringify_board(post)
 
 
 def test_find_unilluminatable_cells() -> None:
