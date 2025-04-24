@@ -1208,3 +1208,130 @@ def test_find_unilluminatable_cells() -> None:
     tp.apply_methods(6)
     print_board(tp.board)
     assert set(tp.unilluminatable_cells) == {(1, 2), (5, 2)}
+
+
+def test_mark_dots_beyond_corners() -> None:
+    pre = boardify_string(
+        cleandoc("""
+            -------
+            -0+++.-
+            --+00.-
+            --+0-.-
+            --....-
+            -------
+            """)
+    )
+    post = boardify_string(
+        cleandoc("""
+            -------
+            -0+++.-
+            --+00.-
+            --+0-.-
+            --...+-
+            -------
+            """)
+    )
+    for pre_rotated, post_rotated in zip(
+        all_orientations(pre),
+        all_orientations(post),
+        strict=True,
+    ):
+        print_board(pre_rotated)
+        tp = ThoughtProcess(pre_rotated)
+        for i, j in tp.all_interior_ij():
+            tp.mark_dots_beyond_corners(i, j, ".")
+        print_board(tp.board)
+        assert stringify_board(tp.board) == stringify_board(post_rotated)
+
+    pre = boardify_string(
+        cleandoc("""
+            -------
+            -0++.+-
+            --+00.-
+            --+0-.-
+            --....-
+            -------
+            """)
+    )
+    post = boardify_string(
+        cleandoc("""
+            -------
+            -0++.+-
+            --+00.-
+            --+0-.-
+            --....-
+            -------
+            """)
+    )
+    for pre_rotated, post_rotated in zip(
+        all_orientations(pre),
+        all_orientations(post),
+        strict=True,
+    ):
+        print_board(pre_rotated)
+        tp = ThoughtProcess(pre_rotated)
+        for i, j in tp.all_interior_ij():
+            tp.mark_dots_beyond_corners(i, j, ".")
+        print_board(tp.board)
+        assert stringify_board(tp.board) == stringify_board(post_rotated)
+
+    pre = boardify_string(
+        cleandoc("""
+            -------
+            -.+++.-
+            --+00.-
+            --+0-.-
+            --+...-
+            -------
+            """)
+    )
+    post = boardify_string(
+        cleandoc("""
+            -------
+            -.+++.-
+            --+00.-
+            --+0-.-
+            --+...-
+            -------
+            """)
+    )
+    for pre_rotated, post_rotated in zip(
+        all_orientations(pre),
+        all_orientations(post),
+        strict=True,
+    ):
+        print_board(pre_rotated)
+        tp = ThoughtProcess(pre_rotated)
+        for i, j in tp.all_interior_ij():
+            tp.mark_dots_beyond_corners(i, j, ".")
+        print_board(tp.board)
+        assert stringify_board(tp.board) == stringify_board(post_rotated)
+
+    pre = boardify_string(
+        cleandoc("""
+            -----
+            --0.-
+            -0..-
+            -...-
+            -----
+            """)
+    )
+    post = boardify_string(
+        cleandoc("""
+            -----
+            --0|-
+            -0x#-
+            -_#x-
+            -----
+            """)
+    )
+    for pre_rotated, post_rotated in zip(
+        all_orientations(pre),
+        all_orientations(post),
+        strict=True,
+    ):
+        print_board(pre_rotated)
+        tp = ThoughtProcess(pre_rotated)
+        tp.apply_methods(6)
+        print_board(tp.board)
+        assert stringify_board(tp.board) == stringify_board(post_rotated)

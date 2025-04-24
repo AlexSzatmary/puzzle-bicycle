@@ -529,7 +529,7 @@ class ThoughtProcess:
         new.__init__(self.board)
         return new
 
-    def maybe_set_bulb(self, i: int, j: int) -> None:
+    def maybe_set_bulb(self, i: int, j: int) -> bool:
         """
         Confirms that board[i, j] is free; if so, board[i, j] = "#" and runs updates
 
@@ -540,8 +540,11 @@ class ThoughtProcess:
             self.new_mark.append((i, j, "#"))
             self.illuminate_one(i, j)
             self.find_wrong_numbers(i, j)
+            return True
+        else:
+            return False
 
-    def maybe_set_dot(self, i: int, j: int) -> None:
+    def maybe_set_dot(self, i: int, j: int) -> bool:
         """
         Confirms that board[i, j] is free; if so, board[i, j] = "." and runs updates
 
@@ -552,6 +555,9 @@ class ThoughtProcess:
             self.new_mark.append((i, j, "+"))
             self.find_wrong_numbers(i, j)
             self.find_unilluminatable_cells(i, j)
+            return True
+        else:
+            return False
 
     def all_interior_ij(self) -> list[tuple[int, int]]:
         return [
@@ -639,6 +645,7 @@ class ThoughtProcess:
                 self.analyze_diagonally_adjacent_numbers(i, j, mark)
             if level >= 6:
                 self.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, mark)
+                self.mark_dots_beyond_corners(i, j, mark)
             if not self.check_unsolved() and not mark == ".":
                 break
             if level >= 9 and not self.new_mark:
@@ -833,6 +840,77 @@ class ThoughtProcess:
                 for di, dj in DIAG_DIRS:
                     if self.board[i + di, j] == "." and self.board[i, j + dj] == ".":
                         self.maybe_set_dot(i + di, j + dj)
+
+    def mark_dots_beyond_corners(self, i0: int, j0: int, mark: str) -> None:
+        """
+        Marks cells that must not be bulbs for a dotted cell to be illuminated. For
+        example, if we have,
+        -----
+        -++.-
+        -+..-
+        -..A-
+        -----
+        then A cannot be a bulb because the top left + would become unilluminatable.
+
+        This is like a mix of mark_unique_bulbs_for_dot_cells and mark_dots_at_corners.
+        """
+        if mark == ".":
+            self._mark_dots_beyond_corners_at_cell(i0, j0)
+        elif mark == "+":
+            self._mark_dots_beyond_corners_at_cell(i0, j0)
+            for i, j in self.line_of_sight(i0, j0):
+                self._mark_dots_beyond_corners_at_cell(i, j)
+
+    def _mark_dots_beyond_corners_at_cell(self, i: int, j: int) -> None:
+        if self.board[i, j] == "+":
+            cells = []
+            for it in self.line_of_sight_iters(i, j):
+                seen_in_this_direction = False
+                for i1, j1 in it:
+                    if self.board[i1, j1] == ".":
+                        if seen_in_this_direction or len(cells) > 1:
+                            return
+                        else:
+                            cells.append((i1, j1))
+                            seen_in_this_direction = True
+                    elif self.board[i1, j1] in "01234-":
+                        break
+            self._mark_dots_beyond_corners_process_cells(i, j, cells)
+
+    def _mark_dots_beyond_corners_process_cells(
+        self, i: int, j: int, cells: list[tuple[int, int]]
+    ) -> None:
+        if len(cells) == 2:
+            (iA, jA), (iB, jB) = cells
+            if iA == iB or jA == jB:
+                return
+            if iB == i:
+                (iA, jA), (iB, jB) = (iB, jB), (iA, jA)
+            if self._mark_dots_beyond_corners_check_line_of_sight(i, j, iA, jA, iB, jB):
+                self.maybe_set_dot(iB, jA)
+
+    def _mark_dots_beyond_corners_check_line_of_sight(
+        self, i: int, j: int, iA: int, jA: int, iB: int, jB: int
+    ) -> bool:
+        if iB > i:
+            it = self.it_down(iA, jA)
+        else:
+            it = self.it_up(iA, jA)
+        for ix, jx in it:
+            if self.board[ix, jx] in "01234-":
+                return False
+            elif ix == iB:
+                break
+        if jA > j:
+            it = self.it_right(iB, jB)
+        else:
+            it = self.it_left(iB, jB)
+        for ix, jx in it:
+            if self.board[ix, jx] in "01234-":
+                return False
+            elif jx == jA:
+                break
+        return True
 
     def analyze_diagonally_adjacent_numbers(self, i: int, j: int, mark: str) -> None:
         """
