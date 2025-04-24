@@ -271,13 +271,9 @@ class SharedLanesBot:
                     # tracer_E is in column jA + 1
                     # other wise, the tracers are in rows iA - 1, iA, and iA + 1
                     if direction == 0:
-                        cells_after_A = zip_longest(
-                            range(iA + 1, np.size(board, 0)), [], fillvalue=jA
-                        )
+                        cells_after_A = self.thought_process.it_down(iA, jA)
                     else:
-                        cells_after_A = zip_longest(
-                            [], range(jA + 1, np.size(board, 1)), fillvalue=iA
-                        )
+                        cells_after_A = self.thought_process.it_right(iA, jA)
                     self._trace_shared_lanes_at_cell(
                         board, vi, vj, wi, wj, iA, jA, cells_after_A
                     )
@@ -441,15 +437,11 @@ class SharedLanesBot:
     def _dot_shared_lanes(self, board: np.ndarray, sl: SharedLanesPair) -> None:
         for i1, j1, i2, j2 in sl.shared_pairs:
             if j1 == j2:
-                cells_after_1 = zip_longest(
-                    range(i1 + 1, board.shape[0]), [], fillvalue=j1
-                )
-                cells_before_1 = zip_longest(range(i1 - 1, 0, -1), [], fillvalue=j1)
+                cells_after_1 = self.thought_process.it_down(i1, j1)
+                cells_before_1 = self.thought_process.it_up(i1, j1)
             else:
-                cells_after_1 = zip_longest(
-                    [], range(j1 + 1, board.shape[1]), fillvalue=i1
-                )
-                cells_before_1 = zip_longest([], range(j1 - 1, 0, -1), fillvalue=i1)
+                cells_after_1 = self.thought_process.it_right(i1, j1)
+                cells_before_1 = self.thought_process.it_left(i1, j1)
             for ix, jx in cells_after_1:
                 if board[ix, jx] in "-01234":
                     break
@@ -568,15 +560,49 @@ class ThoughtProcess:
             for j in range(1, self.board.shape[1] - 1)
         ]
 
+    def it_up(self, i: int, j: int) -> Iterator[tuple[int, int]]:
+        """
+        Iterator of cells above (i, j)
+        """
+        return zip_longest(range(i - 1, 0, -1), [], fillvalue=j)
+
+    def it_left(self, i: int, j: int) -> Iterator[tuple[int, int]]:
+        """
+        Iterator of cells to the left of (i, j)
+        """
+        return zip_longest([], range(j - 1, 0, -1), fillvalue=i)
+
+    def it_down(self, i: int, j: int) -> Iterator[tuple[int, int]]:
+        """
+        Iterator of cells below (i, j)
+        """
+        return zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j)
+
+    def it_right(self, i: int, j: int) -> Iterator[tuple[int, int]]:
+        """
+        Iterator of cells to the right of (i, j)
+        """
+        return zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i)
+
+    def line_of_sight_iters(
+        self, i: int, j: int
+    ) -> Iterator[Iterator[tuple[int, int]]]:
+        """
+        Returns an iterator of it_up, it_left, it_down, and it_right
+
+        This is useful because we often want to break partway through searching in a
+        given direction, but then look in the next direction.
+        """
+        return (
+            it(i, j) for it in [self.it_up, self.it_left, self.it_down, self.it_right]
+        )
+
     def line_of_sight(self, i: int, j: int) -> list[tuple[int, int]]:
+        """
+        Returns an iterator of all cells in line of sight to a cell at i, j
+        """
         line_of_sight_cells = []
-        iters = [
-            zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
-            zip_longest([], range(j - 1, 0, -1), fillvalue=i),
-            zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
-            zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
-        ]
-        for it in iters:
+        for it in self.line_of_sight_iters(i, j):
             for i, j in it:
                 if self.board[i, j] in "01234-":
                     break
@@ -626,13 +652,9 @@ class ThoughtProcess:
         """
         fill_chars = ["|", "_", "|", "_"]
         if self.board[i, j] == "#":
-            iters = [
-                zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
-                zip_longest([], range(j - 1, 0, -1), fillvalue=i),
-                zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
-                zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
-            ]
-            for it, fill_char in zip(iters, fill_chars, strict=True):
+            for it, fill_char in zip(
+                self.line_of_sight_iters(i, j), fill_chars, strict=True
+            ):
                 for i1, j1 in it:
                     if self.board[i1, j1] == "#":
                         if (i1, j1, i, j) not in self.lit_bulb_pairs:
@@ -715,13 +737,7 @@ class ThoughtProcess:
     def _fill_holes_cell(self, i: int, j: int) -> None:
         if self.board[i, j] == ".":
             is_hole = True  # presume a hole
-            iters = [
-                zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
-                zip_longest([], range(j - 1, 0, -1), fillvalue=i),
-                zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
-                zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
-            ]
-            for it in iters:
+            for it in self.line_of_sight_iters(i, j):
                 for i1, j1 in it:
                     if self.board[i1, j1] == ".":
                         is_hole = False
@@ -760,13 +776,7 @@ class ThoughtProcess:
             sees_free = False
             sees_multiple_free = False
             free_i = free_j = -1
-            iters = [
-                zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
-                zip_longest([], range(j - 1, 0, -1), fillvalue=i),
-                zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
-                zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
-            ]
-            for it in iters:
+            for it in self.line_of_sight_iters(i, j):
                 for i1, j1 in it:
                     if self.board[i1, j1] == ".":
                         if sees_free:
@@ -935,14 +945,8 @@ class ThoughtProcess:
         -----
         """
         self.check_this_cell_unilluminatable(i, j)
-        iters1 = [
-            zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
-            zip_longest([], range(j - 1, 0, -1), fillvalue=i),
-            zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
-            zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
-        ]
-        for it1 in iters1:
-            for i1, j1 in it1:
+        for it in self.line_of_sight_iters(i, j):
+            for i1, j1 in it:
                 if self.board[i1, j1] in "01234-":
                     break
                 self.check_this_cell_unilluminatable(i1, j1)
@@ -950,14 +954,8 @@ class ThoughtProcess:
     def check_this_cell_unilluminatable(self, i: int, j: int) -> None:
         if self.board[i, j] == "+":
             is_unilluminatable = True
-            iters = [
-                zip_longest(range(i - 1, 0, -1), [], fillvalue=j),
-                zip_longest([], range(j - 1, 0, -1), fillvalue=i),
-                zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j),
-                zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i),
-            ]
-            for it2 in iters:
-                for i2, j2 in it2:
+            for it in self.line_of_sight_iters(i, j):
+                for i2, j2 in it:
                     if self.board[i2, j2] in ".#":
                         is_unilluminatable = False
                         break
