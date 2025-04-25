@@ -151,7 +151,8 @@ def count_missing_bulbs_near_number(board: np.ndarray, i: int, j: int) -> int:
 
 
 SharedLanesPair = namedtuple(
-    "SharedLanesPair", ["A", "B", "shared_pairs", "nonshared_cells", "needed_bulbs"]
+    "SharedLanesPair",
+    ["A", "B", "shared_pairs", "nonshared_cells", "touching", "needed_bulbs"],
 )
 
 
@@ -367,6 +368,7 @@ class SharedLanesBot:
                 (iB + vi, jB + vj),
                 (iB + di, jB + dj),
             ],
+            touching=False,
             needed_bulbs=int(board[iA, jA]) + int(board[iB, jB]),
         )
         for cell in sl.nonshared_cells:
@@ -392,6 +394,7 @@ class SharedLanesBot:
             B=(iB, jB),
             shared_pairs=[],
             nonshared_cells=[(iA - vi, jA - vj), (iB + vi, jB + vj)],
+            touching=False,
             needed_bulbs=int(board[iA, jA]) + int(board[iB, jB]),
         )
         if fit_C:
@@ -399,8 +402,11 @@ class SharedLanesBot:
         else:
             sl.nonshared_cells.append((iA - wi, jA - wj))
             sl.nonshared_cells.append((iB - wi, jB - wj))
-        if fit_D and iB + jB != iA + jA + 2:
-            sl.shared_pairs.append((iA + vi, jA + vj, iB - vi, jB - vj))
+        if fit_D:
+            if iB + jB != iA + jA + 2:
+                sl.shared_pairs.append((iA + vi, jA + vj, iB - vi, jB - vj))
+            else:
+                sl = sl._replace(touching=(iA + vi, jA + vj))
         else:
             sl.nonshared_cells.append((iA + vi, jA + vj))
             sl.nonshared_cells.append((iB - vi, jB - vj))
@@ -411,6 +417,8 @@ class SharedLanesBot:
             sl.nonshared_cells.append((iB + wi, jB + wj))
         for cell in sl.nonshared_cells:
             self.shared_lanes[cell].append(sl)
+        if sl.touching:
+            self.shared_lanes[sl.touching].append(sl)
 
     def mark_bulbs_and_dots_at_shared_lanes(self, i: int, j: int, mark: str) -> None:
         board = self.thought_process.board
@@ -423,16 +431,23 @@ class SharedLanesBot:
                 i1, j1, i2, j2 = sp
                 if board[i1, j1] == "." and board[i2, j2] == ".":
                     active_lanes.append(sp)
-            if len(active_lanes) > 1 and count_missing_bulbs_near_number(
-                board, sl.A[0], sl.A[1]
-            ) + count_missing_bulbs_near_number(
-                board, sl.B[0], sl.B[1]
-            ) == count_free_near_number(
-                board, sl.A[0], sl.A[1]
-            ) + count_free_near_number(board, sl.B[0], sl.B[1]) - len(active_lanes):
+            balance = (
+                count_missing_bulbs_near_number(board, sl.A[0], sl.A[1])
+                + count_missing_bulbs_near_number(board, sl.B[0], sl.B[1])
+                - (
+                    count_free_near_number(board, sl.A[0], sl.A[1])
+                    + count_free_near_number(board, sl.B[0], sl.B[1])
+                    - len(active_lanes)
+                )
+            )
+            if len(active_lanes) > 1 and balance == 0:
                 for cell in sl.nonshared_cells:
                     self.thought_process.maybe_set_bulb(cell[0], cell[1])
+                if sl.touching:
+                    self.thought_process.maybe_set_bulb(sl.touching[0], sl.touching[1])
                 self._dot_shared_lanes(board, sl)
+            if sl.touching and balance == -1:
+                self.thought_process.maybe_set_bulb(sl.touching[0], sl.touching[1])
 
     def _dot_shared_lanes(self, board: np.ndarray, sl: SharedLanesPair) -> None:
         for i1, j1, i2, j2 in sl.shared_pairs:

@@ -1017,7 +1017,7 @@ def board_pairs_trace_shared_lanes_same_2() -> list[tuple[np.ndarray, np.ndarray
             -----
             -...-
             -.3.-
-            -...-
+            -_#_-
             -.2.-
             -...-
             -----
