@@ -1,7 +1,8 @@
-from collections import defaultdict, deque, namedtuple
+from collections import defaultdict, deque
 from collections.abc import Iterator
+from dataclasses import dataclass
 from itertools import zip_longest
-from typing import cast
+from typing import Literal, cast
 
 import numpy as np
 
@@ -150,11 +151,30 @@ def count_missing_bulbs_near_number(board: np.ndarray, i: int, j: int) -> int:
     return int(board[i, j]) - n_bulbs
 
 
-# data structure for tracking shared lanes
-SharedLanesPair = namedtuple(
-    "SharedLanesPair",
-    ["A", "B", "shared_pairs", "nonshared_cells", "touching", "needed_bulbs"],
-)
+@dataclass
+class SharedLanesPair:
+    """
+    Data structure for tracking a pair of numbers that share lanes or touch.
+
+    Members
+    -------
+    A : tuple[int, int]
+    B : tuple[int, int]
+        cell coordinates
+    shared_pairs: list[tuple[int, int, int, int]]
+        a list of pairs of cells adjacent to A and B. Coordinates are i1, j1, i2, j2.
+        It is required that i1 <= i2 and j1 <= j2 and that a row or column be shared.
+    nonshared_cells: list[tuple[int, int]]
+        list of cells adjacent to A and B that are not "seen" by the other one.
+    touching: Literal[False] | tuple[int, int]
+        if A and B are not touching; otherwise, the coordinates of the cell between
+        them.
+    """
+    A: tuple[int, int]
+    B: tuple[int, int]
+    shared_pairs: list[tuple[int, int, int, int]]
+    nonshared_cells: list[tuple[int, int]]
+    touching: Literal[False] | tuple[int, int]
 
 
 class SharedLanesBot:
@@ -371,7 +391,6 @@ class SharedLanesBot:
                 (iB + di, jB + dj),
             ],
             touching=False,
-            needed_bulbs=int(board[iA, jA]) + int(board[iB, jB]),
         )
         for cell in sl.nonshared_cells:
             self.shared_lanes[cell].append(sl)
@@ -397,7 +416,6 @@ class SharedLanesBot:
             shared_pairs=[],
             nonshared_cells=[(iA - vi, jA - vj), (iB + vi, jB + vj)],
             touching=False,
-            needed_bulbs=int(board[iA, jA]) + int(board[iB, jB]),
         )
         if fit_C:
             sl.shared_pairs.append((iA - wi, jA - wj, iB - wi, jB - wj))
@@ -408,7 +426,7 @@ class SharedLanesBot:
             if iB + jB != iA + jA + 2:
                 sl.shared_pairs.append((iA + vi, jA + vj, iB - vi, jB - vj))
             else:
-                sl = sl._replace(touching=(iA + vi, jA + vj))
+                sl.touching = (iA + vi, jA + vj)
         else:
             sl.nonshared_cells.append((iA + vi, jA + vj))
             sl.nonshared_cells.append((iB - vi, jB - vj))
@@ -455,8 +473,7 @@ class SharedLanesBot:
                     (iA + 3, jA + 2 * dj),
                     (iA + 2, jA + 3 * dj),
                 ],
-                touching=False,
-                needed_bulbs=int(board[iA, jA]) + int(board[iA + 2, jA + 2 * dj]),
+                touching=False
             )
             for cell in sl.nonshared_cells:
                 self.shared_lanes[cell].append(sl)
