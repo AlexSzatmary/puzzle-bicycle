@@ -1187,6 +1187,71 @@ def test_trace_shared_lanes_same_3_bug_1() -> None:
     assert stringify_board(tp.board) == stringify_board(post)
 
 
+def test_trace_shared_lanes_diagonal() -> None:
+    board_pairs_raw = [
+        (
+            """
+            --------
+            -......-
+            -.3....-
+            -......-
+            -...3..-
+            -......-
+            -......-
+            --------
+            """,
+            """
+            --------
+            -x#__x_-
+            -#3..|.-
+            -|.+.|+-
+            -|..3#_-
+            -x__#x_-
+            -|.+||.-
+            --------
+            """,
+        ),
+        (
+            """
+            --------
+            -......-
+            -.3....-
+            -......-
+            -...2..-
+            -......-
+            -......-
+            --------
+            """,
+            """
+            --------
+            -......-
+            -.3....-
+            -......-
+            -...2..-
+            -......-
+            -......-
+            --------
+            """,
+        ),
+    ]
+    board_pairs = [
+        (boardify_string(cleandoc(pre)), boardify_string(cleandoc(post)))
+        for (pre, post) in board_pairs_raw
+    ]
+    for pre, post in board_pairs:
+        for pre_rotated, post_rotated in zip(
+            all_orientations(pre),
+            all_orientations(post),
+            strict=True,
+        ):
+            print_board(pre_rotated)
+            tp = ThoughtProcess(pre_rotated)
+            print(tp.shared_lanes_bot.shared_lanes)
+            for i, j in tp.all_interior_ij():
+                tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+            assert stringify_board(tp.board) == stringify_board(post_rotated)
+
+
 def test_find_unilluminatable_cells() -> None:
     board = boardify_string(
         cleandoc("""

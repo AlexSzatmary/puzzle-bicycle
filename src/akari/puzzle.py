@@ -150,6 +150,7 @@ def count_missing_bulbs_near_number(board: np.ndarray, i: int, j: int) -> int:
     return int(board[i, j]) - n_bulbs
 
 
+# data structure for tracking shared lanes
 SharedLanesPair = namedtuple(
     "SharedLanesPair",
     ["A", "B", "shared_pairs", "nonshared_cells", "touching", "needed_bulbs"],
@@ -247,6 +248,7 @@ class SharedLanesBot:
         )
         self._trace_shared_lanes(0)  # trace down
         self._trace_shared_lanes(1)  # trace right
+        self._trace_diagonal()
 
     def _trace_shared_lanes(self, direction: int) -> None:
         # v is a vector in the direction that we're tracing and w is a vector
@@ -420,6 +422,45 @@ class SharedLanesBot:
         if sl.touching:
             self.shared_lanes[sl.touching].append(sl)
 
+    def _trace_diagonal(self) -> None:
+        board = self.thought_process.board
+        for iA in range(1, np.size(board, 0) - 3):
+            for jA in range(1, np.size(board, 1) - 1):
+                if board[iA, jA] in "123":
+                    if jA > 2:
+                        self._trace_diagonal_at_cell(iA, jA, -1)
+                    if jA < np.size(board, 1) - 3:
+                        self._trace_diagonal_at_cell(iA, jA, 1)
+
+    def _trace_diagonal_at_cell(self, iA: int, jA: int, dj: int) -> None:
+        board = self.thought_process.board
+        if (
+            board[iA + 2, jA + 2 * dj] in "123"
+            and board[iA + 1, jA + dj] in ".+"
+            and board[iA + 1, jA] == "."
+            and board[iA, jA + dj] == "."
+            and board[iA + 1, jA + 2 * dj] == "."
+            and board[iA + 2, jA + dj] == "."
+        ):
+            sl = SharedLanesPair(
+                A=(iA, jA),
+                B=(iA + 2, jA + 2 * dj),
+                shared_pairs=[
+                    (iA + 1, min(jA, jA + 2 * dj), iA + 1, max(jA, jA + 2 * dj)),
+                    (iA, jA + dj, iA + 2, jA + dj),
+                ],
+                nonshared_cells=[
+                    (iA - 1, jA),
+                    (iA, jA - dj),
+                    (iA + 3, jA + 2 * dj),
+                    (iA + 2, jA + 3 * dj),
+                ],
+                touching=False,
+                needed_bulbs=int(board[iA, jA]) + int(board[iA + 2, jA + 2 * dj]),
+            )
+            for cell in sl.nonshared_cells:
+                self.shared_lanes[cell].append(sl)
+
     def mark_bulbs_and_dots_at_shared_lanes(self, i: int, j: int, mark: str) -> None:
         board = self.thought_process.board
         # if mark == ".":
@@ -450,6 +491,11 @@ class SharedLanesBot:
                 self.thought_process.maybe_set_bulb(sl.touching[0], sl.touching[1])
 
     def _dot_shared_lanes(self, board: np.ndarray, sl: SharedLanesPair) -> None:
+        """
+        Dots cells along shared lanes other than the shared cells
+
+        Requires that i1 <= i2 and j1 <= j2
+        """
         for i1, j1, i2, j2 in sl.shared_pairs:
             if j1 == j2:
                 cells_after_1 = self.thought_process.it_down(i1, j1)
