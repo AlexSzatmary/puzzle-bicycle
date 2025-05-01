@@ -540,6 +540,13 @@ class MainWindow(QMainWindow):
         self.contradiction_action.setChecked(False)
         solver_menu.addAction(self.contradiction_action)
 
+        view_menu = menu.addMenu("&View")
+        self.show_controls_in_window_action = QAction("Show controls in window")
+        self.show_controls_in_window_action.setCheckable(True)
+        self.show_controls_in_window_action.setChecked(True)
+        self.show_controls_in_window_action.toggled.connect(self.show_controls)
+        view_menu.addAction(self.show_controls_in_window_action)
+
         self.board = puzzle.load_pzprv3(pzprv3_1)
 
         self.puzzle_status = QLabel()
@@ -591,6 +598,11 @@ class MainWindow(QMainWindow):
         self.refresh_GUI()
         self.show()
         self.resize(self.sizeHint())
+
+    def show_controls(self) -> None:
+        self.gb_solver.setVisible(self.show_controls_in_window_action.isChecked())
+        self.gb_edit.setVisible(self.show_controls_in_window_action.isChecked())
+        self.refresh_GUI()
 
     def new_pressed(self) -> None:
         dlg = NewPuzzleDialog()
