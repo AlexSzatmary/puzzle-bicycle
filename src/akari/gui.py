@@ -26,10 +26,12 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
     QGridLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLayout,
@@ -37,6 +39,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMessageBox,
     QPushButton,
+    QRadioButton,
     QSizePolicy,
     QSpacerItem,
     QVBoxLayout,
@@ -463,29 +466,47 @@ class MainWindow(QMainWindow):
 
         edit_menu.addSeparator()
         self.edit_mode_group = QActionGroup(self)
+        self.edit_mode_radios = []
         self.edit_mode = "play"
         action = QAction("Play", self.edit_mode_group)
         action.triggered.connect(self.edit_mode_changed)
         action.setShortcut(QKeySequence("Ctrl+E"))
         action.setCheckable(True)
         action.setChecked(True)
+        radio = QRadioButton("Play")
+        action.toggled.connect(radio.setChecked)
+        radio.toggled.connect(action.setChecked)
+        radio.clicked.connect(self.edit_mode_changed)
+        self.edit_mode_radios.append(radio)
+        radio.setChecked(True)
         edit_menu.addAction(action)
         action = QAction("Edit blocks", self.edit_mode_group)
         action.triggered.connect(self.edit_mode_changed)
         action.setShortcut(QKeySequence("Ctrl+R"))
         action.setCheckable(True)
         action.setChecked(False)
+        radio = QRadioButton("Edit blocks")
+        action.toggled.connect(radio.setChecked)
+        radio.toggled.connect(action.setChecked)
+        radio.clicked.connect(self.edit_mode_changed)
+        self.edit_mode_radios.append(radio)
         edit_menu.addAction(action)
         action = QAction("Edit numbers", self.edit_mode_group)
         action.triggered.connect(self.edit_mode_changed)
         action.setShortcut(QKeySequence("Ctrl+T"))
         action.setCheckable(True)
         action.setChecked(False)
+        radio = QRadioButton("Edit numbers")
+        action.toggled.connect(radio.setChecked)
+        radio.toggled.connect(action.setChecked)
+        radio.clicked.connect(self.edit_mode_changed)
+        self.edit_mode_radios.append(radio)
         edit_menu.addAction(action)
 
-        settings_menu = menu.addMenu("&Settings")
-        settings_menu.addSeparator()
+        solver_menu = menu.addMenu("&Solver")
+        solver_menu.addSeparator()
         self.methods_group = QActionGroup(self)
+        self.methods_radios = []
         for level in range(10):
             if 6 < level < 9:
                 continue  # these levels are not yet implemented
@@ -502,16 +523,22 @@ class MainWindow(QMainWindow):
             action.setShortcut(QKeySequence(f"Ctrl+{level}"))
             action.setCheckable(True)
             action.setChecked(level == AUTO_APPLY_METHODS_LEVEL)
-            settings_menu.addAction(action)
+            radio = QRadioButton(name)
+            radio.setChecked(level == AUTO_APPLY_METHODS_LEVEL)
+            action.toggled.connect(radio.setChecked)
+            radio.toggled.connect(action.setChecked)
+            radio.clicked.connect(self.auto_level_checked)
+            self.methods_radios.append(radio)
+            solver_menu.addAction(action)
 
-        settings_menu.addSeparator()
+        solver_menu.addSeparator()
         self.contradiction_checker_enabled = False
         self.contradiction_action = QAction("Check for contradictions")
         self.contradiction_action.triggered.connect(self.set_contradiction_checker_mode)
         self.contradiction_action.setShortcut(QKeySequence("Ctrl+D"))
         self.contradiction_action.setCheckable(True)
         self.contradiction_action.setChecked(False)
-        settings_menu.addAction(self.contradiction_action)
+        solver_menu.addAction(self.contradiction_action)
 
         self.board = puzzle.load_pzprv3(pzprv3_1)
 
@@ -526,6 +553,40 @@ class MainWindow(QMainWindow):
         )
         self.labelhb = labelhb
         self.vbr.addLayout(labelhb)
+
+        self.gb_solver = QGroupBox("Solver")
+        self.vbl.addWidget(self.gb_solver)
+        vbsolver = QVBoxLayout()
+        for radio in self.methods_radios:
+            vbsolver.addWidget(radio)
+        self.contradiction_checker_checkbox = QCheckBox("Check for contradictions")
+        self.contradiction_checker_checkbox.toggled.connect(
+            self.contradiction_action.setChecked
+        )
+        self.contradiction_action.toggled.connect(
+            self.contradiction_checker_checkbox.setChecked
+        )
+        self.contradiction_checker_checkbox.clicked.connect(
+            self.set_contradiction_checker_mode
+        )
+        vbsolver.addWidget(self.contradiction_checker_checkbox)
+        self.gb_solver.setLayout(vbsolver)
+
+        self.gb_edit = QGroupBox("Edit")
+        self.vbl.addWidget(self.gb_edit)
+        vbedit = QVBoxLayout()
+        resize_button = QPushButton("Resize")
+        resize_button.clicked.connect(resize_action.triggered)
+        vbedit.addWidget(resize_button)
+        check_board_button = QPushButton("Check board")
+        check_board_button.clicked.connect(self.check_board_action.triggered)
+        vbedit.addWidget(check_board_button)
+        clear_board_button = QPushButton("Clear board")
+        clear_board_button.clicked.connect(self.clear_board_action.triggered)
+        vbedit.addWidget(clear_board_button)
+        for radio in self.edit_mode_radios:
+            vbedit.addWidget(radio)
+        self.gb_edit.setLayout(vbedit)
 
         self.refresh_GUI()
         self.show()
