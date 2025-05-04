@@ -455,11 +455,11 @@ class MainWindow(QMainWindow):
         resize_action.triggered.connect(self.resize_pressed)
         resize_action.setShortcut(QKeySequence("Ctrl+U"))
         edit_menu.addAction(resize_action)
-        self.check_board_action = QAction("Check board")
+        self.check_board_action = QAction("Check Board")
         self.check_board_action.triggered.connect(self.check_board)
         self.check_board_action.setShortcut(QKeySequence("Ctrl+I"))
         edit_menu.addAction(self.check_board_action)
-        self.clear_board_action = QAction("Clear board")
+        self.clear_board_action = QAction("Clear Board")
         self.clear_board_action.triggered.connect(self.clear_board)
         self.clear_board_action.setShortcut(QKeySequence("Ctrl+K"))
         edit_menu.addAction(self.clear_board_action)
@@ -480,23 +480,23 @@ class MainWindow(QMainWindow):
         self.edit_mode_radios.append(radio)
         radio.setChecked(True)
         edit_menu.addAction(action)
-        action = QAction("Edit blocks", self.edit_mode_group)
+        action = QAction("Edit Blocks", self.edit_mode_group)
         action.triggered.connect(self.edit_mode_changed)
         action.setShortcut(QKeySequence("Ctrl+R"))
         action.setCheckable(True)
         action.setChecked(False)
-        radio = QRadioButton("Edit blocks")
+        radio = QRadioButton("Edit Blocks")
         action.toggled.connect(radio.setChecked)
         radio.toggled.connect(action.setChecked)
         radio.clicked.connect(self.edit_mode_changed)
         self.edit_mode_radios.append(radio)
         edit_menu.addAction(action)
-        action = QAction("Edit numbers", self.edit_mode_group)
+        action = QAction("Edit Numbers", self.edit_mode_group)
         action.triggered.connect(self.edit_mode_changed)
         action.setShortcut(QKeySequence("Ctrl+T"))
         action.setCheckable(True)
         action.setChecked(False)
-        radio = QRadioButton("Edit numbers")
+        radio = QRadioButton("Edit Numbers")
         action.toggled.connect(radio.setChecked)
         radio.toggled.connect(action.setChecked)
         radio.clicked.connect(self.edit_mode_changed)
@@ -511,11 +511,11 @@ class MainWindow(QMainWindow):
             if 6 < level < 9:
                 continue  # these levels are not yet implemented
             if level == 0:
-                name = "No automatic solving"
+                name = "No Automatic Solving"
             elif level == 1:
-                name = "Just illuminate"
+                name = "Just Illuminate"
             elif level == 9:
-                name = "Full automatic"
+                name = "Full Automatic"
             else:
                 name = f"Level {level}"
             action = QAction(name, self.methods_group)
@@ -533,7 +533,7 @@ class MainWindow(QMainWindow):
 
         solver_menu.addSeparator()
         self.contradiction_checker_enabled = False
-        self.contradiction_action = QAction("Check for contradictions")
+        self.contradiction_action = QAction("Check For Contradictions")
         self.contradiction_action.triggered.connect(self.set_contradiction_checker_mode)
         self.contradiction_action.setShortcut(QKeySequence("Ctrl+D"))
         self.contradiction_action.setCheckable(True)
@@ -541,7 +541,7 @@ class MainWindow(QMainWindow):
         solver_menu.addAction(self.contradiction_action)
 
         view_menu = menu.addMenu("&View")
-        self.show_controls_in_window_action = QAction("Show controls in window")
+        self.show_controls_in_window_action = QAction("Show Controls In Window")
         self.show_controls_in_window_action.setCheckable(True)
         self.show_controls_in_window_action.setChecked(True)
         self.show_controls_in_window_action.toggled.connect(self.show_controls)
@@ -566,7 +566,7 @@ class MainWindow(QMainWindow):
         vbsolver = QVBoxLayout()
         for radio in self.methods_radios:
             vbsolver.addWidget(radio)
-        self.contradiction_checker_checkbox = QCheckBox("Check for contradictions")
+        self.contradiction_checker_checkbox = QCheckBox("Check For Contradictions")
         self.contradiction_checker_checkbox.toggled.connect(
             self.contradiction_action.setChecked
         )
@@ -585,10 +585,10 @@ class MainWindow(QMainWindow):
         resize_button = QPushButton("Resize")
         resize_button.clicked.connect(resize_action.triggered)
         vbedit.addWidget(resize_button)
-        check_board_button = QPushButton("Check board")
+        check_board_button = QPushButton("Check Board")
         check_board_button.clicked.connect(self.check_board_action.triggered)
         vbedit.addWidget(check_board_button)
-        clear_board_button = QPushButton("Clear board")
+        clear_board_button = QPushButton("Clear Board")
         clear_board_button.clicked.connect(self.clear_board_action.triggered)
         vbedit.addWidget(clear_board_button)
         for radio in self.edit_mode_radios:
