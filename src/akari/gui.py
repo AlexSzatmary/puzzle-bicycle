@@ -1,4 +1,5 @@
 import os
+import sys
 from collections.abc import Generator
 from typing import Any, cast
 
@@ -6,6 +7,7 @@ import numpy as np
 import puzzle
 from PySide6.QtCore import (
     Property,
+    QEventLoop,
     QParallelAnimationGroup,
     QPropertyAnimation,
     QSize,
@@ -23,6 +25,7 @@ from PySide6.QtGui import (
     QPainter,
     QPaintEvent,
     QPen,
+    QPixmap,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -893,8 +896,122 @@ def clearLayout(layout: QLayout) -> None:
                 clearLayout(item.layout())
 
 
-if __name__ == "__main__":
+# Taken from https://stackoverflow.com/a/43003223/400793 by dvntehn00bz
+def delay(millisecondsWait: int) -> None:
+    loop = QEventLoop()
+    t = QTimer()
+    t.timeout.connect(loop.quit)
+    t.start(millisecondsWait)
+    loop.exec()
+    # t.timeout.connect(t, t.timeout, loop, loop.quit)
+    # t.connect(t, t.timeout, loop, loop.quit)
+    # t.connect(t, QTimer.timeout, loop, QEventLoop.quit)
+
+
+# inline void delay(int millisecondsWait)
+# {
+#     QEventLoop loop;
+#     QTimer t;
+#     t.connect(&t, &QTimer::timeout, &loop, &QEventLoop::quit);
+#     t.start(millisecondsWait);
+#     loop.exec();
+# }
+
+
+def take_window_screenshot(window: MainWindow, filename: str) -> None:
+    scale = 2
+    pixmap = QPixmap(window.size() * scale)
+    pixmap.setDevicePixelRatio(scale)
+    window.render(pixmap)
+    pixmap.save(filename, "PNG", -1)
+
+
+def take_all_doc_screenshots(window: MainWindow) -> None:
+    take_window_screenshot(window, "pic-test/on-open.png")
+
+    window.board[4, 2] = "#"
+    window.board[5, 3] = "#"
+    window.refresh_board()
+    take_window_screenshot(window, "pic-test/Just-Illuminate.png")
+    window.board[4, 2] = "."
+    window.board[5, 3] = "."
+    window.refresh_board()
+
+    window.methods_group.actions()[2].setChecked(True)
+    window.auto_level_checked()
+    take_window_screenshot(window, "pic-test/Level-2.png")
+    window.methods_group.actions()[3].setChecked(True)
+    window.auto_level_checked()
+    take_window_screenshot(window, "pic-test/Level-3.png")
+    # QTimer.singleShot(
+    #     1000, lambda: take_window_screenshot(window, "pic-test/Level-3-QTimer.png")
+    # )
+
+    # Causes a lot of this message to no clear ill effect:
+    # QPropertyAnimation::updateState (white_out_step): Changing state of an animation
+    # without target
+    window.methods_group.actions()[0].setChecked(True)
+    window.auto_level_checked()
+    window.refresh_GUI()
+    window.show_controls_in_window_action.setChecked(False)
+    window.show_controls()
+    # QTimer.singleShot(
+    #     0, lambda: take_window_screenshot(window, "pic-test/Minimal-UI.png")
+    # )
+    delay(100)
+    take_window_screenshot(window, "pic-test/Minimal-UI.png")
+
+    window.board[3, 4] = "-"
+    window.board[4, 3] = "-"
+    window.methods_group.actions()[2].setChecked(True)
+    window.auto_level_checked()
+    window.refresh_board()
+    window.refresh_GUI()
+    # QTimer.singleShot(
+    #     0,
+    #     lambda: take_window_screenshot(
+    #         window, "pic-test/mark_bulbs_around_dotted_numbers.png"
+    #     ),
+    # )
+    # puzzle.print_board(window.board)
+    # QThread.sleep(1)
+    delay(100)
+    take_window_screenshot(window, "pic-test/mark_bulbs_around_dotted_numbers.png")
+    # delay(1000)
+    window.board[3, 4] = "1"
+    window.board[4, 3] = "3"
+    window.refresh_board()
+
+    window.board[3, 2] = "-"
+    window.board[2, 3] = "-"
+    window.refresh_board()
+    window.refresh_GUI()
+    # QTimer.singleShot(
+    #     0,
+    #     lambda: take_window_screenshot(
+    #         window, "pic-test/mark_bulbs_around_dotted_numbers.png"
+    #     ),
+    # )
+    # puzzle.print_board(window.board)
+    # QThread.sleep(1)
+    delay(100)
+    take_window_screenshot(window, "pic-test/mark_dots_around_full_numbers.png")
+    delay(100)
+    window.board[3, 2] = "2"
+    window.board[2, 3] = "0"
+    window.refresh_board()
+
+
+def main(argv: list | None = None) -> None:
+    if argv is None:
+        argv = sys.argv
     app = QApplication([])
     app.setApplicationName("Puzzle Bicycle")
     window = MainWindow()
+    if argv[-1] == "--screenshots":
+        take_all_doc_screenshots(window)
     app.exec()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
