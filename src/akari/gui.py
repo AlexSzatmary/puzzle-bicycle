@@ -1,6 +1,7 @@
 import os
 import sys
 from collections.abc import Generator
+from inspect import cleandoc
 from typing import Any, cast
 
 import numpy as np
@@ -9,7 +10,9 @@ from PySide6.QtCore import (
     Property,
     QEventLoop,
     QParallelAnimationGroup,
+    QPoint,
     QPropertyAnimation,
+    QRect,
     QSize,
     Qt,
     QTimer,
@@ -26,6 +29,7 @@ from PySide6.QtGui import (
     QPaintEvent,
     QPen,
     QPixmap,
+    QRegion,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -919,33 +923,73 @@ def delay(millisecondsWait: int) -> None:
 
 
 def take_window_screenshot(window: MainWindow, filename: str) -> None:
-    scale = 2
+    scale = 1.68
     pixmap = QPixmap(window.size() * scale)
     pixmap.setDevicePixelRatio(scale)
     window.render(pixmap)
     pixmap.save(filename, "PNG", -1)
 
 
+def take_grid_screenshot(window: MainWindow, filename: str) -> None:
+    grid = window.grid
+    top_left_item = grid.itemAtPosition(0, 0)
+    assert top_left_item is not None
+    top_left = top_left_item.widget()
+    bottom_right_item = grid.itemAtPosition(
+        grid.rowCount() - 2, grid.columnCount() - 2
+    )
+    assert bottom_right_item is not None
+    bottom_right = bottom_right_item.widget()
+    white_cells = QRect(
+        top_left.pos(),
+        bottom_right.pos() + QPoint(bottom_right.width(), bottom_right.height()),
+    )
+    scale = 1.68
+    pixmap = QPixmap(white_cells.size() * scale)
+    pixmap.setDevicePixelRatio(scale)
+    window.render(pixmap, QPoint(0, 0), QRegion(white_cells))
+    pixmap.save(filename, "PNG", -1)
+
+
+def take_method_screenshot(
+    window: MainWindow, filename: str, board_str: str, auto_level: int
+) -> None:
+    """
+    This function is unusual in zero padding a board_str, but that's not bad.
+    """
+    board_backup = window.board
+    window.board = puzzle.zero_pad(puzzle.boardify_string(cleandoc(board_str)))
+    window.methods_group.actions()[auto_level].setChecked(True)
+    window.refresh_GUI()
+    window.refresh_board()
+    delay(100)
+    # take_window_screenshot(window, filename)
+    take_grid_screenshot(window, filename)
+    delay(100)
+    window.board = board_backup
+    window.refresh_GUI()
+    window.refresh_board()
+
+
 def take_all_doc_screenshots(window: MainWindow) -> None:
-    take_window_screenshot(window, "pic-test/on-open.png")
+    take_window_screenshot(window, os.path.normpath("../../pic/on-open.png"))
 
     window.board[4, 2] = "#"
     window.board[5, 3] = "#"
     window.refresh_board()
-    take_window_screenshot(window, "pic-test/Just-Illuminate.png")
+    take_window_screenshot(window, os.path.normpath("../../pic/Just-Illuminate.png"))
     window.board[4, 2] = "."
     window.board[5, 3] = "."
     window.refresh_board()
 
     window.methods_group.actions()[2].setChecked(True)
     window.auto_level_checked()
-    take_window_screenshot(window, "pic-test/Level-2.png")
+    take_window_screenshot(window, os.path.normpath("../../pic/Level-2.png"))
     window.methods_group.actions()[3].setChecked(True)
     window.auto_level_checked()
-    take_window_screenshot(window, "pic-test/Level-3.png")
-    # QTimer.singleShot(
-    #     1000, lambda: take_window_screenshot(window, "pic-test/Level-3-QTimer.png")
-    # )
+    take_window_screenshot(window, os.path.normpath("../../pic/Level-3.png"))
+    # QTimer.singleShot( 1000, lambda: take_window_screenshot(window,
+    #     os.path.normpath("../../pic/Level-3-QTimer.png")) )
 
     # Causes a lot of this message to no clear ill effect:
     # QPropertyAnimation::updateState (white_out_step): Changing state of an animation
@@ -955,11 +999,23 @@ def take_all_doc_screenshots(window: MainWindow) -> None:
     window.refresh_GUI()
     window.show_controls_in_window_action.setChecked(False)
     window.show_controls()
-    # QTimer.singleShot(
-    #     0, lambda: take_window_screenshot(window, "pic-test/Minimal-UI.png")
-    # )
+    # QTimer.singleShot(0, lambda: take_window_screenshot(window,
+    #     os.path.normpath("../../pic/Minimal-UI.png") )
     delay(100)
-    take_window_screenshot(window, "pic-test/Minimal-UI.png")
+    take_window_screenshot(window, os.path.normpath("../../pic/Minimal-UI.png"))
+
+    take_method_screenshot(
+        window,
+        os.path.normpath("../../pic/illuminate.png"),
+        """
+        .#...
+        #.0..
+        .2-1.
+        ..3..
+        .....
+        """,
+        1,
+    )
 
     window.board[3, 4] = "-"
     window.board[4, 3] = "-"
@@ -970,13 +1026,15 @@ def take_all_doc_screenshots(window: MainWindow) -> None:
     # QTimer.singleShot(
     #     0,
     #     lambda: take_window_screenshot(
-    #         window, "pic-test/mark_bulbs_around_dotted_numbers.png"
+    #         window, os.path.normpath("../../pic/mark_bulbs_around_dotted_numbers.png"
     #     ),
     # )
     # puzzle.print_board(window.board)
     # QThread.sleep(1)
     delay(100)
-    take_window_screenshot(window, "pic-test/mark_bulbs_around_dotted_numbers.png")
+    take_window_screenshot(
+        window, os.path.normpath("../../pic/mark_bulbs_around_dotted_numbers.png")
+    )
     # delay(1000)
     window.board[3, 4] = "1"
     window.board[4, 3] = "3"
@@ -989,17 +1047,21 @@ def take_all_doc_screenshots(window: MainWindow) -> None:
     # QTimer.singleShot(
     #     0,
     #     lambda: take_window_screenshot(
-    #         window, "pic-test/mark_bulbs_around_dotted_numbers.png"
+    #         window, os.path.normpath("../../pic/mark_bulbs_around_dotted_numbers.png"
     #     ),
     # )
     # puzzle.print_board(window.board)
     # QThread.sleep(1)
     delay(100)
-    take_window_screenshot(window, "pic-test/mark_dots_around_full_numbers.png")
+    take_window_screenshot(
+        window, os.path.normpath("../../pic/mark_dots_around_full_numbers.png")
+    )
     delay(100)
     window.board[3, 2] = "2"
     window.board[2, 3] = "0"
     window.refresh_board()
+
+    print("DONE WITH take_all_doc_screenshots")
 
 
 def main(argv: list | None = None) -> None:
