@@ -179,8 +179,8 @@ class SharedLanesPair:
 
 class SharedLanesBot:
     """
-    Shared Lanes is a complex set of related methods that are simpler to apply if the
-    board topology is pre-analyzed.
+    SharedLanesBot is a class for applying a related set of methods that are handled
+    most simply and quickly if the board topology is pre-analyzed.
 
     The general idea is that two number cells have shared lanes if they have free cells
     that compete for multiple lanes. In this example,
@@ -198,7 +198,7 @@ class SharedLanesBot:
       b. all cells in the shared lanes must be dotted except for those adjacent to A and
          B.
     2. If only A+B-S+1 non-shared free cells are available, dot any cells that see 2
-       non-shared cells.
+       non-shared cells. (This method is not yet implemented.)
 
     If we have,
     -----
@@ -880,8 +880,8 @@ class ThoughtProcess:
 
     def mark_dots_at_corners(self, i: int, j: int, mark: str) -> None:
         """
-        Marks dots at free cells diagonal to numbers if a bulb in that cell would not
-        work.
+        Marks dots at free cells diagonal to numbers if a bulb in that cell would make
+        it impossible for the number to get enough bulbs.
 
         Will fire for
         ---
@@ -995,6 +995,12 @@ class ThoughtProcess:
         Adds dots and bulbs for certain diagonally adjacent numbers sharing 2 free
         spaces.
 
+        When one number or the other "knows" that one of the 2 free spaces must
+        have a bulb and the other must not, we can fill bulbs or dots around the other
+        number. More generally, if one number needs the two free cells to have at least
+        1 bulb, and the other needs the two free cells to have at least 1 dot, we can
+        add a dot or bulb to each non-shared space adjacent to those numbers.
+
         Finds this kind of thing:
         ----
         -1..
@@ -1017,7 +1023,21 @@ class ThoughtProcess:
         -#3..
         -..1+
         -..+.
-        We also account for what happens if a bulb or dot is already known.
+
+        ------
+        -....-
+        -+2..-
+        -..1.-
+        -....-
+        becomes
+        ------
+        -_#__-
+        -+2..-
+        -..1+-
+        -..+.-
+
+        These examples do not show what happens if dots or bulbs are already placed but
+        the method accounts for those possibilities, also.
         """
         if mark == ".":
             cells_to_check = [(i, j)]

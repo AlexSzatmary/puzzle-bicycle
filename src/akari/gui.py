@@ -922,8 +922,8 @@ def delay(millisecondsWait: int) -> None:
 # }
 
 
-def take_window_screenshot(window: MainWindow, filename: str) -> None:
-    scale = 1.68
+def take_window_screenshot(window: MainWindow | QDialog, filename: str) -> None:
+    scale = 1
     pixmap = QPixmap(window.size() * scale)
     pixmap.setDevicePixelRatio(scale)
     window.render(pixmap)
@@ -935,16 +935,14 @@ def take_grid_screenshot(window: MainWindow, filename: str) -> None:
     top_left_item = grid.itemAtPosition(0, 0)
     assert top_left_item is not None
     top_left = top_left_item.widget()
-    bottom_right_item = grid.itemAtPosition(
-        grid.rowCount() - 2, grid.columnCount() - 2
-    )
+    bottom_right_item = grid.itemAtPosition(grid.rowCount() - 2, grid.columnCount() - 2)
     assert bottom_right_item is not None
     bottom_right = bottom_right_item.widget()
     white_cells = QRect(
         top_left.pos(),
         bottom_right.pos() + QPoint(bottom_right.width(), bottom_right.height()),
     )
-    scale = 1.68
+    scale = 1
     pixmap = QPixmap(white_cells.size() * scale)
     pixmap.setDevicePixelRatio(scale)
     window.render(pixmap, QPoint(0, 0), QRegion(white_cells))
@@ -961,10 +959,12 @@ def take_method_screenshot(
     window.board = puzzle.zero_pad(puzzle.boardify_string(cleandoc(board_str)))
     window.methods_group.actions()[auto_level].setChecked(True)
     window.refresh_GUI()
+    window.auto_level_checked()
     window.refresh_board()
     delay(100)
     # take_window_screenshot(window, filename)
     take_grid_screenshot(window, filename)
+    puzzle.print_board(window.board)
     delay(100)
     window.board = board_backup
     window.refresh_GUI()
@@ -977,14 +977,20 @@ def take_all_doc_screenshots(window: MainWindow) -> None:
     window.board[4, 2] = "#"
     window.board[5, 3] = "#"
     window.refresh_board()
+    window.refresh_GUI()
+    delay(100)
     take_window_screenshot(window, os.path.normpath("../../pic/Just-Illuminate.png"))
+    delay(100)
     window.board[4, 2] = "."
     window.board[5, 3] = "."
+    window.refresh_GUI()
     window.refresh_board()
 
     window.methods_group.actions()[2].setChecked(True)
     window.auto_level_checked()
+    delay(100)
     take_window_screenshot(window, os.path.normpath("../../pic/Level-2.png"))
+    delay(100)
     window.methods_group.actions()[3].setChecked(True)
     window.auto_level_checked()
     take_window_screenshot(window, os.path.normpath("../../pic/Level-3.png"))
@@ -996,20 +1002,34 @@ def take_all_doc_screenshots(window: MainWindow) -> None:
     # without target
     window.methods_group.actions()[0].setChecked(True)
     window.auto_level_checked()
-    window.refresh_GUI()
+    window.clear_board()
     window.show_controls_in_window_action.setChecked(False)
     window.show_controls()
+    window.refresh_GUI()
+    # window.refresh_board()
     # QTimer.singleShot(0, lambda: take_window_screenshot(window,
     #     os.path.normpath("../../pic/Minimal-UI.png") )
     delay(100)
+    puzzle.print_board(window.board)
+    puzzle.print_board(window.board_auto)
     take_window_screenshot(window, os.path.normpath("../../pic/Minimal-UI.png"))
+
+    resize_dlg = ResizeDialog(window)
+    resize_dlg.show()
+    take_window_screenshot(resize_dlg, os.path.normpath("../../pic/Resize.png"))
+    resize_dlg.close()
+
+    new_puzzle_dlg = NewPuzzleDialog()
+    new_puzzle_dlg.show()
+    take_window_screenshot(new_puzzle_dlg, os.path.normpath("../../pic/New-Puzzle.png"))
+    new_puzzle_dlg.close()
 
     take_method_screenshot(
         window,
         os.path.normpath("../../pic/illuminate.png"),
         """
-        .#...
-        #.0..
+        ...#.
+        ..0.#
         .2-1.
         ..3..
         .....
@@ -1017,49 +1037,124 @@ def take_all_doc_screenshots(window: MainWindow) -> None:
         1,
     )
 
-    window.board[3, 4] = "-"
-    window.board[4, 3] = "-"
-    window.methods_group.actions()[2].setChecked(True)
-    window.auto_level_checked()
-    window.refresh_board()
-    window.refresh_GUI()
-    # QTimer.singleShot(
-    #     0,
-    #     lambda: take_window_screenshot(
-    #         window, os.path.normpath("../../pic/mark_bulbs_around_dotted_numbers.png"
-    #     ),
-    # )
-    # puzzle.print_board(window.board)
-    # QThread.sleep(1)
-    delay(100)
-    take_window_screenshot(
-        window, os.path.normpath("../../pic/mark_bulbs_around_dotted_numbers.png")
+    take_method_screenshot(
+        window,
+        os.path.normpath("../../pic/mark_bulbs_around_dotted_numbers.png"),
+        """
+        .....
+        ..0..
+        .2--.
+        ..-..
+        .....
+        """,
+        2,
     )
-    # delay(1000)
-    window.board[3, 4] = "1"
-    window.board[4, 3] = "3"
-    window.refresh_board()
 
-    window.board[3, 2] = "-"
-    window.board[2, 3] = "-"
-    window.refresh_board()
-    window.refresh_GUI()
-    # QTimer.singleShot(
-    #     0,
-    #     lambda: take_window_screenshot(
-    #         window, os.path.normpath("../../pic/mark_bulbs_around_dotted_numbers.png"
-    #     ),
-    # )
-    # puzzle.print_board(window.board)
-    # QThread.sleep(1)
-    delay(100)
-    take_window_screenshot(
-        window, os.path.normpath("../../pic/mark_dots_around_full_numbers.png")
+    take_method_screenshot(
+        window,
+        os.path.normpath("../../pic/mark_dots_around_full_numbers.png"),
+        """
+        .....
+        ..-..
+        .--1.
+        ..3..
+        .....
+        """,
+        2,
     )
-    delay(100)
-    window.board[3, 2] = "2"
-    window.board[2, 3] = "0"
-    window.refresh_board()
+
+    take_method_screenshot(
+        window,
+        os.path.normpath("../../pic/mark_unique_bulbs_for_dot_cells.png"),
+        """
+        0--.
+        +.-.
+        -...
+        """,
+        3,
+    )
+
+    take_method_screenshot(
+        window,
+        os.path.normpath("../../pic/fill_holes.png"),
+        """
+        .-..
+        -2#.
+        .#..
+        ..-.
+        -...
+        """,
+        3,
+    )
+
+    take_method_screenshot(
+        window,
+        os.path.normpath("../../pic/mark_dots_at_corners.png"),
+        """
+        -1..-.2.
+        ....-...
+        -----...
+        ....----
+        ..3..---
+        .....---
+        """,
+        4,
+    )
+
+    take_method_screenshot(
+        window,
+        os.path.normpath("../../pic/analyze_diagonally_adjacent_numbers.png"),
+        """
+        1..-....-....
+        .1.-.1..-+2..
+        ...-..3.-..1.
+        ----....-....
+        """,
+        5,
+    )
+
+    take_method_screenshot(
+        window,
+        os.path.normpath("../../pic/mark_bulbs_and_dots_at_shared_lanes-1.png"),
+        """
+        .......
+        .3...2.
+        .......
+        """,
+        6,
+    )
+
+    take_method_screenshot(
+        window,
+        os.path.normpath("../../pic/mark_bulbs_and_dots_at_shared_lanes-2.png"),
+        """
+        .2....
+        ....2.
+        """,
+        6,
+    )
+
+    take_method_screenshot(
+        window,
+        os.path.normpath("../../pic/mark_bulbs_and_dots_at_shared_lanes-3.png"),
+        """
+        .......
+        ..3.2..
+        .......
+        """,
+        6,
+    )
+
+    take_method_screenshot(
+        window,
+        os.path.normpath("../../pic/mark_dots_beyond_corners.png"),
+        """
+        ++.
+        +..
+        ...
+        """,
+        6,
+    )
 
     print("DONE WITH take_all_doc_screenshots")
 
