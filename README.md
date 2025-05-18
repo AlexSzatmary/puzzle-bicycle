@@ -1,8 +1,8 @@
 Puzzle Bicycle
 ==============
 Puzzle Bicycle is an application that helps people have fun making and solving logic
-puzzles like Akari, Heyawake, and Suraromu, by using special solvers that use human
-strategies.
+puzzles like [Akari](https://www.nikoli.co.jp/en/puzzles/akari), Heyawake, and Suraromu,
+by using special solvers that use human strategies.
 
 For creators, Puzzle Bicycle lets you,
 * set and solve your puzzle simultaneously
@@ -25,6 +25,9 @@ Inspiration
 * [This article](https://web.archive.org/web/20200117074130/https://www.nikoli.co.jp/en/misc/20060703the_japan_time.html) on Nikoli.
 * Steve Jobs said that a computer is like
   ["a bicycle for our minds"](https://www.youtube.com/watch?v=ob_GX50Za6c). Puzzle Bicycle is intended to help you think, not think for you.
+* [pzprRT](https://semiexp.net/pzprrt/index.html) by
+  [semiexp](https://semiexp.net/index.html) integrates solving and setting for logic 
+  puzzles; the solver is an SMT solver that will show how much of the puzzle is solvable but does not use human strategies.
 
 How you can help
 ================
@@ -66,7 +69,7 @@ Level 2 places bulbs around number cells that need them (the 3), and dots around
 
 ![](pic/Level-3.png)
 
-Level 3 places bulbs that are the only way to illuminate a certain dot cell. For this simple puzzle, that level completes the solution.
+Level 3 places bulbs that are the only way to illuminate a certain dot cell. For this simple puzzle, that level completes the solution. There are also higher levels.
 
 Check for Contradictions immediately tells you if you have picked a wrong answer and
 shows why. This can spoil puzzles.
@@ -74,6 +77,10 @@ shows why. This can spoil puzzles.
 If you think you made a mistake, click Check Board. Check Board tells you if your board
 has a contradiction and offers to roll back to your last valid solution, or to erase all
 mistakes. Clear Board lets you remove all marks.
+
+"Play" is the default mode for solving puzzles. "Edit Blocks" toggles cells between
+being white or black. "Edit Numbers" lets you adjust the number clues in black cells,
+and place bulbs or dots in white cells as in "Play".
 
 Puzzle Bicycle loads with all controls shown. All controls are also accessible with the
 menu bar. Controls can be shown or hidden with View>Show Controls in Window.
@@ -83,11 +90,11 @@ Setter guide
 This section is for people who know how to solve puzzles and want to create ("set")
 their own puzzles.
 
-To set puzzles, I use this workflow.
+To set puzzles with Puzzle Bicycle, I use this workflow:
 
-1. Make an interesting grid, placing black and white cells.
-2. Add number clues. Alternate between adding clues and placing bulbs and dots in
-   response, until you need a new clue.
+1. Make an interesting grid by placing "blocks" (black cells that are not yet numbered).
+2. Add number clues to black cells. I alternate between adding clues to black cells and 
+   placing bulbs and dots in white cells, until I need a new clue.
 3. Using the solver, check to see that the puzzle has a unique solution that uses many
    different strategies, including even strategies that Puzzle Bicycle does not handle
    directly. Varying the solver level shows which strategies are involved.
@@ -137,7 +144,9 @@ to not be a bulb. Horizontal and vertical lines act like dots.
 
 Level 1
 -------
-`illuminate` just shines light from the bulbs horizontally and vertically. Light from illuminate acts as a dot marking a cell as not possibly holding a bulb.
+`illuminate` just shines light from the bulbs horizontally and vertically. Light from
+illuminate acts as a dot marking a cell as not possibly holding a bulb. Here, a few
+example bulbs are placed.
 
 ![](pic/illuminate.png)
 
@@ -145,34 +154,38 @@ Level 2
 -------
 `mark_dots_around_full_numbers` detects which number cells are "full," or adjacent to as
 many bulbs as their number. Therefore, dot all free cells adjacent to that number cell.
+Here, the 3 cell calls for bulbs to be placed; the bulb next to the 1 forces the free
+cells around the 1 to be dots.
 
 ![](pic/mark_dots_around_full_numbers.png)
 
 ***
 
 `mark_bulbs_around_dotted_numbers` is the opposite of `mark_dots_around_full_numbers`.
-If a number stil needs as many bulbs as it has adjacent free cells, those cells must be
-filled with bulbs.
+If a number still needs as many bulbs as it has adjacent free cells, those cells must be
+filled with bulbs. Here, the 0 places a dot next to the 2, which must then get bulbs in
+its remaining free cells.
 
 ![](pic/mark_bulbs_around_dotted_numbers.png)
 
 Level 3
 -------
 `mark_unique_bulbs_for_dot_cells` marks cells that must be bulbs for a dotted cell to be
-        illuminated.
+illuminated.
 
 ![](pic/mark_unique_bulbs_for_dot_cells.png)
 
 ***
 
-`fill_holes` A hole is a free cell that must be a bulb because no bulb can possibly reach it. Fill holes marks those bulbs.
+`fill_holes` places bulbs in "holes;" a hole is a free cell that must itself be a bulb
+because no bulb elsewhere could possibly reach it.
 
 ![](pic/fill_holes.png)
 
 Level 4
 -------
 `mark_dots_at_corners` Marks dots at free cells diagonal to numbers if a bulb in that
-        cell would make it impossible for the number to get enough bulbs.
+cell would make it impossible for the number to get enough bulbs.
 
 ![](pic/mark_dots_at_corners.png)
 
