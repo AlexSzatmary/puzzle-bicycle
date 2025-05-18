@@ -440,7 +440,17 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.w)
         self.auto_illuminate = True
         self.auto_apply_methods_level = AUTO_APPLY_METHODS_LEVEL
-        self.puzzle_file_name = os.path.join(os.path.dirname(__file__), "default.txt")
+        if os.path.exists(
+            os.path.join(os.path.dirname(__file__), "Sample Puzzles")
+        ):
+            self.puzzle_file_name = os.path.join(
+                os.path.join(os.path.dirname(__file__), "Sample Puzzles"),
+                "default.txt",
+            )
+        else:
+            self.puzzle_file_name = os.path.join(
+                os.path.dirname(__file__), "default.txt"
+            )
 
         menu = self.menuBar()
         file_menu = menu.addMenu("&File")
