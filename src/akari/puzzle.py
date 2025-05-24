@@ -121,6 +121,21 @@ def intersect_boards(board1: np.ndarray, board2: np.ndarray) -> np.ndarray:
     return board1
 
 
+def is_partially_correct_based_on_other_board(
+    board_test: np.ndarray, board_reference: np.ndarray
+) -> bool:
+    """
+    Returns true if board_test only has bulbs or dots where board_reference does
+    """
+    for i in range(1, board_test.shape[0] - 1):
+        for j in range(1, board_test.shape[1] - 1):
+            if board_test[i, j] == "#" and board_reference[i, j] != "#":
+                return False
+            elif board_test[i, j] in "+_|x" and board_reference[i, j] not in "+_|x":
+                return False
+    return True
+
+
 def transpose_board(board: np.ndarray) -> np.ndarray:
     """
     Returns the board transposed, accounting for swapping the _ and | symbols
@@ -170,6 +185,7 @@ class SharedLanesPair:
         if A and B are not touching; otherwise, the coordinates of the cell between
         them.
     """
+
     A: tuple[int, int]
     B: tuple[int, int]
     shared_pairs: list[tuple[int, int, int, int]]
@@ -473,7 +489,7 @@ class SharedLanesBot:
                     (iA + 3, jA + 2 * dj),
                     (iA + 2, jA + 3 * dj),
                 ],
-                touching=False
+                touching=False,
             )
             for cell in sl.nonshared_cells:
                 self.shared_lanes[cell].append(sl)
@@ -1173,3 +1189,25 @@ class ThoughtProcess:
                         self.apply_methods(level_to_use)
             if np.all(self.board == old_board):
                 break
+
+
+def do_best_to_get_a_non_wrong_solution(board: np.ndarray) -> np.ndarray:
+    """
+    If the board has a solution with the current state, return that solution
+    Otherwise, clearing the board and return that solved if possible
+    Otherwise, return a cleared board
+
+    This function is flaky if the cleared board does not have a solution
+    """
+    tp = ThoughtProcess(board)
+    tp.apply_methods(9)
+    if tp.check_unsolved():
+        return tp.board
+
+    board = clear_board(board.copy())
+    tp = ThoughtProcess(board)
+    tp.apply_methods(9)
+    if tp.check_unsolved():
+        return tp.board
+
+    return board

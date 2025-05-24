@@ -439,9 +439,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.w)
         self.auto_illuminate = True
         self.auto_apply_methods_level = AUTO_APPLY_METHODS_LEVEL
-        if os.path.exists(
-            os.path.join(os.path.dirname(__file__), "Sample Puzzles")
-        ):
+        if os.path.exists(os.path.join(os.path.dirname(__file__), "Sample Puzzles")):
             self.puzzle_file_name = os.path.join(
                 os.path.join(os.path.dirname(__file__), "Sample Puzzles"),
                 "default.txt",
@@ -564,6 +562,7 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self.show_controls_in_window_action)
 
         self.board = puzzle.load_pzprv3(pzprv3_1)
+        self.board_reference = puzzle.do_best_to_get_a_non_wrong_solution(self.board)
 
         self.puzzle_status = QLabel()
         labelhb = QHBoxLayout()
@@ -642,7 +641,12 @@ class MainWindow(QMainWindow):
         if text:
             self.puzzle_file_name = filename
             self.board = puzzle.load_pzprv3(text)
-            self.most_recent_good_board = puzzle.clear_board(self.board.copy())
+            self.board_reference = puzzle.do_best_to_get_a_non_wrong_solution(
+                self.board
+            )
+            self.most_recent_good_board = puzzle.intersect_boards(
+                self.board, self.board_reference
+            )
             # the default good board is cleared; if the puzzle is loaded in a valid
             # state, then that state gets set in apply_methods
             self.refresh_GUI()
@@ -713,7 +717,7 @@ class MainWindow(QMainWindow):
         self.refresh_board()
 
     def check_board(self) -> None:
-        thought_process_correct = puzzle.ThoughtProcess(self.board.copy())
+        thought_process_correct = puzzle.ThoughtProcess(self.board)
         thought_process_correct.apply_methods(9)
         if not thought_process_correct.check_unsolved():
             thought_process_solved = puzzle.ThoughtProcess(
@@ -797,6 +801,13 @@ class MainWindow(QMainWindow):
                 if action.isChecked()
             )
         ]
+        if self.edit_mode == "play":
+            self.board_reference = puzzle.do_best_to_get_a_non_wrong_solution(
+                self.board
+            )
+            self.most_recent_good_board = puzzle.intersect_boards(
+                self.board, self.board_reference
+            )
 
     def initialize_grid(self) -> None:
         self.grid = QGridLayout()
@@ -823,14 +834,22 @@ class MainWindow(QMainWindow):
         thought_process = puzzle.ThoughtProcess(self.board.copy())
         thought_process.apply_methods(self.auto_apply_methods_level)
 
-        # run a full solve
-        thought_process_correct = puzzle.ThoughtProcess(self.board.copy())
-        thought_process_correct.apply_methods(9)
-        if thought_process_correct.check_unsolved():
+        # In play mode, we do not need to run a full solve with every click
+        if (
+            self.edit_mode == "play"
+            and puzzle.is_partially_correct_based_on_other_board(
+                thought_process.board, self.board_reference
+            )
+        ):
             self.most_recent_good_board = self.board.copy()
         elif self.contradiction_checker_enabled:
-            # if a contradiction is detected, hijack the render
-            thought_process = thought_process_correct
+            # if  we're in edit mode, or if we're in play and know that the solution is
+            # wrong, we must run a full solve
+            thought_process_correct = puzzle.ThoughtProcess(self.board.copy())
+            thought_process_correct.apply_methods(9)
+            if not thought_process_correct.check_unsolved():
+                # if a contradiction is detected, hijack the render
+                thought_process = thought_process_correct
         new_board_auto = thought_process.board
 
         old_puzzle_complete = self.puzzle_complete
