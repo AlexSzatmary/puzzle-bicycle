@@ -218,7 +218,6 @@ class Cell(QWidget):
         pen.setWidth(2)
         pen.setColor(Qt.gray)
         p.setPen(pen)
-        # p.drawEllipse(9, 9, 2, 2)
         brush = QBrush()
         brush.setColor(Qt.gray)
         brush.setStyle(Qt.SolidPattern)
@@ -680,6 +679,9 @@ class MainWindow(QMainWindow):
         self.apply_methods()
 
     def i_j_cell(self) -> Generator[tuple[int, int, Cell]]:
+        """
+        An iterator for looping over all cells
+        """
         for i in range(self.board_auto.shape[0] - 2):
             for j in range(self.board_auto.shape[1] - 2):
                 ci = self.grid.itemAtPosition(i, j)
@@ -688,6 +690,9 @@ class MainWindow(QMainWindow):
                 yield i, j, cast(Cell, c)
 
     def auto_level_checked(self) -> None:
+        """
+        Changes solver level and updates board accordingly
+        """
         self.auto_apply_methods_level = next(
             i
             for (i, action) in enumerate(self.methods_group.actions())
@@ -698,6 +703,9 @@ class MainWindow(QMainWindow):
         self.refresh_board()
 
     def clear_board(self) -> None:
+        """
+        Zeros out player state
+        """
         self.board = puzzle.clear_board(self.board)
         for _i, _j, c in self.i_j_cell():
             if c.state_user in "#+_|x":
@@ -917,19 +925,6 @@ def delay(millisecondsWait: int) -> None:
     t.timeout.connect(loop.quit)
     t.start(millisecondsWait)
     loop.exec()
-    # t.timeout.connect(t, t.timeout, loop, loop.quit)
-    # t.connect(t, t.timeout, loop, loop.quit)
-    # t.connect(t, QTimer.timeout, loop, QEventLoop.quit)
-
-
-# inline void delay(int millisecondsWait)
-# {
-#     QEventLoop loop;
-#     QTimer t;
-#     t.connect(&t, &QTimer::timeout, &loop, &QEventLoop::quit);
-#     t.start(millisecondsWait);
-#     loop.exec();
-# }
 
 
 def take_window_screenshot(window: MainWindow | QDialog, filename: str) -> None:
@@ -972,7 +967,6 @@ def take_method_screenshot(
     window.auto_level_checked()
     window.refresh_board()
     delay(100)
-    # take_window_screenshot(window, filename)
     take_grid_screenshot(window, filename)
     puzzle.print_board(window.board)
     delay(100)
@@ -1004,8 +998,6 @@ def take_all_doc_screenshots(window: MainWindow) -> None:
     window.methods_group.actions()[3].setChecked(True)
     window.auto_level_checked()
     take_window_screenshot(window, os.path.normpath("../../pic/Level-3.png"))
-    # QTimer.singleShot( 1000, lambda: take_window_screenshot(window,
-    #     os.path.normpath("../../pic/Level-3-QTimer.png")) )
 
     # Causes a lot of this message to no clear ill effect:
     # QPropertyAnimation::updateState (white_out_step): Changing state of an animation
@@ -1016,9 +1008,6 @@ def take_all_doc_screenshots(window: MainWindow) -> None:
     window.show_controls_in_window_action.setChecked(False)
     window.show_controls()
     window.refresh_GUI()
-    # window.refresh_board()
-    # QTimer.singleShot(0, lambda: take_window_screenshot(window,
-    #     os.path.normpath("../../pic/Minimal-UI.png") )
     delay(100)
     puzzle.print_board(window.board)
     puzzle.print_board(window.board_auto)
