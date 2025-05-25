@@ -599,8 +599,9 @@ class ThoughtProcess:
     """
     The main state held is: board: np.ndarray
 
-    new_mark: deque[tuple[int, int, str]], a queue of new dots "+" or bulbs "#", which
-    will later trigger methods to run
+    new_mark: list[deque[tuple[int, int, str]]], a list of queues of new dots "+"
+        or bulbs "#", which will later trigger methods to run. Each queue is for a
+        different level of method.
 
     lit_bulb_pairs: list[tuple[int, int, int, int]], coordinates of pairs of bulbs that
     see each other
@@ -614,7 +615,10 @@ class ThoughtProcess:
 
     def __init__(self, board: np.ndarray) -> None:
         self.board = board.copy()
-        self.new_mark = deque()
+        self.new_mark = [deque()]
+        # I do not love this init for new_mark but we do not already know the level,
+        # ThoughtProcess is almost always followed by apply_methods, and this makes all
+        # tests pass.
         self.lit_bulb_pairs = []
         self.unilluminatable_cells = []
         self.wrong_numbers = set()
@@ -636,7 +640,7 @@ class ThoughtProcess:
         """
         if self.board[i, j] == ".":
             self.board[i, j] = "#"
-            self.new_mark.append((i, j, "#"))
+            self.new_mark[0].append((i, j, "#"))
             self.illuminate_one(i, j)
             self.find_wrong_numbers(i, j)
             return True
@@ -651,7 +655,7 @@ class ThoughtProcess:
         """
         if self.board[i, j] == ".":
             self.board[i, j] = "+"
-            self.new_mark.append((i, j, "+"))
+            self.new_mark[0].append((i, j, "+"))
             self.find_wrong_numbers(i, j)
             self.find_unilluminatable_cells(i, j)
             return True
@@ -724,33 +728,43 @@ class ThoughtProcess:
         """
         if level < 1:
             return
-        if not self.new_mark:
-            self.new_mark = deque([(-1, -1, ".")])
+        if len(self.new_mark) == 1:
+            for _i in range(3, level + 1):
+                self.new_mark.append(deque())
+        if not any(self.new_mark):
+            self.new_mark[0].append((-1, -1, "."))
             self.lit_bulb_pairs, self.board = illuminate_all(self.board)
             for i, j in self.all_interior_ij():
                 self.find_wrong_numbers_at_cell(i, j)
                 self.check_this_cell_unilluminatable(i, j)
-        while self.new_mark:
-            i, j, mark = self.new_mark.popleft()
-            if level >= 2:
+            if level == 1:
+                return
+        while any(self.new_mark):
+            mark_level, queue = next(
+                (i, q) for i, q in enumerate(self.new_mark, start=2) if q
+            )
+            i, j, mark = queue.popleft()
+            if mark_level == 2:
                 self.mark_bulbs_around_dotted_numbers(i, j, mark)
                 self.mark_dots_around_full_numbers(i, j, mark)
-            if level >= 3:
+            elif mark_level == 3:
                 self.fill_holes(i, j, mark)
                 self.mark_unique_bulbs_for_dot_cells(i, j, mark)
-            if level >= 4:
+            elif mark_level == 4:
                 self.mark_dots_at_corners(i, j, mark)
-            if level >= 5:
+            elif mark_level == 5:
                 self.analyze_diagonally_adjacent_numbers(i, j, mark)
-            if level >= 6:
+            elif mark_level == 6:
                 self.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, mark)
                 self.mark_dots_beyond_corners(i, j, mark)
-            if not self.check_unsolved() and not mark == ".":
-                break
-            if level >= 9 and not self.new_mark:
+            elif level == 9 and not any(self.new_mark):
                 # guess and check is orders of magnitude more expensive than other
                 # methods and should only be called if all else has been tried.
                 self.guess_and_check(level)
+            if not self.check_unsolved():
+                break
+            if mark_level < level:
+                self.new_mark[mark_level - 1].append((i, j, mark))
 
     def illuminate_one(self, i: int, j: int) -> None:
         """
