@@ -302,8 +302,7 @@ def test_fill_holes() -> None:
         strict=True,
     ):
         tp = ThoughtProcess(board)
-        for i, j in tp.all_interior_ij():
-            tp.fill_holes(i, j, ".")
+        tp.fill_holes(-1, -1, ".")
         assert stringify_board(tp.board == ref)
 
 
@@ -400,8 +399,7 @@ def test_mark_dots_around_full_numbers(
         strict=True,
     ):
         tp = ThoughtProcess(board)
-        for i, j in tp.all_interior_ij():
-            tp.mark_dots_around_full_numbers(i, j, ".")
+        tp.mark_dots_around_full_numbers(-1, -1, ".")
         assert stringify_board(tp.board) == stringify_board(ref)
 
 
@@ -453,8 +451,7 @@ def test_mark_bulbs_around_dotted_numbers(
         strict=True,
     ):
         tp = ThoughtProcess(board)
-        for i, j in tp.all_interior_ij():
-            tp.mark_bulbs_around_dotted_numbers(i, j, ".")
+        tp.mark_bulbs_around_dotted_numbers(-1, -1, ".")
         assert stringify_board(tp.board) == stringify_board(ref)
 
 
@@ -504,8 +501,7 @@ def test_mark_dots_at_corners(
         strict=True,
     ):
         tp = ThoughtProcess(board)
-        for i, j in tp.all_interior_ij():
-            tp.mark_dots_at_corners(i, j, ".")
+        tp.mark_dots_at_corners(-1, -1, ".")
         assert stringify_board(tp.board) == stringify_board(ref)
 
 
@@ -559,8 +555,7 @@ def test_mark_unique_bulbs_for_dot_cells(
         strict=True,
     ):
         tp = ThoughtProcess(board)
-        for i, j in tp.all_interior_ij():
-            tp.mark_unique_bulbs_for_dot_cells(i, j, ".")
+        tp.mark_unique_bulbs_for_dot_cells(-1, -1, ".")
         assert stringify_board(tp.board) == stringify_board(ref)
 
 
@@ -656,8 +651,7 @@ def test_analyze_diagonally_adjacent_numbers(
         strict=True,
     ):
         tp = ThoughtProcess(board)
-        for i, j in tp.all_interior_ij():
-            tp.analyze_diagonally_adjacent_numbers(i, j, ".")
+        tp.analyze_diagonally_adjacent_numbers(-1, -1, ".")
         assert stringify_board(tp.board) == stringify_board(ref)
 
 
@@ -915,8 +909,7 @@ def test_trace_shared_lanes() -> None:
         """)
     )
     tp = ThoughtProcess(null)
-    for i, j in tp.all_interior_ij():
-        tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+    tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
 
     assert stringify_board(tp.board) == stringify_board(null)
     pre = boardify_string(
@@ -946,8 +939,7 @@ def test_trace_shared_lanes() -> None:
             ----
             """
     tp = ThoughtProcess(pre)
-    for i, j in tp.all_interior_ij():
-        tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+    tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
     print_board(tp.board)
     assert stringify_board(tp.board) == cleandoc(post)
 
@@ -1055,8 +1047,7 @@ def test_trace_shared_lanes_same_2(
 ) -> None:
     pre, post = board_pairs_trace_shared_lanes_same_2[0]
     tp = ThoughtProcess(pre)
-    for i, j in tp.all_interior_ij():
-        tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+    tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
     assert stringify_board(tp.board) == stringify_board(post)
 
 
@@ -1123,8 +1114,7 @@ def test_trace_shared_lanes_same_3(
 ) -> None:
     for pre, post in board_pairs_trace_shared_lanes_same_3:
         tp = ThoughtProcess(pre)
-        for i, j in tp.all_interior_ij():
-            tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+        tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
         print_board(tp.board)
         assert stringify_board(tp.board) == stringify_board(post)
 
@@ -1154,8 +1144,7 @@ def test_trace_shared_lanes_all(
             print_board(pre_rotated)
             tp = ThoughtProcess(pre_rotated)
             print(tp.shared_lanes_bot.shared_lanes)
-            for i, j in tp.all_interior_ij():
-                tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+            tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
             assert stringify_board(tp.board) == stringify_board(post_rotated)
 
 
@@ -1182,8 +1171,7 @@ def test_trace_shared_lanes_same_3_bug_1() -> None:
     tp = ThoughtProcess(pre)
     tp.maybe_set_bulb(2, 1)
     tp.maybe_set_bulb(1, 2)
-    for i, j in tp.all_interior_ij():
-        tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+    tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
     assert stringify_board(tp.board) == stringify_board(post)
 
 
@@ -1247,8 +1235,7 @@ def test_trace_shared_lanes_diagonal() -> None:
             print_board(pre_rotated)
             tp = ThoughtProcess(pre_rotated)
             print(tp.shared_lanes_bot.shared_lanes)
-            for i, j in tp.all_interior_ij():
-                tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, ".")
+            tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
             assert stringify_board(tp.board) == stringify_board(post_rotated)
 
 
@@ -1303,8 +1290,7 @@ def test_mark_dots_beyond_corners() -> None:
     ):
         print_board(pre_rotated)
         tp = ThoughtProcess(pre_rotated)
-        for i, j in tp.all_interior_ij():
-            tp.mark_dots_beyond_corners(i, j, ".")
+        tp.mark_dots_beyond_corners(-1, -1, ".")
         print_board(tp.board)
         assert stringify_board(tp.board) == stringify_board(post_rotated)
 
@@ -1335,8 +1321,7 @@ def test_mark_dots_beyond_corners() -> None:
     ):
         print_board(pre_rotated)
         tp = ThoughtProcess(pre_rotated)
-        for i, j in tp.all_interior_ij():
-            tp.mark_dots_beyond_corners(i, j, ".")
+        tp.mark_dots_beyond_corners(-1, -1, ".")
         print_board(tp.board)
         assert stringify_board(tp.board) == stringify_board(post_rotated)
 
@@ -1367,8 +1352,7 @@ def test_mark_dots_beyond_corners() -> None:
     ):
         print_board(pre_rotated)
         tp = ThoughtProcess(pre_rotated)
-        for i, j in tp.all_interior_ij():
-            tp.mark_dots_beyond_corners(i, j, ".")
+        tp.mark_dots_beyond_corners(-1, -1, ".")
         print_board(tp.board)
         assert stringify_board(tp.board) == stringify_board(post_rotated)
 

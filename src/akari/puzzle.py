@@ -282,6 +282,7 @@ class SharedLanesBot:
         self.shared_lanes: defaultdict[tuple[int, int], list[SharedLanesPair]] = (
             defaultdict(list)
         )
+        self.all_shared_lanes = []
         self._trace_shared_lanes(0)  # trace down
         self._trace_shared_lanes(1)  # trace right
         self._trace_diagonal()
@@ -408,6 +409,7 @@ class SharedLanesBot:
             ],
             touching=False,
         )
+        self.all_shared_lanes.append(sl)
         for cell in sl.nonshared_cells:
             self.shared_lanes[cell].append(sl)
 
@@ -451,6 +453,7 @@ class SharedLanesBot:
         else:
             sl.nonshared_cells.append((iA + wi, jA + wj))
             sl.nonshared_cells.append((iB + wi, jB + wj))
+        self.all_shared_lanes.append(sl)
         for cell in sl.nonshared_cells:
             self.shared_lanes[cell].append(sl)
         if sl.touching:
@@ -491,15 +494,17 @@ class SharedLanesBot:
                 ],
                 touching=False,
             )
+            self.all_shared_lanes.append(sl)
             for cell in sl.nonshared_cells:
                 self.shared_lanes[cell].append(sl)
 
     def mark_bulbs_and_dots_at_shared_lanes(self, i: int, j: int, mark: str) -> None:
         board = self.thought_process.board
-        # if mark == ".":
-        # TODO make a thing that just loops over all shared lanes one time in this
-        # case
-        for sl in self.shared_lanes[i, j]:
+        if mark == ".":
+            shared_lanes_to_check = self.all_shared_lanes
+        else:
+            shared_lanes_to_check = self.shared_lanes[i, j]
+        for sl in shared_lanes_to_check:
             active_lanes = []
             for sp in sl.shared_pairs:
                 i1, j1, i2, j2 = sp
@@ -720,7 +725,7 @@ class ThoughtProcess:
         if level < 1:
             return
         if not self.new_mark:
-            self.new_mark = deque((i, j, ".") for (i, j) in self.all_interior_ij())
+            self.new_mark = deque([(-1, -1, ".")])
             self.lit_bulb_pairs, self.board = illuminate_all(self.board)
             for i, j in self.all_interior_ij():
                 self.find_wrong_numbers_at_cell(i, j)
@@ -786,7 +791,7 @@ class ThoughtProcess:
 
     def mark_bulbs_around_dotted_numbers(self, i: int, j: int, mark: str) -> None:
         if mark == ".":
-            cells_to_check = [(i, j)]
+            cells_to_check = self.all_interior_ij()
         elif mark in ".+_|x":
             cells_to_check = [(i + di1, j + dj1) for di1, dj1 in ORTHO_DIRS]
         else:
@@ -801,7 +806,7 @@ class ThoughtProcess:
 
     def mark_dots_around_full_numbers(self, i: int, j: int, mark: str) -> None:
         if mark == ".":
-            cells_to_check = [(i, j)]
+            cells_to_check = self.all_interior_ij()
         elif mark in "#":
             cells_to_check = [(i + di1, j + dj1) for di1, dj1 in ORTHO_DIRS]
         else:
@@ -829,7 +834,8 @@ class ThoughtProcess:
         the 0; after a + is marked above the 0, the * would then be a hole.
         """
         if mark == ".":
-            self._fill_holes_cell(i0, j0)
+            for i0, j0 in self.all_interior_ij():
+                self._fill_holes_cell(i0, j0)
         elif mark == "+":
             self._fill_holes_cell(i0, j0)
             for i, j in self.line_of_sight(i0, j0):
@@ -866,7 +872,8 @@ class ThoughtProcess:
         Because otherwise the + below the 0 could not be illuminated.
         """
         if mark == ".":
-            self._mark_unique_bulbs_for_dot_cells_at_cell(i0, j0)
+            for i0, j0 in self.all_interior_ij():
+                self._mark_unique_bulbs_for_dot_cells_at_cell(i0, j0)
         elif mark == "+":
             self._mark_unique_bulbs_for_dot_cells_at_cell(i0, j0)
             for i, j in self.line_of_sight(i0, j0):
@@ -915,7 +922,8 @@ class ThoughtProcess:
         because that case should already be caught by mark_bulbs_around_dotted_numbers.
         """
         if mark == ".":
-            self._mark_dots_at_corners_at_cell(i, j)
+            for i, j in self.all_interior_ij():
+                self._mark_dots_at_corners_at_cell(i, j)
         elif mark == "+":
             for di1, dj1 in ORTHO_DIRS:
                 i_corner = i + di1
@@ -949,7 +957,8 @@ class ThoughtProcess:
         This is like a mix of mark_unique_bulbs_for_dot_cells and mark_dots_at_corners.
         """
         if mark == ".":
-            self._mark_dots_beyond_corners_at_cell(i0, j0)
+            for i0, j0 in self.all_interior_ij():
+                self._mark_dots_beyond_corners_at_cell(i0, j0)
         elif mark == "+":
             self._mark_dots_beyond_corners_at_cell(i0, j0)
             for i, j in self.line_of_sight(i0, j0):
@@ -1056,7 +1065,7 @@ class ThoughtProcess:
         the method accounts for those possibilities, also.
         """
         if mark == ".":
-            cells_to_check = [(i, j)]
+            cells_to_check = self.all_interior_ij()
         else:
             cells_to_check = [(i + di1, j + dj1) for di1, dj1 in ORTHO_DIRS]
         for iA, jA in cells_to_check:
