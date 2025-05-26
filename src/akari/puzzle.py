@@ -624,6 +624,7 @@ class ThoughtProcess:
         self.wrong_numbers = set()
         if not hasattr(self, "shared_lanes_bot"):
             self.shared_lanes_bot = SharedLanesBot(self)
+        self.solution_steps = []
 
     def __copy__(self) -> "ThoughtProcess":
         cls = self.__class__
@@ -632,7 +633,7 @@ class ThoughtProcess:
         new.__init__(self.board)
         return new
 
-    def maybe_set_bulb(self, i: int, j: int) -> bool:
+    def maybe_set_bulb(self, i: int, j: int, step: tuple | None = None) -> bool:
         """
         Confirms that board[i, j] is free; if so, board[i, j] = "#" and runs updates
 
@@ -643,11 +644,17 @@ class ThoughtProcess:
             self.new_mark[0].append((i, j, "#"))
             self.illuminate_one(i, j)
             self.find_wrong_numbers(i, j)
+            if (
+                self.solution_steps
+                and step is not None
+                and self.solution_steps[-1] != step
+            ):
+                self.solution_steps.append(step)
             return True
         else:
             return False
 
-    def maybe_set_dot(self, i: int, j: int) -> bool:
+    def maybe_set_dot(self, i: int, j: int, step: tuple | None = None) -> bool:
         """
         Confirms that board[i, j] is free; if so, board[i, j] = "." and runs updates
 
@@ -658,6 +665,12 @@ class ThoughtProcess:
             self.new_mark[0].append((i, j, "+"))
             self.find_wrong_numbers(i, j)
             self.find_unilluminatable_cells(i, j)
+            if (
+                self.solution_steps
+                and step is not None
+                and self.solution_steps[-1] != step
+            ):
+                self.solution_steps.append(step)
             return True
         else:
             return False
@@ -789,7 +802,7 @@ class ThoughtProcess:
                     elif self.board[i1, j1] in "01234-":  # type: ignore
                         break
                     else:
-                        self.maybe_set_dot(i1, j1)
+                        self.maybe_set_dot(i1, j1, step=("illuminate_one", i, j))
                         self.board[i1, j1] = fill_char  # this assignment is cosmetic,
                         # making the light rays but not functionally changing state.
 
