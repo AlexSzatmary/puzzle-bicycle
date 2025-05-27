@@ -4,6 +4,7 @@ from inspect import cleandoc
 import numpy as np
 import pytest
 from puzzle import (
+    Step,
     ThoughtProcess,
     boardify_string,
     check_all,
@@ -1182,8 +1183,8 @@ def test_trace_shared_lanes_same_3_bug_1() -> None:
     """)
     )
     tp = ThoughtProcess(pre)
-    tp.maybe_set_bulb(2, 1)
-    tp.maybe_set_bulb(1, 2)
+    tp.maybe_set_bulb(2, 1, Step("test"))
+    tp.maybe_set_bulb(1, 2, Step("test"))
     tp.apply_methods(1)
     tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
     assert_boards_equal(tp.board, post)

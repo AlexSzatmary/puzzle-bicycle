@@ -166,6 +166,32 @@ def count_missing_bulbs_near_number(board: np.ndarray, i: int, j: int) -> int:
     return int(board[i, j]) - n_bulbs
 
 
+class Step:
+    """
+    Records steps in simulation
+
+    Members
+    -------
+    Method : str
+    coord : tuple[int, int] TODO
+    inputs : list[int, int] TODO
+        coordinates firing method
+    outputs : list[int, int]
+        coordinates being acted on
+
+    Examples of inputs:
+    illuminate: coordinates of bulb
+    mark_bulbs_around_dotted_numbers: all coordinates around bulb containing dots
+    """
+
+    def __init__(self, method: str) -> None:
+        self.method = method
+        self.outputs = []
+
+    def __repr__(self) -> str:
+        return f"Step({self.method}, {self.outputs})"
+
+
 @dataclass
 class SharedLanesPair:
     """
@@ -519,16 +545,23 @@ class SharedLanesBot:
                     - len(active_lanes)
                 )
             )
+            step = Step("mark_bulbs_and_dots_at_shared_lanes")
             if len(active_lanes) > 1 and balance == 0:
                 for cell in sl.nonshared_cells:
-                    self.thought_process.maybe_set_bulb(cell[0], cell[1])
+                    self.thought_process.maybe_set_bulb(cell[0], cell[1], step)
                 if sl.touching:
-                    self.thought_process.maybe_set_bulb(sl.touching[0], sl.touching[1])
-                self._dot_shared_lanes(board, sl)
+                    self.thought_process.maybe_set_bulb(
+                        sl.touching[0], sl.touching[1], step
+                    )
+                self._dot_shared_lanes(board, sl, step)
             if sl.touching and balance == -1:
-                self.thought_process.maybe_set_bulb(sl.touching[0], sl.touching[1])
+                self.thought_process.maybe_set_bulb(
+                    sl.touching[0], sl.touching[1], step
+                )
 
-    def _dot_shared_lanes(self, board: np.ndarray, sl: SharedLanesPair) -> None:
+    def _dot_shared_lanes(
+        self, board: np.ndarray, sl: SharedLanesPair, step: Step
+    ) -> None:
         """
         Dots cells along shared lanes other than the shared cells
 
@@ -545,11 +578,11 @@ class SharedLanesBot:
                 if board[ix, jx] in "-01234":
                     break
                 elif (ix, jx) != (i2, j2):
-                    self.thought_process.maybe_set_dot(ix, jx)
+                    self.thought_process.maybe_set_dot(ix, jx, step)
             for ix, jx in cells_before_1:
                 if board[ix, jx] in "-01234":
                     break
-                self.thought_process.maybe_set_dot(ix, jx)
+                self.thought_process.maybe_set_dot(ix, jx, step)
 
 
 def check_number(board: np.ndarray) -> list[tuple[int, int]]:
@@ -633,7 +666,8 @@ class ThoughtProcess:
         new.__init__(self.board)
         return new
 
-    def maybe_set_bulb(self, i: int, j: int, step: tuple | None = None) -> bool:
+    # TODO remove | None from step type
+    def maybe_set_bulb(self, i: int, j: int, step: Step) -> bool:
         """
         Confirms that board[i, j] is free; if so, board[i, j] = "#" and runs updates
 
@@ -643,17 +677,12 @@ class ThoughtProcess:
             self.board[i, j] = "#"
             self.new_mark[0].append((i, j, "#"))
             self.find_wrong_numbers(i, j)
-            if (
-                self.solution_steps
-                and step is not None
-                and self.solution_steps[-1] != step
-            ):
-                self.solution_steps.append(step)
+            self.update_solution_steps(i, j, step)
             return True
         else:
             return False
 
-    def maybe_set_dot(self, i: int, j: int, step: tuple | None = None) -> bool:
+    def maybe_set_dot(self, i: int, j: int, step: Step) -> bool:
         """
         Confirms that board[i, j] is free; if so, board[i, j] = "." and runs updates
 
@@ -664,15 +693,19 @@ class ThoughtProcess:
             self.new_mark[0].append((i, j, "+"))
             self.find_wrong_numbers(i, j)
             self.find_unilluminatable_cells(i, j)
-            if (
-                self.solution_steps
-                and step is not None
-                and self.solution_steps[-1] != step
-            ):
-                self.solution_steps.append(step)
+            self.update_solution_steps(i, j, step)
             return True
         else:
             return False
+
+    def update_solution_steps(self, i: int, j: int, step: Step | None) -> None:
+        if step is None:
+            return
+        elif len(self.solution_steps) and self.solution_steps[-1] is step:
+            pass
+        else:
+            self.solution_steps.append(step)
+        step.outputs.append((i, j))
 
     def all_interior_ij(self) -> list[tuple[int, int]]:
         return [
@@ -797,6 +830,7 @@ class ThoughtProcess:
         """
         helper for illuminate
         """
+        step = Step("illuminate")
         fill_chars = ["|", "_", "|", "_"]
         if self.board[i, j] == "#":
             for it, fill_char in zip(
@@ -816,7 +850,7 @@ class ThoughtProcess:
                     elif self.board[i1, j1] in "01234-":  # type: ignore
                         break
                     else:
-                        self.maybe_set_dot(i1, j1, step=("illuminate_one", i, j))
+                        self.maybe_set_dot(i1, j1, step=step)
                         self.board[i1, j1] = fill_char  # this assignment is cosmetic,
                         # making the light rays but not functionally changing state.
 
@@ -833,7 +867,12 @@ class ThoughtProcess:
                     self.board, i_number, j_number
                 ) == count_missing_bulbs_near_number(self.board, i_number, j_number):
                     for di, dj in ORTHO_DIRS:
-                        self.maybe_set_bulb(i_number + di, j_number + dj)
+                        step = Step("mark_bulbs_around_dotted_numbers")
+                        self.maybe_set_bulb(
+                            i_number + di,
+                            j_number + dj,
+                            step=step,
+                        )
 
     def mark_dots_around_full_numbers(self, i: int, j: int, mark: str) -> None:
         if mark == ".":
@@ -845,8 +884,9 @@ class ThoughtProcess:
         for i_number, j_number in cells_to_check:
             if self.board[i_number, j_number] in "01234":
                 if count_missing_bulbs_near_number(self.board, i_number, j_number) == 0:
+                    step = Step("mark_dots_around_full_numbers")
                     for di2, dj2 in ORTHO_DIRS:
-                        self.maybe_set_dot(i_number + di2, j_number + dj2)
+                        self.maybe_set_dot(i_number + di2, j_number + dj2, step=step)
 
     def fill_holes(self, i0: int, j0: int, mark: str) -> None:
         """
@@ -873,6 +913,7 @@ class ThoughtProcess:
                 self._fill_holes_cell(i, j)
 
     def _fill_holes_cell(self, i: int, j: int) -> None:
+        step = Step("fill_holes")
         if self.board[i, j] == ".":
             is_hole = True  # presume a hole
             for it in self.line_of_sight_iters(i, j):
@@ -885,7 +926,7 @@ class ThoughtProcess:
                 if not is_hole:
                     break
             if is_hole:
-                self.maybe_set_bulb(i, j)
+                self.maybe_set_bulb(i, j, step)
 
     def mark_unique_bulbs_for_dot_cells(self, i0: int, j0: int, mark: str) -> None:
         """
@@ -912,6 +953,7 @@ class ThoughtProcess:
 
     def _mark_unique_bulbs_for_dot_cells_at_cell(self, i: int, j: int) -> None:
         if self.board[i, j] == "+":
+            step = Step("mark_unique_bulbs_for_dot_cells")
             sees_free = False
             sees_multiple_free = False
             free_i = free_j = -1
@@ -930,7 +972,7 @@ class ThoughtProcess:
                 if sees_multiple_free:
                     break
             if sees_free and not sees_multiple_free:
-                self.maybe_set_bulb(free_i, free_j)
+                self.maybe_set_bulb(free_i, free_j, step)
 
     def mark_dots_at_corners(self, i: int, j: int, mark: str) -> None:
         """
@@ -970,9 +1012,10 @@ class ThoughtProcess:
                 self.board[i + di, j + dj] == "#" for (di, dj) in ORTHO_DIRS
             )
             if n_free + n_bulbs_already == int(self.board[i, j]) + 1:
+                step = Step("mark_dots_at_corners")
                 for di, dj in DIAG_DIRS:
                     if self.board[i + di, j] == "." and self.board[i, j + dj] == ".":
-                        self.maybe_set_dot(i + di, j + dj)
+                        self.maybe_set_dot(i + di, j + dj, step)
 
     def mark_dots_beyond_corners(self, i0: int, j0: int, mark: str) -> None:
         """
@@ -1021,7 +1064,7 @@ class ThoughtProcess:
             if iB == i:
                 (iA, jA), (iB, jB) = (iB, jB), (iA, jA)
             if self._mark_dots_beyond_corners_check_line_of_sight(i, j, iA, jA, iB, jB):
-                self.maybe_set_dot(iB, jA)
+                self.maybe_set_dot(iB, jA, Step("mark_dots_beyond_corners"))
 
     def _mark_dots_beyond_corners_check_line_of_sight(
         self, i: int, j: int, iA: int, jA: int, iB: int, jB: int
@@ -1128,10 +1171,11 @@ class ThoughtProcess:
         # point C has 1 missing bulb and point D has one free space more
         di = iD - iC
         dj = jD - jC
-        self.maybe_set_dot(iC - di, jC)
-        self.maybe_set_dot(iC, jC - dj)
-        self.maybe_set_bulb(iD + di, jD)
-        self.maybe_set_bulb(iD, jD + dj)
+        step = Step("analyze_diagonally_adjacent_numbers")
+        self.maybe_set_dot(iC - di, jC, step)
+        self.maybe_set_dot(iC, jC - dj, step)
+        self.maybe_set_bulb(iD + di, jD, step)
+        self.maybe_set_bulb(iD, jD + dj, step)
 
     def find_wrong_numbers(self, i: int, j: int) -> None:
         """
@@ -1214,18 +1258,18 @@ class ThoughtProcess:
             for i, j in zip(*np.asarray(self.board == ".").nonzero(), strict=True):
                 if self.board[i, j] == ".":
                     try_tp_dot = self.__copy__()
-                    try_tp_dot.maybe_set_dot(i, j)
+                    try_tp_dot.maybe_set_dot(i, j, Step("guess_and_check guess"))
                     try_tp_dot.apply_methods(level_to_use)
                     if not try_tp_dot.check_unsolved():
-                        self.maybe_set_bulb(i, j)
+                        self.maybe_set_bulb(i, j, Step("guess_and_check"))
                         self.apply_methods(level_to_use)
                         continue
                     # continue for this branch because we already know the cell
                     try_tp_bulb = self.__copy__()
-                    try_tp_bulb.maybe_set_bulb(i, j)
+                    try_tp_bulb.maybe_set_bulb(i, j, Step("guess_and_check guess"))
                     try_tp_bulb.apply_methods(level_to_use)
                     if not try_tp_bulb.check_unsolved():
-                        self.maybe_set_dot(i, j)
+                        self.maybe_set_dot(i, j, Step("guess_and_check"))
                         self.apply_methods(level_to_use)
             if np.all(self.board == old_board):
                 break
