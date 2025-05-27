@@ -152,7 +152,7 @@ def illuminate_all(
     board: np.ndarray,
 ) -> tuple[list[tuple[int, int, int, int]], np.ndarray]:
     tp = ThoughtProcess(board)
-    tp.illuminate_all()
+    tp.illuminate(-1, -1, ".")
     board[:] = tp.board[:]
     return tp.lit_bulb_pairs, tp.board
 
@@ -642,7 +642,6 @@ class ThoughtProcess:
         if self.board[i, j] == ".":
             self.board[i, j] = "#"
             self.new_mark[0].append((i, j, "#"))
-            self.illuminate_one(i, j)
             self.find_wrong_numbers(i, j)
             if (
                 self.solution_steps
@@ -731,7 +730,7 @@ class ThoughtProcess:
                 line_of_sight_cells.append((i, j))
         return line_of_sight_cells
 
-    def apply_methods(self, level: int) -> None:  # noqa: C901
+    def apply_methods(self, max_level: int) -> None:  # noqa: C901
         # The complexity here is fine
         """
         Applies the various logical methods as set by the level.
@@ -739,25 +738,27 @@ class ThoughtProcess:
         If the queue is empty, it first, scans everything; otherwise, it just does the
         new_mark queue.
         """
-        if level < 1:
+        if max_level < 1:
             return
         if len(self.new_mark) == 1:
-            for _i in range(3, level + 1):
+            # new_mark is initially just a list of one deque; this fills in enough
+            # deques for all levels being handled. The indexing is funny because we're
+            # counting for deques for levels 2 through max_level
+            for _i in range(2, max_level + 1):
                 self.new_mark.append(deque())
         if not any(self.new_mark):
             self.new_mark[0].append((-1, -1, "."))
-            self.lit_bulb_pairs, self.board = illuminate_all(self.board)
             for i, j in self.all_interior_ij():
                 self.find_wrong_numbers_at_cell(i, j)
                 self.check_this_cell_unilluminatable(i, j)
-            if level == 1:
-                return
         while any(self.new_mark):
             mark_level, queue = next(
-                (i, q) for i, q in enumerate(self.new_mark, start=2) if q
+                (i, q) for i, q in enumerate(self.new_mark, start=1) if q
             )
             i, j, mark = queue.popleft()
-            if mark_level == 2:
+            if mark_level == 1:
+                self.illuminate(i, j, mark)
+            elif mark_level == 2:
                 self.mark_bulbs_around_dotted_numbers(i, j, mark)
                 self.mark_dots_around_full_numbers(i, j, mark)
             elif mark_level == 3:
@@ -770,18 +771,31 @@ class ThoughtProcess:
             elif mark_level == 6:
                 self.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, mark)
                 self.mark_dots_beyond_corners(i, j, mark)
-            elif level == 9 and not any(self.new_mark):
+            elif max_level == 9 and not any(self.new_mark):
                 # guess and check is orders of magnitude more expensive than other
                 # methods and should only be called if all else has been tried.
-                self.guess_and_check(level)
+                self.guess_and_check(max_level)
             if not self.check_unsolved():
                 break
-            if mark_level < level:
-                self.new_mark[mark_level - 1].append((i, j, mark))
+            if mark_level < max_level:
+                self.new_mark[mark_level].append((i, j, mark))
+                # You would think that self.new_mark[mark_level] should have a + 1 to
+                # push the mark onto the next level. However, the first queue is at
+                # level 1, not 0.
 
-    def illuminate_one(self, i: int, j: int) -> None:
+    def illuminate(self, i: int, j: int, mark: str) -> None:
         """
         Illuminate the bulb at i, j
+        """
+        if mark == ".":
+            for i, j in self.all_interior_ij():
+                self._illuminate_one(i, j, mark)
+        else:
+            self._illuminate_one(i, j, mark)
+
+    def _illuminate_one(self, i: int, j: int, mark: str) -> None:
+        """
+        helper for illuminate
         """
         fill_chars = ["|", "_", "|", "_"]
         if self.board[i, j] == "#":
@@ -805,16 +819,6 @@ class ThoughtProcess:
                         self.maybe_set_dot(i1, j1, step=("illuminate_one", i, j))
                         self.board[i1, j1] = fill_char  # this assignment is cosmetic,
                         # making the light rays but not functionally changing state.
-
-    def illuminate_all(self) -> None:
-        """
-        Illuminates the whole board
-        """
-        # numpy likes to give indices as np.int64, not int, which is gross.
-        ijs_np_int64 = np.asarray(self.board == "#").nonzero()
-        ijs = (map(int, ijs_np_int64[0]), map(int, ijs_np_int64[1]))
-        for i, j in zip(*ijs, strict=True):
-            self.illuminate_one(i, j)
 
     def mark_bulbs_around_dotted_numbers(self, i: int, j: int, mark: str) -> None:
         if mark == ".":

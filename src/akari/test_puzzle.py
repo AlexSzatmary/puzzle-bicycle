@@ -22,6 +22,21 @@ from puzzle import (
 )
 
 
+def boards_equal(board1: np.ndarray, board2: np.ndarray) -> bool:
+    s1 = stringify_board(board1)
+    s2 = stringify_board(board2)
+    if s1 == s2:
+        return True
+    else:
+        print()
+        print("Board 1:")
+        print(s1)
+        print()
+        print("Board 2:")
+        print(s2)
+        return False
+
+
 def all_orientations(board: np.ndarray) -> Generator[np.ndarray]:
     board = board.copy()
     yield board.copy()
@@ -138,7 +153,6 @@ def test_save_pzprv3() -> None:
 
 
 def test_stringify_board() -> None:
-    print_board(board_1)
     assert np.all(stringify_board(board_1) == board_1_str)
 
 
@@ -207,14 +221,12 @@ def test_illuminate_one_1() -> None:
             """)
     )
     tp_no_change = ThoughtProcess(board)
-    tp_no_change.illuminate_one(1, 1)
-    tp_no_change.illuminate_one(1, 3)
-
+    tp_no_change.illuminate(1, 3, "#")
     assert not tp_no_change.lit_bulb_pairs
     assert stringify_board(tp_no_change.board) == stringify_board(board)
 
     tp_change = ThoughtProcess(board)
-    tp_change.illuminate_one(1, 2)
+    tp_change.illuminate(1, 2, "#")
     assert not tp_change.lit_bulb_pairs
     assert stringify_board(tp_change.board) == cleandoc("""
             -------
@@ -225,7 +237,7 @@ def test_illuminate_one_1() -> None:
             -..#..-
             -------
             """)
-    tp_change.illuminate_one(3, 1)
+    tp_change.illuminate(3, 1, "#")
     assert not tp_change.lit_bulb_pairs
     assert stringify_board(tp_change.board) == cleandoc("""
             -------
@@ -239,15 +251,14 @@ def test_illuminate_one_1() -> None:
 
     # Test for detection of wrong pairs one time
     tp_wrong = ThoughtProcess(board)
-    tp_wrong.illuminate_one(3, 1)
-    tp_wrong.illuminate_one(1, 2)
+    tp_wrong.illuminate(3, 1, "#")
+    tp_wrong.illuminate(1, 2, "#")
     tp_wrong.board[2, 1] = "#"
     tp_wrong.board[1, 5] = "#"
     assert not tp_wrong.lit_bulb_pairs
-    tp_wrong.illuminate_one(2, 1)
-    print_board(tp_wrong.board)
+    tp_wrong.illuminate(2, 1, "#")
     assert tp_wrong.lit_bulb_pairs == [(2, 1, 3, 1)]
-    tp_wrong.illuminate_one(1, 5)
+    tp_wrong.illuminate(1, 5, "#")
     assert stringify_board(tp_wrong.board) == cleandoc("""
             -------
             -x#__#-
@@ -428,11 +439,11 @@ def board_mark_bulbs_around_dotted_numbers_sol() -> np.ndarray:
             """
             ---------------------
             -.0.-+1.-#2#-#3#-+2#-
-            -.+.-.#.-|+|-|#|-.#.-
+            -.+.-.#.-.+.-.#.-.#.-
             ---------------------
-            -...-...-.+.-.#.-.#|-
+            -...-...-.+.-.#.-.#.-
             -.0+-+1.-#2#-#3.-#4#-
-            -...-...-...-.#.-_#x-
+            -...-...-...-.#.-.#.-
             ---------------------
             """
         )
@@ -443,8 +454,6 @@ def test_mark_bulbs_around_dotted_numbers(
     board_mark_bulbs_around_dotted_numbers: np.ndarray,
     board_mark_bulbs_around_dotted_numbers_sol: np.ndarray,
 ) -> None:
-    print_board(board_mark_bulbs_around_dotted_numbers)
-    print_board(board_mark_bulbs_around_dotted_numbers_sol)
     for board, ref in zip(
         all_orientations(board_mark_bulbs_around_dotted_numbers),
         all_orientations(board_mark_bulbs_around_dotted_numbers_sol),
@@ -532,8 +541,8 @@ def board_mark_unique_bulbs_for_dot_cells_sol() -> np.ndarray:
             """
             -----
             -0---
-            -_#--
-            --|--
+            -+#--
+            --.--
             -----
             -----
             -0---
@@ -556,7 +565,7 @@ def test_mark_unique_bulbs_for_dot_cells(
     ):
         tp = ThoughtProcess(board)
         tp.mark_unique_bulbs_for_dot_cells(-1, -1, ".")
-        assert stringify_board(tp.board) == stringify_board(ref)
+        assert boards_equal(tp.board, ref)
 
 
 def test_mark_unique_bulbs_for_dot_cells2() -> None:
@@ -626,12 +635,12 @@ def board_analyze_diagonally_adjacent_numbers_sol() -> np.ndarray:
             -.1+.-
             -.+..-
             ------
-            -x#__-
+            -.#..-
             -#3..-
-            -|.1+-
-            -|.+.-
+            -..1+-
+            -..+.-
             ------
-            -_#__-
+            -.#..-
             -+2..-
             -..1+-
             -..+.-
@@ -666,7 +675,6 @@ def test_find_wrong_numbers() -> None:
     board_1_sol_1[2, 2] = "#"
     board_1_sol_1[5, 3] = "+"
     board_1_sol_1[2, 4] = "#"
-    print_board(board_1_sol_1)
     tp = ThoughtProcess(board_1_sol_1)
     for i, j in tp.all_interior_ij():
         tp.find_wrong_numbers(i, j)
@@ -814,12 +822,12 @@ def board_pairs_trace_shared_lanes_adjacent() -> list[tuple[np.ndarray, np.ndarr
             """,
             """
             ----
-            -#_-
+            -#+-
             -2.-
             -.+-
             -+.-
             -.2-
-            -_#-
+            -+#-
             ----
             """,
         ),
@@ -879,12 +887,12 @@ def board_pairs_trace_shared_lanes_adjacent() -> list[tuple[np.ndarray, np.ndarr
             """
             ------
             ------
-            -x#_x-
-            -#3.|-
-            -|.+|-
-            -|+.|-
-            -|.3#-
-            -x_#x-
+            -.#+.-
+            -#3..-
+            -..+.-
+            -.+..-
+            -..3#-
+            -.+#.-
             ------
             ------
             """,
@@ -928,19 +936,18 @@ def test_trace_shared_lanes() -> None:
     )
     post = """
             ----
-            -|+-
-            -#_-
+            -.+-
+            -#+-
             -2.-
             -.+-
             -+.-
             -.2-
-            -_#-
-            -+|-
+            -+#-
+            -+.-
             ----
             """
     tp = ThoughtProcess(pre)
     tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
-    print_board(tp.board)
     assert stringify_board(tp.board) == cleandoc(post)
 
 
@@ -961,11 +968,11 @@ def board_pairs_trace_shared_lanes_same_2() -> list[tuple[np.ndarray, np.ndarray
             """,
             """
             -----
-            -_#_-
+            -+#+-
             -.3.-
-            -_#_-
+            -+#+-
             -+-+-
-            -_#_-
+            -+#+-
             -.2.-
             -+-+-
             -----
@@ -985,13 +992,13 @@ def board_pairs_trace_shared_lanes_same_2() -> list[tuple[np.ndarray, np.ndarray
             """,
             """
             -----
-            -x#_-
+            -.#+-
             -#3.-
-            -|.+-
+            -..+-
             --++-
-            -|.+-
+            -..+-
             -#3.-
-            -x#_-
+            -.#+-
             -----
             """,
         ),
@@ -1009,7 +1016,7 @@ def board_pairs_trace_shared_lanes_same_2() -> list[tuple[np.ndarray, np.ndarray
             -----
             -...-
             -.3.-
-            -_#_-
+            -.#.-
             -.2.-
             -...-
             -----
@@ -1027,11 +1034,11 @@ def board_pairs_trace_shared_lanes_same_2() -> list[tuple[np.ndarray, np.ndarray
             """,
             """
             -----
-            -_#_-
+            -+#+-
             -.3.-
-            -_#_-
+            -+#+-
             -.3.-
-            -_#_-
+            -+#+-
             -----
             """,
         ),
@@ -1068,13 +1075,13 @@ def board_pairs_trace_shared_lanes_same_3() -> list[tuple[np.ndarray, np.ndarray
             """,
             """
             -----
-            -_#_-
+            -+#+-
             -.3.-
             -+.+-
             -+++-
             -+.+-
             -.2.-
-            -_#_-
+            -+#+-
             -----
             """,
         ),
@@ -1092,7 +1099,7 @@ def board_pairs_trace_shared_lanes_same_3() -> list[tuple[np.ndarray, np.ndarray
             """,
             """
             -----
-            -_#_-
+            -+#+-
             -.3.-
             -+.+-
             -+++-
@@ -1115,8 +1122,7 @@ def test_trace_shared_lanes_same_3(
     for pre, post in board_pairs_trace_shared_lanes_same_3:
         tp = ThoughtProcess(pre)
         tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
-        print_board(tp.board)
-        assert stringify_board(tp.board) == stringify_board(post)
+        assert boards_equal(tp.board, post)
 
 
 @pytest.fixture
@@ -1141,11 +1147,9 @@ def test_trace_shared_lanes_all(
             all_orientations(post),
             strict=True,
         ):
-            print_board(pre_rotated)
             tp = ThoughtProcess(pre_rotated)
-            print(tp.shared_lanes_bot.shared_lanes)
             tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
-            assert stringify_board(tp.board) == stringify_board(post_rotated)
+            assert boards_equal(tp.board, post_rotated)
 
 
 def test_trace_shared_lanes_same_3_bug_1() -> None:
@@ -1171,8 +1175,10 @@ def test_trace_shared_lanes_same_3_bug_1() -> None:
     tp = ThoughtProcess(pre)
     tp.maybe_set_bulb(2, 1)
     tp.maybe_set_bulb(1, 2)
+    tp.apply_methods(1)
     tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
-    assert stringify_board(tp.board) == stringify_board(post)
+    assert boards_equal(tp.board, post)
+    # assert stringify_board(tp.board) == stringify_board(post)
 
 
 def test_trace_shared_lanes_diagonal() -> None:
@@ -1190,12 +1196,12 @@ def test_trace_shared_lanes_diagonal() -> None:
             """,
             """
             --------
-            -x#__x_-
-            -#3..|.-
-            -|.+.|+-
-            -|..3#_-
-            -x__#x_-
-            -|.+||.-
+            -.#+...-
+            -#3....-
+            -+.+.++-
+            -...3#.-
+            -..+#..-
+            -..+...-
             --------
             """,
         ),
@@ -1234,16 +1240,16 @@ def test_trace_shared_lanes_diagonal() -> None:
         ):
             print_board(pre_rotated)
             tp = ThoughtProcess(pre_rotated)
-            print(tp.shared_lanes_bot.shared_lanes)
             tp.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(-1, -1, ".")
-            assert stringify_board(tp.board) == stringify_board(post_rotated)
+            assert boards_equal(tp.board, post_rotated)
+            # assert stringify_board(tp.board) == stringify_board(post_rotated)
 
 
 def test_find_unilluminatable_cells() -> None:
     board = boardify_string(
         cleandoc("""
             ----
-            -0.-
+            -0+-
             ----
             -2#-
             -#--
