@@ -202,12 +202,12 @@ class Step:
     """
 
     def __init__(
-        self, signal: tuple[int, int, str], method: str, cost: float = 1e9
+        self, signal: tuple[int, int, str], method: str, cost: float | None = None
     ) -> None:
         self.signal = signal
         self.method = method
         self.outputs = []
-        if method == "guess_and_check":
+        if cost is not None:
             self.cost = cost  # cost must be provided for guess and check
         else:
             self.cost = COSTS[method]
@@ -1302,19 +1302,17 @@ class ThoughtProcess:
         Guesses at every blank cell and uses apply_methods to eliminate impossible
         options.
         """
-        guess_and_check_base_cost = 1.0
+        gacbc = 1.0  # guess_and_check base cost
         level_to_use = min(level, 8)
-        for i, j in zip(*np.asarray(self.board == ".").nonzero(), strict=True):
+        for i, j in zip(
+            *np.asarray(self.board == ".", dtype=int).nonzero(), strict=True
+        ):
+            i = int(i)
+            j = int(j)
             if self.board[i, j] == ".":
                 try_tp_dot = self.__copy__()
                 try_tp_dot.maybe_set_dot(
-                    i,
-                    j,
-                    Step(
-                        (i, j, "?"),
-                        "guess_and_check",
-                        cost=guess_and_check_base_cost,
-                    ),
+                    i, j, Step((i, j, "?"), "guess_and_check_guess", cost=gacbc)
                 )
                 try_tp_dot.apply_methods(level_to_use)
                 if not try_tp_dot.check_unsolved():
@@ -1322,18 +1320,12 @@ class ThoughtProcess:
                     self.maybe_set_bulb(
                         i, j, Step((i, j, "?"), "guess_and_check", cost=cost)
                     )
-                    self.apply_methods(level_to_use)
+                    return
                     continue
-                # continue for this branch because we already know the cell
+                    # continue for this branch because we already know the cell
                 try_tp_bulb = self.__copy__()
                 try_tp_bulb.maybe_set_bulb(
-                    i,
-                    j,
-                    Step(
-                        (i, j, "?"),
-                        "guess_and_check",
-                        cost=guess_and_check_base_cost,
-                    ),
+                    i, j, Step((i, j, "?"), "guess_and_check_guess", cost=gacbc)
                 )
                 try_tp_bulb.apply_methods(level_to_use)
                 if not try_tp_bulb.check_unsolved():
@@ -1341,7 +1333,7 @@ class ThoughtProcess:
                     self.maybe_set_dot(
                         i, j, Step((i, j, "?"), "guess_and_check", cost=cost)
                     )
-                    self.apply_methods(level_to_use)
+                    return
 
 
 def do_best_to_get_a_non_wrong_solution(board: np.ndarray) -> np.ndarray:

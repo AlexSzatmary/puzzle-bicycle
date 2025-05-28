@@ -833,8 +833,8 @@ class MainWindow(QMainWindow):
     def apply_methods(self) -> None:
         thought_process = puzzle.ThoughtProcess(self.board.copy())
         thought_process.apply_methods(self.auto_apply_methods_level)
-        # print()
-        # print("\n".join(map(str, thought_process.solution_steps)))
+        print()
+        print("\n".join(map(str, thought_process.solution_steps)))
         if thought_process.solution_steps:
             print(f"cost: {sum(step.cost for step in thought_process.solution_steps)}")
             print(
