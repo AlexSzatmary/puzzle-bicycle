@@ -173,7 +173,11 @@ class Step:
     Members
     -------
     Method : str
-    coord : tuple[int, int] TODO
+    signal : tuple[int, int, str]
+        the information triggering this step. In general, it is coordinates and a char.
+        For init, the char is "." and each method should give a coordinate reasonably
+        near whatever is being activated but it might point to a number rather than
+        white cell.
     inputs : list[int, int] TODO
         coordinates firing method
     outputs : list[int, int]
@@ -184,12 +188,13 @@ class Step:
     mark_bulbs_around_dotted_numbers: all coordinates around bulb containing dots
     """
 
-    def __init__(self, method: str) -> None:
+    def __init__(self, signal: tuple[int, int, str], method: str) -> None:
+        self.signal = signal
         self.method = method
         self.outputs = []
 
     def __repr__(self) -> str:
-        return f"Step({self.method}, {self.outputs})"
+        return f"Step({self.signal}, {self.method}, {self.outputs})"
 
 
 @dataclass
@@ -545,7 +550,11 @@ class SharedLanesBot:
                     - len(active_lanes)
                 )
             )
-            step = Step("mark_bulbs_and_dots_at_shared_lanes")
+            if mark == ".":
+                signal = (sl.A[0], sl.A[1], ".")
+            else:
+                signal = (i, j, mark)
+            step = Step(signal, "mark_bulbs_and_dots_at_shared_lanes")
             if len(active_lanes) > 1 and balance == 0:
                 for cell in sl.nonshared_cells:
                     self.thought_process.maybe_set_bulb(cell[0], cell[1], step)
@@ -830,7 +839,7 @@ class ThoughtProcess:
         """
         helper for illuminate
         """
-        step = Step("illuminate")
+        step = Step((i, j, mark), "illuminate")
         fill_chars = ["|", "_", "|", "_"]
         if self.board[i, j] == "#":
             for it, fill_char in zip(
@@ -866,8 +875,12 @@ class ThoughtProcess:
                 if count_free_near_number(
                     self.board, i_number, j_number
                 ) == count_missing_bulbs_near_number(self.board, i_number, j_number):
+                    if mark == ".":
+                        signal = (i_number, j_number, mark)
+                    else:
+                        signal = i, j, mark
+                    step = Step(signal, "mark_bulbs_around_dotted_numbers")
                     for di, dj in ORTHO_DIRS:
-                        step = Step("mark_bulbs_around_dotted_numbers")
                         self.maybe_set_bulb(
                             i_number + di,
                             j_number + dj,
@@ -884,7 +897,11 @@ class ThoughtProcess:
         for i_number, j_number in cells_to_check:
             if self.board[i_number, j_number] in "01234":
                 if count_missing_bulbs_near_number(self.board, i_number, j_number) == 0:
-                    step = Step("mark_dots_around_full_numbers")
+                    if mark == ".":
+                        signal = (i_number, j_number, mark)
+                    else:
+                        signal = i, j, mark
+                    step = Step(signal, "mark_bulbs_around_dotted_numbers")
                     for di2, dj2 in ORTHO_DIRS:
                         self.maybe_set_dot(i_number + di2, j_number + dj2, step=step)
 
@@ -905,15 +922,16 @@ class ThoughtProcess:
         the 0; after a + is marked above the 0, the * would then be a hole.
         """
         if mark == ".":
-            for i0, j0 in self.all_interior_ij():
-                self._fill_holes_cell(i0, j0)
+            for i, j in self.all_interior_ij():
+                self._fill_holes_cell(i, j, (i, j, "."))
         elif mark == "+":
-            self._fill_holes_cell(i0, j0)
+            signal = (i0, j0, mark)
+            self._fill_holes_cell(i0, j0, signal)
             for i, j in self.line_of_sight(i0, j0):
-                self._fill_holes_cell(i, j)
+                self._fill_holes_cell(i, j, signal)
 
-    def _fill_holes_cell(self, i: int, j: int) -> None:
-        step = Step("fill_holes")
+    def _fill_holes_cell(self, i: int, j: int, signal: tuple[int, int, str]) -> None:
+        step = Step(signal, "fill_holes")
         if self.board[i, j] == ".":
             is_hole = True  # presume a hole
             for it in self.line_of_sight_iters(i, j):
@@ -944,16 +962,19 @@ class ThoughtProcess:
         Because otherwise the + below the 0 could not be illuminated.
         """
         if mark == ".":
-            for i0, j0 in self.all_interior_ij():
-                self._mark_unique_bulbs_for_dot_cells_at_cell(i0, j0)
+            for i, j in self.all_interior_ij():
+                self._mark_unique_bulbs_for_dot_cells_at_cell(i, j, (i, j, "."))
         elif mark == "+":
-            self._mark_unique_bulbs_for_dot_cells_at_cell(i0, j0)
+            signal = (i0, j0, mark)
+            self._mark_unique_bulbs_for_dot_cells_at_cell(i0, j0, signal)
             for i, j in self.line_of_sight(i0, j0):
-                self._mark_unique_bulbs_for_dot_cells_at_cell(i, j)
+                self._mark_unique_bulbs_for_dot_cells_at_cell(i, j, signal)
 
-    def _mark_unique_bulbs_for_dot_cells_at_cell(self, i: int, j: int) -> None:
+    def _mark_unique_bulbs_for_dot_cells_at_cell(
+        self, i: int, j: int, signal: tuple[int, int, str]
+    ) -> None:
         if self.board[i, j] == "+":
-            step = Step("mark_unique_bulbs_for_dot_cells")
+            step = Step(signal, "mark_unique_bulbs_for_dot_cells")
             sees_free = False
             sees_multiple_free = False
             free_i = free_j = -1
@@ -996,14 +1017,14 @@ class ThoughtProcess:
         """
         if mark == ".":
             for i, j in self.all_interior_ij():
-                self._mark_dots_at_corners_at_cell(i, j)
+                self._mark_dots_at_corners_at_cell(i, j, mark)
         elif mark == "+":
             for di1, dj1 in ORTHO_DIRS:
                 i_corner = i + di1
                 j_corner = j + dj1
-                self._mark_dots_at_corners_at_cell(i_corner, j_corner)
+                self._mark_dots_at_corners_at_cell(i_corner, j_corner, mark)
 
-    def _mark_dots_at_corners_at_cell(self, i: int, j: int) -> None:
+    def _mark_dots_at_corners_at_cell(self, i: int, j: int, mark: str) -> None:
         if self.board[i, j] in "01234":
             n_free = sum(
                 self.board[i + di2, j + dj2] == "." for (di2, dj2) in ORTHO_DIRS
@@ -1012,7 +1033,7 @@ class ThoughtProcess:
                 self.board[i + di, j + dj] == "#" for (di, dj) in ORTHO_DIRS
             )
             if n_free + n_bulbs_already == int(self.board[i, j]) + 1:
-                step = Step("mark_dots_at_corners")
+                step = Step((i, j, mark), "mark_dots_at_corners")
                 for di, dj in DIAG_DIRS:
                     if self.board[i + di, j] == "." and self.board[i, j + dj] == ".":
                         self.maybe_set_dot(i + di, j + dj, step)
@@ -1032,13 +1053,15 @@ class ThoughtProcess:
         """
         if mark == ".":
             for i0, j0 in self.all_interior_ij():
-                self._mark_dots_beyond_corners_at_cell(i0, j0)
+                self._mark_dots_beyond_corners_at_cell(i0, j0, (i0, j0, mark))
         elif mark == "+":
-            self._mark_dots_beyond_corners_at_cell(i0, j0)
+            self._mark_dots_beyond_corners_at_cell(i0, j0, (i0, j0, mark))
             for i, j in self.line_of_sight(i0, j0):
-                self._mark_dots_beyond_corners_at_cell(i, j)
+                self._mark_dots_beyond_corners_at_cell(i, j, (i0, j0, mark))
 
-    def _mark_dots_beyond_corners_at_cell(self, i: int, j: int) -> None:
+    def _mark_dots_beyond_corners_at_cell(
+        self, i: int, j: int, mark: tuple[int, int, str]
+    ) -> None:
         if self.board[i, j] == "+":
             cells = []
             for it in self.line_of_sight_iters(i, j):
@@ -1052,10 +1075,10 @@ class ThoughtProcess:
                             seen_in_this_direction = True
                     elif self.board[i1, j1] in "01234-":
                         break
-            self._mark_dots_beyond_corners_process_cells(i, j, cells)
+            self._mark_dots_beyond_corners_process_cells(i, j, mark, cells)
 
     def _mark_dots_beyond_corners_process_cells(
-        self, i: int, j: int, cells: list[tuple[int, int]]
+        self, i: int, j: int, mark: tuple[int, int, str], cells: list[tuple[int, int]]
     ) -> None:
         if len(cells) == 2:
             (iA, jA), (iB, jB) = cells
@@ -1064,7 +1087,7 @@ class ThoughtProcess:
             if iB == i:
                 (iA, jA), (iB, jB) = (iB, jB), (iA, jA)
             if self._mark_dots_beyond_corners_check_line_of_sight(i, j, iA, jA, iB, jB):
-                self.maybe_set_dot(iB, jA, Step("mark_dots_beyond_corners"))
+                self.maybe_set_dot(iB, jA, Step(mark, "mark_dots_beyond_corners"))
 
     def _mark_dots_beyond_corners_check_line_of_sight(
         self, i: int, j: int, iA: int, jA: int, iB: int, jB: int
@@ -1156,22 +1179,26 @@ class ThoughtProcess:
                         free_A = count_free_near_number(self.board, iA, jA)
                         missing_B = count_missing_bulbs_near_number(self.board, iB, jB)
                         free_B = count_free_near_number(self.board, iB, jB)
+                        if mark == ".":
+                            signal = (iA, jA, ".")
+                        else:
+                            signal = (i, j, mark)
                         if missing_A == 1 and missing_B + 1 == free_B:
                             self._analyze_diagonally_adjacent_numbers_update_board(
-                                iA, jA, iB, jB
+                                iA, jA, iB, jB, signal
                             )
                         elif missing_B == 1 and missing_A + 1 == free_A:
                             self._analyze_diagonally_adjacent_numbers_update_board(
-                                iB, jB, iA, jA
+                                iB, jB, iA, jA, signal
                             )
 
     def _analyze_diagonally_adjacent_numbers_update_board(
-        self, iC: int, jC: int, iD: int, jD: int
+        self, iC: int, jC: int, iD: int, jD: int, signal: tuple[int, int, str]
     ) -> None:
         # point C has 1 missing bulb and point D has one free space more
         di = iD - iC
         dj = jD - jC
-        step = Step("analyze_diagonally_adjacent_numbers")
+        step = Step(signal, "analyze_diagonally_adjacent_numbers")
         self.maybe_set_dot(iC - di, jC, step)
         self.maybe_set_dot(iC, jC - dj, step)
         self.maybe_set_bulb(iD + di, jD, step)
@@ -1258,18 +1285,22 @@ class ThoughtProcess:
             for i, j in zip(*np.asarray(self.board == ".").nonzero(), strict=True):
                 if self.board[i, j] == ".":
                     try_tp_dot = self.__copy__()
-                    try_tp_dot.maybe_set_dot(i, j, Step("guess_and_check guess"))
+                    try_tp_dot.maybe_set_dot(
+                        i, j, Step((i, j, "?"), "guess_and_check guess")
+                    )
                     try_tp_dot.apply_methods(level_to_use)
                     if not try_tp_dot.check_unsolved():
-                        self.maybe_set_bulb(i, j, Step("guess_and_check"))
+                        self.maybe_set_bulb(i, j, Step((i, j, "?"), "guess_and_check"))
                         self.apply_methods(level_to_use)
                         continue
                     # continue for this branch because we already know the cell
                     try_tp_bulb = self.__copy__()
-                    try_tp_bulb.maybe_set_bulb(i, j, Step("guess_and_check guess"))
+                    try_tp_bulb.maybe_set_bulb(
+                        i, j, Step((i, j, "?"), "guess_and_check guess")
+                    )
                     try_tp_bulb.apply_methods(level_to_use)
                     if not try_tp_bulb.check_unsolved():
-                        self.maybe_set_dot(i, j, Step("guess_and_check"))
+                        self.maybe_set_dot(i, j, Step((i, j, "?"), "guess_and_check"))
                         self.apply_methods(level_to_use)
             if np.all(self.board == old_board):
                 break
