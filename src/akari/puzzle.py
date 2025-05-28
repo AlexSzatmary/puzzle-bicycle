@@ -996,10 +996,14 @@ class ThoughtProcess:
             step = Step(signal, "mark_unique_bulbs_for_dot_cells")
             sees_free = False
             sees_multiple_free = False
+            sees_bulb = False
             free_i = free_j = -1
             for it in self.line_of_sight_iters(i, j):
                 for i1, j1 in it:
-                    if self.board[i1, j1] == ".":
+                    if self.board[i1, j1] == "#":
+                        sees_bulb = True
+                        break
+                    elif self.board[i1, j1] == ".":
                         if sees_free:
                             sees_multiple_free = True
                             break
@@ -1009,9 +1013,9 @@ class ThoughtProcess:
                             free_j = j1
                     elif self.board[i1, j1] in "01234-":
                         break
-                if sees_multiple_free:
+                if sees_multiple_free or sees_bulb:
                     break
-            if sees_free and not sees_multiple_free:
+            if not sees_bulb and sees_free and not sees_multiple_free:
                 self.maybe_set_bulb(free_i, free_j, step)
 
     def mark_dots_at_corners(self, i: int, j: int, mark: str) -> None:
