@@ -166,6 +166,19 @@ def count_missing_bulbs_near_number(board: np.ndarray, i: int, j: int) -> int:
     return int(board[i, j]) - n_bulbs
 
 
+COSTS = {
+    "illuminate": 1.0,
+    "mark_bulbs_around_dotted_numbers": 1.0,
+    "mark_dots_around_full_numbers": 1.0,
+    "fill_holes": 1.2,
+    "mark_unique_bulbs_for_dot_cells": 1.2,
+    "mark_dots_at_corners": 2.0,
+    "analyze_diagonally_adjacent_numbers": 2.0,
+    "mark_bulbs_and_dots_at_shared_lanes": 3.0,
+    "mark_dots_beyond_corners": 2.8,
+}
+
+
 class Step:
     """
     Records steps in simulation
@@ -188,10 +201,16 @@ class Step:
     mark_bulbs_around_dotted_numbers: all coordinates around bulb containing dots
     """
 
-    def __init__(self, signal: tuple[int, int, str], method: str) -> None:
+    def __init__(
+        self, signal: tuple[int, int, str], method: str, cost: float = 1e9
+    ) -> None:
         self.signal = signal
         self.method = method
         self.outputs = []
+        if method == "guess_and_check":
+            self.cost = cost  # cost must be provided for guess and check
+        else:
+            self.cost = COSTS[method]
 
     def __repr__(self) -> str:
         return f"Step({self.signal}, {self.method}, {self.outputs})"
@@ -1279,6 +1298,7 @@ class ThoughtProcess:
         Guesses at every blank cell and uses apply_methods to eliminate impossible
         options.
         """
+        guess_and_check_base_cost = 1.0
         level_to_use = min(level, 8)
         while True:
             old_board = self.board.copy()
@@ -1286,21 +1306,39 @@ class ThoughtProcess:
                 if self.board[i, j] == ".":
                     try_tp_dot = self.__copy__()
                     try_tp_dot.maybe_set_dot(
-                        i, j, Step((i, j, "?"), "guess_and_check guess")
+                        i,
+                        j,
+                        Step(
+                            (i, j, "?"),
+                            "guess_and_check",
+                            cost=guess_and_check_base_cost,
+                        ),
                     )
                     try_tp_dot.apply_methods(level_to_use)
                     if not try_tp_dot.check_unsolved():
-                        self.maybe_set_bulb(i, j, Step((i, j, "?"), "guess_and_check"))
+                        cost = sum(step.cost for step in try_tp_dot.solution_steps)
+                        self.maybe_set_bulb(
+                            i, j, Step((i, j, "?"), "guess_and_check", cost=cost)
+                        )
                         self.apply_methods(level_to_use)
                         continue
                     # continue for this branch because we already know the cell
                     try_tp_bulb = self.__copy__()
                     try_tp_bulb.maybe_set_bulb(
-                        i, j, Step((i, j, "?"), "guess_and_check guess")
+                        i,
+                        j,
+                        Step(
+                            (i, j, "?"),
+                            "guess_and_check",
+                            cost=guess_and_check_base_cost,
+                        ),
                     )
                     try_tp_bulb.apply_methods(level_to_use)
                     if not try_tp_bulb.check_unsolved():
-                        self.maybe_set_dot(i, j, Step((i, j, "?"), "guess_and_check"))
+                        cost = sum(step.cost for step in try_tp_bulb.solution_steps)
+                        self.maybe_set_dot(
+                            i, j, Step((i, j, "?"), "guess_and_check", cost=cost)
+                        )
                         self.apply_methods(level_to_use)
             if np.all(self.board == old_board):
                 break

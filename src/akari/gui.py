@@ -835,6 +835,11 @@ class MainWindow(QMainWindow):
         thought_process.apply_methods(self.auto_apply_methods_level)
         # print()
         # print("\n".join(map(str, thought_process.solution_steps)))
+        if thought_process.solution_steps:
+            print(f"cost: {sum(step.cost for step in thought_process.solution_steps)}")
+            print(
+                f"difficulty: {max(s.cost for s in thought_process.solution_steps)}"
+            )
 
         # In play mode, we do not need to run a full solve with every click
         if (
