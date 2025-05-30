@@ -832,14 +832,26 @@ class MainWindow(QMainWindow):
 
     def apply_methods(self) -> None:
         thought_process = puzzle.ThoughtProcess(self.board.copy())
-        thought_process.apply_methods(self.auto_apply_methods_level)
+        thought_process.apply_methods(
+            self.auto_apply_methods_level,  # calculate_difficulty=True
+        )
         print()
         print("\n".join(map(str, thought_process.solution_steps)))
         if thought_process.solution_steps:
             print(f"cost: {sum(step.cost for step in thought_process.solution_steps)}")
-            print(
-                f"difficulty: {max(s.cost for s in thought_process.solution_steps)}"
-            )
+            print(f"difficulty: {max(s.cost for s in thought_process.solution_steps)}")
+            thought_process_hint = puzzle.ThoughtProcess(self.board.copy())
+            # puzzle.print_board(thought_process_hint.board)
+            thought_process_hint.apply_methods(self.auto_apply_methods_level)
+            # puzzle.print_board(thought_process_hint.board)
+            thought_process_hint.apply_methods(9, find_hint=True)
+            if hasattr(thought_process_hint, "hint"):
+                print(
+                    f"hint: {thought_process_hint.hint}, "
+                    f"cost: {thought_process_hint.hint.cost}"
+                )
+            else:
+                print("no hint")
 
         # In play mode, we do not need to run a full solve with every click
         if (

@@ -1,3 +1,4 @@
+import math
 from collections import defaultdict, deque
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -686,6 +687,7 @@ class ThoughtProcess:
         if not hasattr(self, "shared_lanes_bot"):
             self.shared_lanes_bot = SharedLanesBot(self)
         self.solution_steps = []
+        self.cost = 0.0
 
     def __copy__(self) -> "ThoughtProcess":
         cls = self.__class__
@@ -734,6 +736,7 @@ class ThoughtProcess:
         else:
             self.solution_steps.append(step)
         step.outputs.append((i, j))
+        self.cost += step.cost
 
     def all_interior_ij(self) -> list[tuple[int, int]]:
         return [
@@ -791,7 +794,14 @@ class ThoughtProcess:
                 line_of_sight_cells.append((i, j))
         return line_of_sight_cells
 
-    def apply_methods(self, max_level: int) -> None:  # noqa: C901
+    def apply_methods(  # noqa: C901
+        self,
+        max_level: int,
+        *,
+        calculate_difficulty: bool = False,
+        find_hint: bool = False,
+        budget: float = math.inf,
+    ) -> None:
         # The complexity here is fine
         """
         Applies the various logical methods as set by the level.
@@ -799,9 +809,10 @@ class ThoughtProcess:
         If the queue is empty, it first, scans everything; otherwise, it just does the
         new_mark queue.
         """
+        starting_solution_steps = len(self.solution_steps)
         if max_level < 1:
             return
-        if len(self.new_mark) == 1:
+        if len(self.new_mark) < max_level:
             # new_mark is initially just a list of one deque; this fills in enough
             # deques for all levels being handled. The indexing is funny because we're
             # counting for deques for levels 2 through max_level
@@ -835,8 +846,17 @@ class ThoughtProcess:
             elif max_level == 9 and not any(self.new_mark):
                 # guess and check is orders of magnitude more expensive than other
                 # methods and should only be called if all else has been tried.
-                self.guess_and_check(max_level)
-            if not self.check_unsolved():
+                if calculate_difficulty or find_hint:
+                    self.guess_and_check_thrifty(max_level)
+                else:
+                    self.guess_and_check(max_level)
+            if find_hint and len(self.solution_steps) > starting_solution_steps:
+                self.hint = self.solution_steps[starting_solution_steps]
+                return
+            if (
+                not self.new_mark[0]  # force illuminate before ending
+                and not self.check_unsolved()
+            ) or self.cost > budget:
                 break
             if mark_level < max_level:
                 self.new_mark[mark_level].append((i, j, mark))
@@ -1334,6 +1354,57 @@ class ThoughtProcess:
                         i, j, Step((i, j, "?"), "guess_and_check", cost=cost)
                     )
                     return
+
+    def guess_and_check_thrifty(self, level: int) -> None:
+        """
+        Guesses at every blank cell and uses apply_methods to eliminate impossible
+        options. Sticks with only the lowest-cost option.
+        """
+        gacbc = 1.0  # guess_and_check base cost
+        level_to_use = min(level, 8)
+
+        cheapest_choice = None
+        lowest_cost = math.inf
+
+        for i, j in zip(
+            *np.asarray(self.board == ".", dtype=int).nonzero(), strict=True
+        ):
+            i = int(i)
+            j = int(j)
+            if self.board[i, j] == ".":
+                try_tp_dot = self.__copy__()
+                try_tp_dot.maybe_set_dot(
+                    i, j, Step((i, j, "?"), "guess_and_check_guess", cost=gacbc)
+                )
+                try_tp_dot.apply_methods(level_to_use, budget=lowest_cost)
+                if not try_tp_dot.check_unsolved():
+                    cost = sum(step.cost for step in try_tp_dot.solution_steps)
+                    if cost < lowest_cost:
+                        lowest_cost = cost
+                        cheapest_choice = (
+                            "#",
+                            (i, j, Step((i, j, "?"), "guess_and_check", cost=cost)),
+                        )
+                    continue
+                    # continue for this branch because we already know the cell
+                try_tp_bulb = self.__copy__()
+                try_tp_bulb.maybe_set_bulb(
+                    i, j, Step((i, j, "?"), "guess_and_check_guess", cost=gacbc)
+                )
+                try_tp_bulb.apply_methods(level_to_use, budget=lowest_cost)
+                if not try_tp_bulb.check_unsolved():
+                    cost = sum(step.cost for step in try_tp_bulb.solution_steps)
+                    if cost < lowest_cost:
+                        lowest_cost = cost
+                        cheapest_choice = (
+                            "+",
+                            (i, j, Step((i, j, "?"), "guess_and_check", cost=cost)),
+                        )
+        if cheapest_choice is not None:
+            if cheapest_choice[0] == "#":
+                self.maybe_set_bulb(*cheapest_choice[1])
+            elif cheapest_choice[0] == "+":
+                self.maybe_set_dot(*cheapest_choice[1])
 
 
 def do_best_to_get_a_non_wrong_solution(board: np.ndarray) -> np.ndarray:
