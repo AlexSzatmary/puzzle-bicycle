@@ -902,9 +902,9 @@ class MainWindow(QMainWindow):
 
         for i1, j1, i2, j2 in thought_process.lit_bulb_pairs:
             if i1 == i2:
-                ijs = [(i1, j) for j in range(j1, j2 + 1)]
+                ijs = [(i1, j) for j in range(min(j1, j2), max(j1, j2) + 1)]
             else:
-                ijs = [(i, j1) for i in range(i1, i2 + 1)]
+                ijs = [(i, j1) for i in range(min(i1, i2), max(i1, i2) + 1)]
             for i, j in ijs:
                 ci = self.grid.itemAtPosition(i - 1, j - 1)
                 assert ci is not None
