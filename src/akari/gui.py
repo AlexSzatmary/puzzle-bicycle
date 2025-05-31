@@ -495,6 +495,9 @@ class MainWindow(QMainWindow):
         self.clear_board_action.triggered.connect(self.clear_board)
         self.clear_board_action.setShortcut(QKeySequence("Ctrl+K"))
         edit_menu.addAction(self.clear_board_action)
+        calculate_difficulty_action = QAction("Calculate Difficulty", self)
+        calculate_difficulty_action.triggered.connect(self.calculate_difficulty_pressed)
+        edit_menu.addAction(calculate_difficulty_action)
 
         edit_menu.addSeparator()
         self.edit_mode_group = QActionGroup(self)
@@ -632,6 +635,11 @@ class MainWindow(QMainWindow):
         clear_board_button = QPushButton("Clear Board")
         clear_board_button.clicked.connect(self.clear_board_action.triggered)
         vbedit.addWidget(clear_board_button)
+        calculate_difficulty_button = QPushButton("Calculate Difficulty")
+        calculate_difficulty_button.clicked.connect(
+            calculate_difficulty_action.triggered
+        )
+        vbedit.addWidget(calculate_difficulty_button)
         for radio in self.edit_mode_radios:
             vbedit.addWidget(radio)
         self.gb_edit.setLayout(vbedit)
@@ -794,6 +802,52 @@ class MainWindow(QMainWindow):
                 buttons=QMessageBox.StandardButton.Ok,
             )
             msg.exec()
+
+    def calculate_difficulty_pressed(self) -> None:
+        thought_process_from_here = puzzle.ThoughtProcess(self.board)
+        thought_process_from_here.apply_methods(9)
+        if not thought_process_from_here.check_unsolved():
+            from_here_message = "This puzzle state is contradictory"
+        elif not puzzle.check_all(thought_process_from_here.board):
+            from_here_message = "This puzzle state probably leads to multiple solutions"
+        else:
+            cost_from_here = sum(
+                step.cost for step in thought_process_from_here.solution_steps
+            )
+            difficulty_from_here = max(
+                s.cost for s in thought_process_from_here.solution_steps
+            )
+            from_here_message = (
+                f"From this state, the puzzle has solve cost: {cost_from_here}"
+                f"\n and peak difficulty: {difficulty_from_here}"
+            )
+        thought_process_from_blank_board = puzzle.ThoughtProcess(
+            puzzle.clear_board(self.board.copy())
+        )
+        thought_process_from_blank_board.apply_methods(9)
+        if not thought_process_from_blank_board.check_unsolved():
+            from_blank_board_message = "This puzzle has no solution"
+        elif not puzzle.check_all(thought_process_from_blank_board.board):
+            from_blank_board_message = "This puzzle probably has multiple solutions"
+        else:
+            cost_from_blank_board = sum(
+                step.cost for step in thought_process_from_blank_board.solution_steps
+            )
+            difficulty_from_blank_board = max(
+                s.cost for s in thought_process_from_blank_board.solution_steps
+            )
+            from_blank_board_message = (
+                f"From the start, the puzzle has solve cost: {cost_from_blank_board}"
+                f"\n and peak difficulty: {difficulty_from_blank_board}"
+            )
+        msg = QMessageBox(
+            QMessageBox.Icon.NoIcon,
+            "Difficulty",
+            from_here_message + "\n" + from_blank_board_message,
+            buttons=QMessageBox.StandardButton.Ok,
+        )
+        msg.exec()
+        return
 
     def request_hint(self) -> None:
         """
