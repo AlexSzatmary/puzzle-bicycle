@@ -54,6 +54,7 @@ from PySide6.QtWidgets import (
 )
 
 AUTO_APPLY_METHODS_LEVEL = 1
+ALWAYS_HINT = False
 
 
 def fake_next_state(state: str) -> str:
@@ -569,6 +570,10 @@ class MainWindow(QMainWindow):
         self.contradiction_action.setCheckable(True)
         self.contradiction_action.setChecked(False)
         solver_menu.addAction(self.contradiction_action)
+        self.hint_action = QAction("Hint")
+        self.hint_action.triggered.connect(self.request_hint)
+        self.hint_action.setShortcut(QKeySequence("Ctrl+A"))
+        solver_menu.addAction(self.hint_action)
 
         view_menu = menu.addMenu("&View")
         self.show_controls_in_window_action = QAction("Show Controls In Window")
@@ -609,6 +614,9 @@ class MainWindow(QMainWindow):
         )
         vbsolver.addWidget(self.contradiction_checker_checkbox)
         self.gb_solver.setLayout(vbsolver)
+        hint_button = QPushButton("Hint")
+        hint_button.clicked.connect(self.hint_action.triggered)
+        vbsolver.addWidget(hint_button)
 
         self.gb_edit = QGroupBox("Edit")
         self.vbl.addWidget(self.gb_edit)
@@ -785,6 +793,23 @@ class MainWindow(QMainWindow):
             )
             msg.exec()
 
+    def request_hint(self) -> None:
+        thought_process_hint = puzzle.ThoughtProcess(self.board.copy())
+        thought_process_hint.apply_methods(self.auto_apply_methods_level)
+        thought_process_hint.apply_methods(9, find_hint=True)
+        if hasattr(thought_process_hint, "hint"):
+            print(
+                f"hint: {thought_process_hint.hint}, "
+                f"cost: {thought_process_hint.hint.cost}"
+            )
+            hint_i = thought_process_hint.hint.outputs[0][0] - 1
+            hint_j = thought_process_hint.hint.outputs[0][1] - 1
+            for i, j, c in self.i_j_cell():
+                c.state_hint = i == hint_i and j == hint_j
+                c.update()
+        else:
+            print("no hint")
+
     def resize_pressed(self) -> None:
         dlg = ResizeDialog(self)
         if dlg.show():
@@ -856,26 +881,8 @@ class MainWindow(QMainWindow):
         if thought_process.solution_steps:
             print(f"cost: {sum(step.cost for step in thought_process.solution_steps)}")
             print(f"difficulty: {max(s.cost for s in thought_process.solution_steps)}")
-        thought_process_hint = puzzle.ThoughtProcess(self.board.copy())
-        # puzzle.print_board(thought_process_hint.board)
-        # TODO just copy thought_process
-        thought_process_hint.apply_methods(self.auto_apply_methods_level)
-        # puzzle.print_board(thought_process_hint.board)
-        thought_process_hint.apply_methods(9, find_hint=True)
-        if hasattr(thought_process_hint, "hint"):
-            print(
-                f"hint: {thought_process_hint.hint}, "
-                f"cost: {thought_process_hint.hint.cost}"
-            )
-            hint_i = thought_process_hint.hint.outputs[0][0] - 1
-            hint_j = thought_process_hint.hint.outputs[0][1] - 1
-            for i, j, c in self.i_j_cell():
-                c.state_hint = i == hint_i and j == hint_j
-                print(c, c.state_hint)
-                c.update()
-        else:
-            print("no hint")
-
+        if ALWAYS_HINT:
+            self.request_hint()
         # In play mode, we do not need to run a full solve with every click
         if (
             self.edit_mode == "play"
