@@ -110,6 +110,7 @@ def intersect_boards(board1: np.ndarray, board2: np.ndarray) -> np.ndarray:
     """
     Intersection of 2 boards, that is, the cells that agree; other cells are free
     """
+    board1 = board1.copy()
     for i in range(1, board1.shape[0] - 1):
         for j in range(1, board1.shape[1] - 1):
             if board1[i, j] == board2[i, j]:
@@ -119,6 +120,20 @@ def intersect_boards(board1: np.ndarray, board2: np.ndarray) -> np.ndarray:
                 # symbol, do a dot
             else:
                 board1[i, j] = "."
+    return board1
+
+
+def subtract_boards(board1: np.ndarray, board2: np.ndarray) -> np.ndarray:
+    """
+    Subtraction of 2 boards, that is, board1 cells that disagree with board2
+    """
+    board1 = board1.copy()
+    for i in range(1, board1.shape[0] - 1):
+        for j in range(1, board1.shape[1] - 1):
+            if board1[i, j] == board2[i, j]:
+                board1[i, j] = "."
+            elif board1[i, j] in "+_|x" and board2[i, j] in "+_|x":
+                board1[i, j] = "."  # both basically dots
     return board1
 
 
@@ -177,6 +192,20 @@ COSTS = {
     "analyze_diagonally_adjacent_numbers": 2.0,
     "mark_bulbs_and_dots_at_shared_lanes": 3.0,
     "mark_dots_beyond_corners": 2.8,
+}
+
+HINT_MESSAGES = {
+    "illuminate": "Lit by bulbs",
+    "mark_bulbs_around_dotted_numbers": "Number that has enough dots",
+    "mark_dots_around_full_numbers": "Number that has enough bulbs",
+    "fill_holes": "Fill hole",
+    "mark_unique_bulbs_for_dot_cells": "Unique bulb position",
+    "mark_dots_at_corners": "Mark dots at corners",
+    "analyze_diagonally_adjacent_numbers": "Diagonally adjacent numbers",
+    "mark_bulbs_and_dots_at_shared_lanes": "Shared lanes",
+    "mark_dots_beyond_corners": "Cell cannot be bulb",
+    "guess_and_check": "Guess and check",
+    "check_unsolved": "Board contradictory",
 }
 
 
@@ -940,7 +969,7 @@ class ThoughtProcess:
                         signal = (i_number, j_number, mark)
                     else:
                         signal = i, j, mark
-                    step = Step(signal, "mark_bulbs_around_dotted_numbers")
+                    step = Step(signal, "mark_dots_around_full_numbers")
                     for di2, dj2 in ORTHO_DIRS:
                         self.maybe_set_dot(i_number + di2, j_number + dj2, step=step)
 

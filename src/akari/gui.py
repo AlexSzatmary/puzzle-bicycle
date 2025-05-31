@@ -437,7 +437,7 @@ lightup/
 5/
 . . . . . /
 . . 0 . . /
-. 2 - 1 . /
+. 1 - 2 . /
 . . 3 . . /
 . . . . . /
 """[1:]
@@ -465,6 +465,7 @@ class MainWindow(QMainWindow):
             self.puzzle_file_name = os.path.join(
                 os.path.dirname(__file__), "default.txt"
             )
+        self.current_hint = None
 
         menu = self.menuBar()
         file_menu = menu.addMenu("&File")
@@ -596,6 +597,7 @@ class MainWindow(QMainWindow):
         )
         self.labelhb = labelhb
         self.vbr.addLayout(labelhb)
+        self.vbr.addItem(QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         self.gb_solver = QGroupBox("Solver")
         self.vbl.addWidget(self.gb_solver)
@@ -794,21 +796,45 @@ class MainWindow(QMainWindow):
             msg.exec()
 
     def request_hint(self) -> None:
+        """
+        Find a hint if possible, mark hint squares, and display message
+        """
         thought_process_hint = puzzle.ThoughtProcess(self.board.copy())
         thought_process_hint.apply_methods(self.auto_apply_methods_level)
         thought_process_hint.apply_methods(9, find_hint=True)
-        if hasattr(thought_process_hint, "hint"):
-            print(
-                f"hint: {thought_process_hint.hint}, "
-                f"cost: {thought_process_hint.hint.cost}"
+        if not thought_process_hint.check_unsolved():
+            # if the puzzle is contradictory, show where by making a fake Step
+            thought_process_hint.hint = puzzle.Step(
+                (-1, -1, "!"), "check_unsolved", cost=0
             )
-            hint_i = thought_process_hint.hint.outputs[0][0] - 1
-            hint_j = thought_process_hint.hint.outputs[0][1] - 1
+            thought_process_correct = puzzle.ThoughtProcess(
+                puzzle.clear_board(self.board.copy())
+            )
+            thought_process_correct.apply_methods(9)
+            wrong_board = puzzle.subtract_boards(
+                self.board, thought_process_correct.board
+            )
+
+            thought_process_hint.hint.outputs = [
+                (i, j)
+                for (i, j) in thought_process_hint.all_interior_ij()
+                if wrong_board[i, j] != "."
+            ]
+            thought_process_hint.hint.wrong_values = {
+                loc: wrong_board[loc] for loc in thought_process_hint.hint.outputs
+            }
+        if hasattr(thought_process_hint, "hint"):
+            self.current_hint = thought_process_hint.hint
+            print(f"hint: {self.current_hint}, cost: {self.current_hint.cost}")
             for i, j, c in self.i_j_cell():
-                c.state_hint = i == hint_i and j == hint_j
+                c.state_hint = (i + 1, j + 1) in self.current_hint.outputs
                 c.update()
+            self.puzzle_status.setText(puzzle.HINT_MESSAGES[self.current_hint.method])
+            self.puzzle_status.setVisible(True)
         else:
-            print("no hint")
+            self.puzzle_status.setText("No hint available")
+            self.puzzle_status.setVisible(True)
+            self.current_hint = None
 
     def resize_pressed(self) -> None:
         dlg = ResizeDialog(self)
@@ -860,7 +886,7 @@ class MainWindow(QMainWindow):
                 c.update()
         self.grid.setSpacing(0)
         self.grid.addItem(
-            QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding),
+            QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Minimum),
             self.grid.rowCount(),
             0,
         )
@@ -911,6 +937,23 @@ class MainWindow(QMainWindow):
                 self.puzzle_status.setText("")
                 self.puzzle_status.setVisible(False)
                 QTimer.singleShot(0, self.adjustSize)
+
+        if self.current_hint is not None:
+            # if there was a contradiction, see if it's cleared or corrected
+            if (
+                self.current_hint.method == "check_unsolved"
+                and all(
+                    self.board[loc] != self.current_hint.wrong_values[loc]
+                    for loc in self.current_hint.outputs
+                )
+            ) or (
+                self.current_hint.method != "check_unsolved"
+                and all(self.board[i, j] != "." for (i, j) in self.current_hint.outputs)
+            ):
+                # otherwise, clear the hint if any action is taken in the hint squares
+                self.current_hint = None
+                self.puzzle_status.setText("")
+                self.puzzle_status.setVisible(False)
 
         for i, j, c in self.i_j_cell():
             if (
