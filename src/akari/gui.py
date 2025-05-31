@@ -951,7 +951,7 @@ class MainWindow(QMainWindow):
         )
         self.vbr.insertLayout(0, self.grid)
 
-    def apply_methods(self) -> None:
+    def apply_methods(self) -> None:  # noqa: C901 TODO refactor gui.apply_methods
         thought_process = puzzle.ThoughtProcess(self.board.copy())
         thought_process.apply_methods(
             self.auto_apply_methods_level,  # calculate_difficulty=True
