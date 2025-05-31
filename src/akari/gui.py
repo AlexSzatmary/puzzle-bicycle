@@ -83,6 +83,7 @@ class Cell(QWidget):
         self.state_auto = state
         self.correct = correct
         self._white_out_step = 0
+        self.state_hint = False
 
     def paintEvent(self, event: QPaintEvent) -> None:
         if self.state_auto in "-01234":
@@ -159,6 +160,8 @@ class Cell(QWidget):
                 self.draw_dot(event)
         elif self.state_auto != self.state_user:
             self.draw_dotted_border(event)
+        elif self.state_hint:
+            self.draw_bezel(event)
 
     def draw_horizontal(self, event: QPaintEvent) -> None:
         p = QPainter(self)
@@ -262,6 +265,18 @@ class Cell(QWidget):
         p.drawRect(2, 2, 16, 16)
         p.end()
 
+    def draw_bezel(self, event: QPaintEvent) -> None:
+        p = QPainter(self)
+        pen = QPen()
+        pen.setWidth(1)
+        pen.setColor(Qt.lightGray)
+        p.setPen(pen)
+        p.drawRect(2, 2, 16, 16)
+        pen.setColor(Qt.darkGray)
+        p.setPen(pen)
+        p.drawRect(1, 1, 18, 18)
+        p.end()
+
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
         """
         Sends events based on mode
@@ -291,6 +306,7 @@ class Cell(QWidget):
                 self.set_state_user_and_mwb("#")
             case _:
                 return super().mouseReleaseEvent(event)
+        self.state_hint = False
         self.clicked.emit()
         self.update()
         self.main_window.apply_methods()
@@ -840,18 +856,25 @@ class MainWindow(QMainWindow):
         if thought_process.solution_steps:
             print(f"cost: {sum(step.cost for step in thought_process.solution_steps)}")
             print(f"difficulty: {max(s.cost for s in thought_process.solution_steps)}")
-            thought_process_hint = puzzle.ThoughtProcess(self.board.copy())
-            # puzzle.print_board(thought_process_hint.board)
-            thought_process_hint.apply_methods(self.auto_apply_methods_level)
-            # puzzle.print_board(thought_process_hint.board)
-            thought_process_hint.apply_methods(9, find_hint=True)
-            if hasattr(thought_process_hint, "hint"):
-                print(
-                    f"hint: {thought_process_hint.hint}, "
-                    f"cost: {thought_process_hint.hint.cost}"
-                )
-            else:
-                print("no hint")
+        thought_process_hint = puzzle.ThoughtProcess(self.board.copy())
+        # puzzle.print_board(thought_process_hint.board)
+        # TODO just copy thought_process
+        thought_process_hint.apply_methods(self.auto_apply_methods_level)
+        # puzzle.print_board(thought_process_hint.board)
+        thought_process_hint.apply_methods(9, find_hint=True)
+        if hasattr(thought_process_hint, "hint"):
+            print(
+                f"hint: {thought_process_hint.hint}, "
+                f"cost: {thought_process_hint.hint.cost}"
+            )
+            hint_i = thought_process_hint.hint.outputs[0][0] - 1
+            hint_j = thought_process_hint.hint.outputs[0][1] - 1
+            for i, j, c in self.i_j_cell():
+                c.state_hint = i == hint_i and j == hint_j
+                print(c, c.state_hint)
+                c.update()
+        else:
+            print("no hint")
 
         # In play mode, we do not need to run a full solve with every click
         if (
