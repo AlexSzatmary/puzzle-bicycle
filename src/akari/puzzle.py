@@ -1,4 +1,8 @@
+import argparse
+import csv
 import math
+import sys
+import timeit
 from collections import defaultdict, deque
 from collections.abc import Iterator
 from dataclasses import dataclass
@@ -1456,3 +1460,56 @@ def do_best_to_get_a_non_wrong_solution(board: np.ndarray) -> np.ndarray:
         return tp.board
 
     return board
+
+
+def batch_calculate_difficulty(filenames: list[str], csvfilename: str) -> None:
+    boards = []
+    for filename in filenames:
+        with open(filename) as hin:
+            text = hin.read()
+        if text:
+            board = load_pzprv3(text)
+            boards.append(board.copy())
+        else:
+            msg = f"file empty: {filename}"
+            raise ValueError(msg)
+    results = []
+    for filename, board in zip(filenames, boards, strict=True):
+        start = timeit.default_timer()
+        tp = ThoughtProcess(board)
+        tp.apply_methods(9, calculate_difficulty=True)
+        stop = timeit.default_timer()
+        if not tp.check_unsolved():
+            cost = "No solution"
+            difficulty = cost
+        elif not check_all(tp.board):
+            cost = "Probably multiple solutions"
+            difficulty = cost
+        else:
+            cost = sum(step.cost for step in tp.solution_steps)
+            difficulty = max(s.cost for s in tp.solution_steps)
+        result = (filename, cost, difficulty, stop - start)
+        print(result)
+        results.append(result)
+    if csvfilename:
+        with open(csvfilename, "w") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["filename", "cost", "difficulty", "time"])
+            writer.writerows(results)
+
+
+def main(argv: list | None = None) -> None:
+    if argv is None:
+        argv = sys.argv[1:]
+    ap = argparse.ArgumentParser(
+        description="Currently just analyzes batches of puzzle files"
+    )
+    ap.add_argument("filenames", nargs="+", help="files to analyze")
+    ap.add_argument("--output", "-o", help="Output csv file", default="")
+    args = ap.parse_args(argv)
+    print(args.filenames, args.output)
+    batch_calculate_difficulty(args.filenames, args.output)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
