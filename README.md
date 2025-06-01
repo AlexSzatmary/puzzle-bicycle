@@ -7,12 +7,12 @@ by using special solvers that use human strategies.
 For creators, Puzzle Bicycle lets you,
 * set and solve your puzzle simultaneously
 * know when your puzzle becomes impossible due to an error
-* confirm that your puzzle has the difficulty level you intend (TODO)
+* confirm that your puzzle has the difficulty level you intend
 
 For players, Puzzle Bicycle lets you,
 * automate moves that you find easy
 * reset your puzzle to before your first mistake
-* ask for hints that teach you how to solve like experts (TODO)
+* ask for hints that teach you how to solve like experts
 
 Puzzle Bicycle will not generate random puzzles.
 
@@ -52,38 +52,38 @@ several sites. Here is one way to get puzzles.
 * Click File>Save file as.
 * In Puzzle Bicycle, click File>Open to load that puzzle.
 
-Puzzle Bicycle has a solver that operates at adjustable levels. "No Automatic Solving"
-disables the solver. With "Just Illuminate," placing a bulb then blocks all free cells
+Puzzle Bicycle has a solver that operates at adjustable levels. **No Automatic Solving**
+disables the solver. With **Just Illuminate,** placing a bulb then blocks all free cells
 that that bulb sees. Higher levels use increasingly sophisticated methods and all
-methods from lower levels. "Just Illuminate" is a good first choice and "Level 2" makes
+methods from lower levels. **Just Illuminate** is a good first choice and **Level 2** makes
 very simple moves automatically so either of those is a good choice for regular solving.
 Higher levels give a lot away but can help when you are stuck.
 
 ![](pic/Just-Illuminate.png)
 
-In this example of Just Illuminate, the player has placed two bulbs. Cells are then illuminated: the gray lines show where new bulbs cannot be placed.
+In this example of **Just Illuminate**, the player has placed two bulbs. Cells are then illuminated: the gray lines show where new bulbs cannot be placed.
 
 ![](pic/Level-2.png)
 
-Level 2 places bulbs around number cells that need them (the 3), and dots around numbers that have enough bulbs.
+**Level 2** places bulbs around number cells that need them (the 3), and dots around numbers that have enough bulbs.
 
 ![](pic/Level-3.png)
 
-Level 3 places bulbs that are the only way to illuminate a certain dot cell. For this simple puzzle, that level completes the solution. There are also higher levels.
+**Level 3** places bulbs that are the only way to illuminate a certain dot cell. For this simple puzzle, that level completes the solution. There are also higher levels.
 
-Check for Contradictions immediately tells you if you have picked a wrong answer and
+**Check for Contradictions** immediately tells you if you have picked a wrong answer and
 shows why. This can spoil puzzles.
 
-If you think you made a mistake, click Check Board. Check Board tells you if your board
-has a contradiction and offers to roll back to your last valid solution, or to erase all
-mistakes. Clear Board lets you remove all marks.
+**Hint** shows you the simplest next step to solve the puzzle.
 
-"Play" is the default mode for solving puzzles. "Edit Blocks" toggles cells between
-being white or black. "Edit Numbers" lets you adjust the number clues in black cells,
-and place bulbs or dots in white cells as in "Play".
+If you think you made a mistake, click **Check Board**. **Check Board** tells you if
+your board has a contradiction and offers to roll back to your last valid solution, or
+to erase all mistakes. **Clear Board** lets you remove all marks.
 
 Puzzle Bicycle loads with all controls shown. All controls are also accessible with the
-menu bar. Controls can be shown or hidden with View>Show Controls in Window.
+menu bar. Controls can be shown or hidden with **View>Show Controls in Window**.
+
+![](pic/Minimal-UI.png)
 
 Setter guide
 ============
@@ -108,7 +108,17 @@ Setting a puzzle is always an iterative process. For example, I sometimes find t
 need to rearrange the grid and even resize the puzzle to bring out interesting
 strategies. Puzzle Bicycle removes tedium from these iterations.
 
-Resize makes this menu,
+You can create a new puzzle by clicking **File>New**,
+
+![](pic/New-Puzzle.png)
+
+which lets you directly set the number of rows and columns.
+
+**Play** is the default mode for solving puzzles. **Edit Blocks** toggles cells between
+being white or black. **Edit Numbers** lets you adjust the number clues in black cells,
+and place bulbs or dots in white cells as in **Play**.
+
+**Resize** makes this menu,
 
 ![](pic/Resize.png)
 
@@ -116,15 +126,20 @@ which adds or subtracts one row or column at
 a time from a given side of the board. For example, to add a row at the bottom, click
 the bottom +.
 
-You can create a new puzzle by clicking File>New,
+Calculate Difficulty tells the solver to complete the puzzle, always taking the easiest
+next move. Each method takes some points; `guess_and_check` takes the total number of
+points needed to make a deduction. Calculate Difficulty reports a cost (the total number
+of points needed to solve) and a difficulty (the points needed for the hardest move); it
+does this for the current board state and for a blank board. Large puzzles have a high
+cost and puzzles that take a lot of guess and check or that take a clever trick have a
+high difficulty score. For puzzles that use clever tricks that you expect players to
+know, try entering what you would know from those tricks before calculating difficulty.
 
-![](pic/New-Puzzle.png)
-
-which lets you directly set the number of rows and columns.
-
-Finally, you can hide everything but the puzzle itself by clicking View>Show Controls In Window.
-
-![](pic/Minimal-UI.png)
+**File>Calculate Difficulty for Multiple Files** solves multiple puzzles in the
+background and saves a CSV file showing for each its cost, difficulty, and time needed
+for the solver. It asks you to open multiple files, and then asks for the filename for
+the output CSV. It can take a few minutes to run if you have many tricky puzzles and
+does not yet offer a progress indicator.
 
 Akari methods
 =============

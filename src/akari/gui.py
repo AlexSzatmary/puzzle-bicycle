@@ -631,24 +631,24 @@ class MainWindow(QMainWindow):
         self.gb_edit = QGroupBox("Edit")
         self.vbl.addWidget(self.gb_edit)
         vbedit = QVBoxLayout()
-        resize_button = QPushButton("Resize")
-        resize_button.clicked.connect(resize_action.triggered)
-        vbedit.addWidget(resize_button)
         check_board_button = QPushButton("Check Board")
         check_board_button.clicked.connect(self.check_board_action.triggered)
         vbedit.addWidget(check_board_button)
         clear_board_button = QPushButton("Clear Board")
         clear_board_button.clicked.connect(self.clear_board_action.triggered)
         vbedit.addWidget(clear_board_button)
+        for radio in self.edit_mode_radios:
+            vbedit.addWidget(radio)
+        self.gb_edit.setLayout(vbedit)
+        self.vbl.addItem(QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding))
+        resize_button = QPushButton("Resize")
+        resize_button.clicked.connect(resize_action.triggered)
+        vbedit.addWidget(resize_button)
         calculate_difficulty_button = QPushButton("Calculate Difficulty")
         calculate_difficulty_button.clicked.connect(
             calculate_difficulty_action.triggered
         )
         vbedit.addWidget(calculate_difficulty_button)
-        for radio in self.edit_mode_radios:
-            vbedit.addWidget(radio)
-        self.gb_edit.setLayout(vbedit)
-        self.vbl.addItem(QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         self.refresh_GUI()
         self.show()
