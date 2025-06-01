@@ -211,9 +211,9 @@ class Cell(QWidget):
         pen.setColor(Qt.gray)
         p.setPen(pen)
         if self.state_user == "#" or self.main_window.puzzle_complete:
-            p.drawEllipse(2, 2, 16, 16)
+            p.drawEllipse(3, 3, 15, 15)
         else:
-            p.drawEllipse(4, 4, 12, 12)
+            p.drawEllipse(5, 5, 11, 11)
         p.end()
 
     def draw_dot(self, event: QPaintEvent) -> None:
@@ -226,7 +226,7 @@ class Cell(QWidget):
         brush.setColor(Qt.gray)
         brush.setStyle(Qt.SolidPattern)
         p.setBrush(brush)
-        p.drawEllipse(8, 8, 4, 4)
+        p.drawEllipse(9, 9, 3, 3)
         p.end()
 
     def draw_black_square(self, event: QPaintEvent) -> None:
@@ -1147,6 +1147,7 @@ def take_method_screenshot(
     board_backup = window.board
     window.board = puzzle.zero_pad(puzzle.boardify_string(cleandoc(board_str)))
     window.methods_group.actions()[auto_level].setChecked(True)
+    window.board_reference = window.board
     window.refresh_GUI()
     window.auto_level_checked()
     window.refresh_board()
