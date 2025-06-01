@@ -2,7 +2,8 @@ Puzzle Bicycle
 ==============
 Puzzle Bicycle is an application that helps people have fun making and solving logic
 puzzles like [Akari](https://www.nikoli.co.jp/en/puzzles/akari), Heyawake, and Suraromu,
-by using special solvers that use human strategies.
+by using special solvers that use human strategies. You can download it
+[here](https://github.com/AlexSzatmary/puzzle-bicycle/releases).
 
 For creators, Puzzle Bicycle lets you,
 * set and solve your puzzle simultaneously
