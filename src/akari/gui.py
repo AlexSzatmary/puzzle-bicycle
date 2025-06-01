@@ -648,6 +648,7 @@ class MainWindow(QMainWindow):
         for radio in self.edit_mode_radios:
             vbedit.addWidget(radio)
         self.gb_edit.setLayout(vbedit)
+        self.vbl.addItem(QSpacerItem(1, 1, QSizePolicy.Minimum, QSizePolicy.Expanding))
 
         self.refresh_GUI()
         self.show()
