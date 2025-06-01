@@ -481,6 +481,11 @@ class MainWindow(QMainWindow):
         save_action.triggered.connect(self.save_pressed)
         save_action.setShortcut(QKeySequence("Ctrl+s"))
         file_menu.addAction(save_action)
+        calc_diff_multi_action = QAction(
+            "Calculate Difficulty for Multiple Files", self
+        )
+        calc_diff_multi_action.triggered.connect(self.calc_diff_multi_pressed)
+        file_menu.addAction(calc_diff_multi_action)
 
         edit_menu = menu.addMenu("&Edit")
         resize_action = QAction("Resize", self)
@@ -695,6 +700,19 @@ class MainWindow(QMainWindow):
             pzprv3 = puzzle.save_pzprv3(self.board)
             with open(filename, "w") as hout:
                 hout.write(pzprv3)
+
+    def calc_diff_multi_pressed(self) -> None:
+        qfd = QFileDialog()
+        filenames, _ = qfd.getOpenFileNames(
+            self,
+            "Open multiple files to calculate difficulty",
+            os.path.dirname(self.puzzle_file_name),
+            "(*.txt)",
+        )
+        output, _ = QFileDialog.getSaveFileName(self, "Save pzprv3", "", "(*.csv)")
+        if not filenames or not output:
+            return
+        puzzle.batch_calculate_difficulty(filenames, output)
 
     def refresh_GUI(self) -> None:
         self.board_auto = puzzle.illuminate_all(self.board)[1]
