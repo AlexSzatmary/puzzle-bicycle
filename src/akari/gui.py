@@ -805,7 +805,7 @@ class MainWindow(QMainWindow):
 
     def calculate_difficulty_pressed(self) -> None:
         thought_process_from_here = puzzle.ThoughtProcess(self.board)
-        thought_process_from_here.apply_methods(9)
+        thought_process_from_here.apply_methods(9, calculate_difficulty=True)
         if not thought_process_from_here.check_unsolved():
             from_here_message = "This puzzle state is contradictory"
         elif not puzzle.check_all(thought_process_from_here.board):
@@ -824,7 +824,7 @@ class MainWindow(QMainWindow):
         thought_process_from_blank_board = puzzle.ThoughtProcess(
             puzzle.clear_board(self.board.copy())
         )
-        thought_process_from_blank_board.apply_methods(9)
+        thought_process_from_blank_board.apply_methods(9, calculate_difficulty=True)
         if not thought_process_from_blank_board.check_unsolved():
             from_blank_board_message = "This puzzle has no solution"
         elif not puzzle.check_all(thought_process_from_blank_board.board):
