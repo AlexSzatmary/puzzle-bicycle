@@ -5,7 +5,7 @@ a = Analysis(
     ['gui.py'],
     pathex=[],
     binaries=[],
-    datas=[('Faraway Flute', 'Sample Puzzles')],
+    datas=[('Faraway Flute', 'Sample Puzzles'), ('../../pic/Icon.icns', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

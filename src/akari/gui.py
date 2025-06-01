@@ -22,6 +22,7 @@ from PySide6.QtGui import (
     QAction,
     QActionGroup,
     QBrush,
+    QIcon,
     QIntValidator,
     QKeySequence,
     QMouseEvent,
@@ -55,6 +56,14 @@ from PySide6.QtWidgets import (
 
 AUTO_APPLY_METHODS_LEVEL = 1
 ALWAYS_HINT = False
+
+try:
+    from ctypes import windll  # Only exists on Windows.
+
+    myappid = "com.puzzlebicycle.akari"
+    windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+except ImportError:
+    pass
 
 
 def fake_next_state(state: str) -> str:
@@ -1347,6 +1356,11 @@ def main(argv: list | None = None) -> None:
         argv = sys.argv
     app = QApplication([])
     app.setApplicationName("Puzzle Bicycle")
+    if os.path.exists(os.path.join(os.path.dirname(__file__), "Icon.icns")):
+        icon_path = os.path.join(os.path.dirname(__file__), "Icon.icns")
+    else:
+        icon_path = "../../pic/Icon.icns"
+    app.setWindowIcon(QIcon(icon_path))
     window = MainWindow()
     if argv[-1] == "--screenshots":
         take_all_doc_screenshots(window)
