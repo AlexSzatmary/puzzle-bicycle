@@ -22,6 +22,7 @@ from PySide6.QtGui import (
     QAction,
     QActionGroup,
     QBrush,
+    QDoubleValidator,
     QIcon,
     QIntValidator,
     QKeySequence,
@@ -577,6 +578,26 @@ class MainWindow(QMainWindow):
             radio.clicked.connect(self.auto_level_checked)
             self.methods_radios.append(radio)
             solver_menu.addAction(action)
+        action = QAction("Other: ", self.methods_group)
+        action.triggered.connect(self.auto_level_checked)
+        # a keyboard shortcut makes no sense because text edit also needed
+        action.setCheckable(True)
+        action.setChecked(10 == AUTO_APPLY_METHODS_LEVEL)
+        radio = QRadioButton("Other: ")
+        radio.setChecked(10 == AUTO_APPLY_METHODS_LEVEL)
+        action.toggled.connect(radio.setChecked)
+        radio.toggled.connect(action.setChecked)
+        radio.clicked.connect(self.auto_level_checked)
+        self.methods_radios.append(radio)
+        self.other_hb = QHBoxLayout()
+        self.other_hb.addWidget(radio)
+        self.other_level = QLineEdit()
+        self.other_level.setValidator(QDoubleValidator(0, 1e6, 2))
+        self.other_level.setMaxLength(6)
+        self.other_level.textChanged.connect(lambda x: action.setChecked(True))
+        self.other_level.textChanged.connect(lambda x: self.auto_level_checked())
+        self.other_hb.addWidget(self.other_level)
+        # also do not add this "Other" option to the menu
 
         solver_menu.addSeparator()
         self.contradiction_checker_enabled = False
@@ -617,8 +638,10 @@ class MainWindow(QMainWindow):
         self.gb_solver = QGroupBox("Solver")
         self.vbl.addWidget(self.gb_solver)
         vbsolver = QVBoxLayout()
-        for radio in self.methods_radios:
+        # Handle "other" radio differently to include QLineEdit
+        for radio in self.methods_radios[:-1]:
             vbsolver.addWidget(radio)
+        vbsolver.addLayout(self.other_hb)
         self.contradiction_checker_checkbox = QCheckBox("Check For Contradictions")
         self.contradiction_checker_checkbox.toggled.connect(
             self.contradiction_action.setChecked
@@ -762,8 +785,18 @@ class MainWindow(QMainWindow):
             for (i, action) in enumerate(self.methods_group.actions())
             if action.isChecked()
         )
-        if self.auto_apply_methods_level + 1 == len(self.methods_group.actions()):
+        # TODO The representation of auto_apply_methods_level as an int is now
+        # simplistic
+        if self.auto_apply_methods_level + 2 == len(self.methods_group.actions()):
             self.auto_apply_methods_level = 9
+        if self.auto_apply_methods_level + 1 == len(self.methods_group.actions()):
+            self.auto_apply_methods_level = 10
+        print(
+            "HI",
+            self.auto_apply_methods_level,
+            self.other_level.text(),
+            float(self.other_level.text()),
+        )
         self.refresh_board()
 
     def clear_board(self) -> None:
@@ -880,7 +913,19 @@ class MainWindow(QMainWindow):
         Find a hint if possible, mark hint squares, and display message
         """
         thought_process_hint = puzzle.ThoughtProcess(self.board.copy())
-        thought_process_hint.apply_methods(self.auto_apply_methods_level)
+        if self.auto_apply_methods_level == 10:
+            # For level 10 ("Other") we must handle things differently: the initial
+            # apply_methods attempt must be bound so that the hint is given just after
+            # that limit
+            thought_process_hint.apply_methods(
+                9,
+                calculate_difficulty=True,  # we use this flag to trigger
+                # guess_and_check_thrifty
+                max_cost=float(self.other_level.text()),
+            )
+        else:
+            thought_process_hint.apply_methods(self.auto_apply_methods_level)
+
         thought_process_hint.apply_methods(9, find_hint=True)
         if not thought_process_hint.check_unsolved():
             # if the puzzle is contradictory, show where by making a fake Step
@@ -979,9 +1024,18 @@ class MainWindow(QMainWindow):
 
     def apply_methods(self) -> None:  # noqa: C901 TODO refactor gui.apply_methods
         thought_process = puzzle.ThoughtProcess(self.board.copy())
-        thought_process.apply_methods(
-            self.auto_apply_methods_level,  # calculate_difficulty=True
-        )
+        if self.auto_apply_methods_level == 10:
+            # For level 10 ("Other") we must handle things differently
+            thought_process.apply_methods(
+                9,
+                calculate_difficulty=True,  # we use this flag to trigger
+                # guess_and_check_thrifty
+                max_cost=float(self.other_level.text()),
+            )
+        else:
+            thought_process.apply_methods(
+                self.auto_apply_methods_level,  # calculate_difficulty=True
+            )
         print()
         print("\n".join(map(str, thought_process.solution_steps)))
         if thought_process.solution_steps:

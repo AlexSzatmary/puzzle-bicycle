@@ -845,6 +845,7 @@ class ThoughtProcess:
         calculate_difficulty: bool = False,
         find_hint: bool = False,
         budget: float = math.inf,
+        max_cost: float = math.inf,
     ) -> None:
         # The complexity here is fine
         """
@@ -891,7 +892,7 @@ class ThoughtProcess:
                 # guess and check is orders of magnitude more expensive than other
                 # methods and should only be called if all else has been tried.
                 if calculate_difficulty or find_hint:
-                    self.guess_and_check_thrifty(max_level)
+                    self.guess_and_check_thrifty(max_level, max_cost=max_cost)
                 else:
                     self.guess_and_check(max_level)
             if find_hint and len(self.solution_steps) > starting_solution_steps:
@@ -1399,7 +1400,7 @@ class ThoughtProcess:
                     )
                     return
 
-    def guess_and_check_thrifty(self, level: int) -> None:
+    def guess_and_check_thrifty(self, level: int, max_cost: float = math.inf) -> None:
         """
         Guesses at every blank cell and uses apply_methods to eliminate impossible
         options. Sticks with only the lowest-cost option.
@@ -1408,7 +1409,8 @@ class ThoughtProcess:
         level_to_use = min(level, 8)
 
         cheapest_choice = None
-        lowest_cost = math.inf
+        lowest_cost = max_cost  # the starting value for the lowest cost should be the
+        # maximum allowed cost
 
         for i, j in zip(
             *np.asarray(self.board == ".", dtype=int).nonzero(), strict=True
