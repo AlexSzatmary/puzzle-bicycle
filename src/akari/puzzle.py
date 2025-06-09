@@ -212,6 +212,17 @@ HINT_MESSAGES = {
     "check_unsolved": "Board contradictory",
 }
 
+LEVEL_NAMES = [
+    "Solver Off",
+    "Illuminate",
+    "+Count At Numbers",
+    "+Light Shadows",
+    "+Mark Dots At Corners",
+    "+Analyze Diagonal Numbers",
+    "+Shared Lanes",
+    "Brute Force",
+]
+
 
 class Step:
     """

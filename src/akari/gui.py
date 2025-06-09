@@ -559,12 +559,10 @@ class MainWindow(QMainWindow):
         for level in range(10):
             if 6 < level < 9:
                 continue  # these levels are not yet implemented
-            if level == 0:
-                name = "No Automatic Solving"
-            elif level == 1:
-                name = "Just Illuminate"
+            if level <= 6:
+                name = puzzle.LEVEL_NAMES[level]
             elif level == 9:
-                name = "Full Automatic"
+                name = puzzle.LEVEL_NAMES[-1]
             else:
                 name = f"Level {level}"
             action = QAction(name, self.methods_group)
