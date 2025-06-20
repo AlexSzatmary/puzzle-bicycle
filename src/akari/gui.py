@@ -791,12 +791,6 @@ class MainWindow(QMainWindow):
             self.auto_apply_methods_level = 9
         if self.auto_apply_methods_level + 1 == len(self.methods_group.actions()):
             self.auto_apply_methods_level = 10
-        print(
-            "HI",
-            self.auto_apply_methods_level,
-            self.other_level.text(),
-            float(self.other_level.text()),
-        )
         self.refresh_board()
 
     def clear_board(self) -> None:
