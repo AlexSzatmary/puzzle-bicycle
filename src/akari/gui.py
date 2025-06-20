@@ -320,7 +320,7 @@ class Cell(QWidget):
         self.state_hint = False
         self.clicked.emit()
         self.update()
-        self.main_window.apply_methods()
+        self.main_window.apply_methods(delta=(self.i + 1, self.j + 1, self.state_user))
         return super().mouseReleaseEvent(event)
 
     def click_block_mode(self, event: QMouseEvent) -> None:
@@ -1016,7 +1016,7 @@ class MainWindow(QMainWindow):
         )
         self.vbr.insertLayout(0, self.grid)
 
-    def apply_methods(self) -> None:  # noqa: C901 TODO refactor gui.apply_methods
+    def apply_methods(self, delta: tuple[int, int, str] | None = None) -> None:  # noqa: C901 TODO refactor gui.apply_methods
         thought_process = puzzle.ThoughtProcess(self.board.copy())
         if self.auto_apply_methods_level == 10:
             # For level 10 ("Other") we must handle things differently
@@ -1053,8 +1053,26 @@ class MainWindow(QMainWindow):
             if not thought_process_correct.check_unsolved():
                 # if a contradiction is detected, hijack the render
                 thought_process = thought_process_correct
-        new_board_auto = thought_process.board
+        if not thought_process.check_unsolved():
+            # Update board based on last good state rather than total re-solve
+            if delta is not None and delta[-1] != ".":
+                i, j, mark = delta
+                board_without_error = self.board.copy()
+                board_without_error[i, j] = "."
+                thought_process_correct = puzzle.ThoughtProcess(board_without_error)
+                thought_process_correct.apply_methods(self.auto_apply_methods_level)
+                if mark == "#":
+                    thought_process_correct.maybe_set_bulb(
+                        i, j, puzzle.Step(delta, "check_contradiction", 1.0)
+                    )
+                else:
+                    thought_process_correct.maybe_set_dot(
+                        i, j, puzzle.Step(delta, "check_contradiction", 1.0)
+                    )
+                thought_process_correct.apply_methods(9)
+                thought_process = thought_process_correct
 
+        new_board_auto = thought_process.board
         old_puzzle_complete = self.puzzle_complete
         self.puzzle_complete = puzzle.check_all(new_board_auto)
         if self.puzzle_complete != old_puzzle_complete:
