@@ -230,15 +230,16 @@ class Step:
 
     Members
     -------
-    Method : str
     signal : tuple[int, int, str]
         the information triggering this step. In general, it is coordinates and a char.
         For init, the char is "." and each method should give a coordinate reasonably
         near whatever is being activated but it might point to a number rather than
         white cell.
+    method : str
+    cost : float
     inputs : list[int, int] TODO
         coordinates firing method
-    outputs : list[int, int]
+    outputs : list[int, int] TODO
         coordinates being acted on
 
     Examples of inputs:
