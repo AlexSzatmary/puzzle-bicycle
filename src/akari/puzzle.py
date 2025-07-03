@@ -237,9 +237,7 @@ class Step:
         white cell.
     method : str
     cost : float
-    inputs : list[int, int] TODO
-        coordinates firing method
-    outputs : list[int, int] TODO
+    outputs : list[int, int]
         coordinates being acted on
 
     Examples of inputs:
@@ -594,7 +592,8 @@ class SharedLanesBot:
             for cell in sl.nonshared_cells:
                 self.shared_lanes[cell].append(sl)
 
-    def mark_bulbs_and_dots_at_shared_lanes(self, i: int, j: int, mark: str) -> None:
+    def mark_bulbs_and_dots_at_shared_lanes(  # noqa: C901 TODO split up function
+            self, i: int, j: int, mark: str) -> None:
         board = self.thought_process.board
         if mark == ".":
             shared_lanes_to_check = self.all_shared_lanes
@@ -602,10 +601,13 @@ class SharedLanesBot:
             shared_lanes_to_check = self.shared_lanes[i, j]
         for sl in shared_lanes_to_check:
             active_lanes = []
+            inactive_lanes = []
             for sp in sl.shared_pairs:
                 i1, j1, i2, j2 = sp
                 if board[i1, j1] == "." and board[i2, j2] == ".":
                     active_lanes.append(sp)
+                else:
+                    inactive_lanes.append(sp)
             balance = (
                 count_missing_bulbs_near_number(board, sl.A[0], sl.A[1])
                 + count_missing_bulbs_near_number(board, sl.B[0], sl.B[1])
@@ -623,6 +625,10 @@ class SharedLanesBot:
             if len(active_lanes) > 1 and balance == 0:
                 for cell in sl.nonshared_cells:
                     self.thought_process.maybe_set_bulb(cell[0], cell[1], step)
+                for sp in inactive_lanes:
+                    i1, j1, i2, j2 = sp
+                    self.thought_process.maybe_set_bulb(i1, j1, step)
+                    self.thought_process.maybe_set_bulb(i2, j2, step)
                 if sl.touching:
                     self.thought_process.maybe_set_bulb(
                         sl.touching[0], sl.touching[1], step
@@ -741,7 +747,6 @@ class ThoughtProcess:
         new.__init__(self.board)
         return new
 
-    # TODO remove | None from step type
     def maybe_set_bulb(self, i: int, j: int, step: Step) -> bool:
         """
         Confirms that board[i, j] is free; if so, board[i, j] = "#" and runs updates

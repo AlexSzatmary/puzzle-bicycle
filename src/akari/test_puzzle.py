@@ -1190,6 +1190,35 @@ def test_trace_shared_lanes_same_3_bug_1() -> None:
     assert_boards_equal(tp.board, post)
 
 
+def test_trace_shared_lanes_same_3_bug_2() -> None:
+    # done to confirm fix of a specific bug that should not arise again
+    pre = boardify_string(
+        cleandoc("""
+    ---------
+    -.......-
+    -.......-
+    -#2..2-.-
+    -.......-
+    -..#....-
+    ---------
+    """)
+    )
+    post = boardify_string(
+        cleandoc("""
+    ---------
+    -|.||...-
+    -|.||.++-
+    -#2x#2-.-
+    -|.||.++-
+    -x_#x___-
+    ---------
+    """)
+    )
+    tp = ThoughtProcess(pre)
+    tp.apply_methods(6)
+    assert_boards_equal(tp.board, post)
+
+
 def test_trace_shared_lanes_diagonal() -> None:
     board_pairs_raw = [
         (
