@@ -1053,24 +1053,30 @@ class MainWindow(QMainWindow):
             if not thought_process_correct.check_unsolved():
                 # if a contradiction is detected, hijack the render
                 thought_process = thought_process_correct
-        if not thought_process.check_unsolved():
-            # Update board based on last good state rather than total re-solve
-            if delta is not None and delta[-1] != ".":
-                i, j, mark = delta
+        if not thought_process.check_unsolved() and delta is not None:
+            # Try to update board based on last board state
+            i, j, mark = delta
+            if mark != "." and self.board_auto[i, j] == ".":
                 board_without_error = self.board.copy()
                 board_without_error[i, j] = "."
                 thought_process_correct = puzzle.ThoughtProcess(board_without_error)
                 thought_process_correct.apply_methods(self.auto_apply_methods_level)
-                if mark == "#":
-                    thought_process_correct.maybe_set_bulb(
-                        i, j, puzzle.Step(delta, "check_contradiction", 1.0)
-                    )
+                if thought_process_correct.board[i, j] == ".":
+                    # The new mark does not contradict what is already in the board
+                    if mark == "#":
+                        thought_process_correct.maybe_set_bulb(
+                            i, j, puzzle.Step(delta, "check_contradiction", 1.0)
+                        )
+                    else:
+                        thought_process_correct.maybe_set_dot(
+                            i, j, puzzle.Step(delta, "check_contradiction", 1.0)
+                        )
+                    thought_process_correct.apply_methods(self.auto_apply_methods_level)
+                    thought_process = thought_process_correct
                 else:
-                    thought_process_correct.maybe_set_dot(
-                        i, j, puzzle.Step(delta, "check_contradiction", 1.0)
-                    )
-                thought_process_correct.apply_methods(9)
-                thought_process = thought_process_correct
+                    pass
+                    # The new mark contradicts the existing solution so there
+                    # is no improving on the thought_process we already have
 
         new_board_auto = thought_process.board
         old_puzzle_complete = self.puzzle_complete
