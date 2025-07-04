@@ -548,10 +548,9 @@ class SharedLanesBot:
             sl.nonshared_cells.append((iA + wi, jA + wj))
             sl.nonshared_cells.append((iB + wi, jB + wj))
         self.all_shared_lanes.append(sl)
-        for cell in sl.nonshared_cells:
-            self.shared_lanes[cell].append(sl)
-        if sl.touching:
-            self.shared_lanes[sl.touching].append(sl)
+        for (di, dj) in ORTHO_DIRS:
+            self.shared_lanes[iA + di, jA + dj].append(sl)
+            self.shared_lanes[iB + di, jB + dj].append(sl)
 
     def _trace_diagonal(self) -> None:
         board = self.thought_process.board
