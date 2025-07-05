@@ -221,9 +221,9 @@ class Cell(QWidget):
         pen.setColor(Qt.gray)
         p.setPen(pen)
         if self.state_user == "#" or self.main_window.puzzle_complete:
-            p.drawEllipse(3, 3, 15, 15)
+            p.drawEllipse(3, 3, 14, 14)
         else:
-            p.drawEllipse(5, 5, 11, 11)
+            p.drawEllipse(5, 5, 10, 10)
         p.end()
 
     def draw_dot(self, event: QPaintEvent) -> None:
@@ -236,7 +236,7 @@ class Cell(QWidget):
         brush.setColor(Qt.gray)
         brush.setStyle(Qt.SolidPattern)
         p.setBrush(brush)
-        p.drawEllipse(9, 9, 3, 3)
+        p.drawEllipse(8, 8, 4, 4)
         p.end()
 
     def draw_black_square(self, event: QPaintEvent) -> None:
