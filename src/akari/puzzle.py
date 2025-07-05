@@ -548,7 +548,7 @@ class SharedLanesBot:
             sl.nonshared_cells.append((iA + wi, jA + wj))
             sl.nonshared_cells.append((iB + wi, jB + wj))
         self.all_shared_lanes.append(sl)
-        for (di, dj) in ORTHO_DIRS:
+        for di, dj in ORTHO_DIRS:
             self.shared_lanes[iA + di, jA + dj].append(sl)
             self.shared_lanes[iB + di, jB + dj].append(sl)
 
@@ -592,7 +592,8 @@ class SharedLanesBot:
                 self.shared_lanes[cell].append(sl)
 
     def mark_bulbs_and_dots_at_shared_lanes(  # noqa: C901 TODO split up function
-            self, i: int, j: int, mark: str) -> None:
+        self, i: int, j: int, mark: str
+    ) -> None:
         board = self.thought_process.board
         if mark == ".":
             shared_lanes_to_check = self.all_shared_lanes
@@ -756,7 +757,7 @@ class ThoughtProcess:
             self.board[i, j] = "#"
             self.new_mark[0].append((i, j, "#"))
             self.find_wrong_numbers(i, j)
-            self.update_solution_steps(i, j, step)
+            self.update_solution_steps(i, j, "#", step)
             return True
         else:
             return False
@@ -772,19 +773,21 @@ class ThoughtProcess:
             self.new_mark[0].append((i, j, "+"))
             self.find_wrong_numbers(i, j)
             self.find_unilluminatable_cells(i, j)
-            self.update_solution_steps(i, j, step)
+            self.update_solution_steps(i, j, "+", step)
             return True
         else:
             return False
 
-    def update_solution_steps(self, i: int, j: int, step: Step | None) -> None:
+    def update_solution_steps(
+        self, i: int, j: int, mark: str, step: Step | None
+    ) -> None:
         if step is None:
             return
         elif len(self.solution_steps) and self.solution_steps[-1] is step:
             pass
         else:
             self.solution_steps.append(step)
-        step.outputs.append((i, j))
+        step.outputs.append((i, j, mark))
         self.cost += step.cost
 
     def all_interior_ij(self) -> list[tuple[int, int]]:
@@ -1390,9 +1393,7 @@ class ThoughtProcess:
                     self.maybe_set_bulb(
                         i, j, Step((i, j, "?"), "guess_and_check", cost=cost)
                     )
-                    return
-                    continue
-                    # continue for this branch because we already know the cell
+                    # return
                 try_tp_bulb = self.__copy__()
                 try_tp_bulb.maybe_set_bulb(
                     i, j, Step((i, j, "?"), "guess_and_check_guess", cost=gacbc)
@@ -1403,6 +1404,28 @@ class ThoughtProcess:
                     self.maybe_set_dot(
                         i, j, Step((i, j, "?"), "guess_and_check", cost=cost)
                     )
+                    # return
+                dot_marks = {o for s in try_tp_dot.solution_steps for o in s.outputs}
+                bulb_marks = {o for s in try_tp_bulb.solution_steps for o in s.outputs}
+                invariant = dot_marks.intersection(bulb_marks)
+                if invariant:
+                    cost = sum(step.cost for step in try_tp_dot.solution_steps) + sum(
+                        step.cost for step in try_tp_bulb.solution_steps
+                    )
+                    for i, j, mark in invariant:
+                        step = Step((i, j, "?"), "invariant", cost=cost)
+                        if mark == "#":
+                            self.maybe_set_bulb(i, j, step)
+                    for i, j, mark in invariant:
+                        step = Step((i, j, "?"), "invariant", cost=cost)
+                        if mark == "+":
+                            self.maybe_set_dot(i, j, step)
+                    return
+                if (
+                    not try_tp_dot.check_unsolved()
+                    or not try_tp_bulb.check_unsolved()
+                    or invariant
+                ):
                     return
 
     def guess_and_check_thrifty(self, level: int, max_cost: float = math.inf) -> None:

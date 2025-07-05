@@ -945,8 +945,9 @@ class MainWindow(QMainWindow):
         if hasattr(thought_process_hint, "hint"):
             self.current_hint = thought_process_hint.hint
             print(f"hint: {self.current_hint}, cost: {self.current_hint.cost}")
+            current_hint_locs = [(i, j) for (i, j, _mark) in self.current_hint.outputs]
             for i, j, c in self.i_j_cell():
-                c.state_hint = (i + 1, j + 1) in self.current_hint.outputs
+                c.state_hint = (i + 1, j + 1) in current_hint_locs
                 c.update()
             self.puzzle_status.setText(puzzle.HINT_MESSAGES[self.current_hint.method])
             self.puzzle_status.setVisible(True)
@@ -1100,7 +1101,10 @@ class MainWindow(QMainWindow):
                 )
             ) or (
                 self.current_hint.method != "check_unsolved"
-                and all(self.board[i, j] != "." for (i, j) in self.current_hint.outputs)
+                and all(
+                    self.board[i, j] != "."
+                    for (i, j, _mark) in self.current_hint.outputs
+                )
             ):
                 # otherwise, clear the hint if any action is taken in the hint squares
                 self.current_hint = None
