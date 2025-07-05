@@ -1393,7 +1393,6 @@ class ThoughtProcess:
                     self.maybe_set_bulb(
                         i, j, Step((i, j, "?"), "guess_and_check", cost=cost)
                     )
-                    # return
                 try_tp_bulb = self.__copy__()
                 try_tp_bulb.maybe_set_bulb(
                     i, j, Step((i, j, "?"), "guess_and_check_guess", cost=gacbc)
@@ -1404,29 +1403,35 @@ class ThoughtProcess:
                     self.maybe_set_dot(
                         i, j, Step((i, j, "?"), "guess_and_check", cost=cost)
                     )
-                    # return
-                dot_marks = {o for s in try_tp_dot.solution_steps for o in s.outputs}
-                bulb_marks = {o for s in try_tp_bulb.solution_steps for o in s.outputs}
-                invariant = dot_marks.intersection(bulb_marks)
-                if invariant:
-                    cost = sum(step.cost for step in try_tp_dot.solution_steps) + sum(
-                        step.cost for step in try_tp_bulb.solution_steps
-                    )
-                    for i, j, mark in invariant:
-                        step = Step((i, j, "?"), "invariant", cost=cost)
-                        if mark == "#":
-                            self.maybe_set_bulb(i, j, step)
-                    for i, j, mark in invariant:
-                        step = Step((i, j, "?"), "invariant", cost=cost)
-                        if mark == "+":
-                            self.maybe_set_dot(i, j, step)
-                    return
+                invariant = self._guess_and_check_handle_invariant(
+                    try_tp_dot, try_tp_bulb
+                )
                 if (
                     not try_tp_dot.check_unsolved()
                     or not try_tp_bulb.check_unsolved()
                     or invariant
                 ):
                     return
+
+    def _guess_and_check_handle_invariant(
+        self, try_tp_dot: "ThoughtProcess", try_tp_bulb: "ThoughtProcess"
+    ) -> set:
+        dot_marks = {o for s in try_tp_dot.solution_steps for o in s.outputs}
+        bulb_marks = {o for s in try_tp_bulb.solution_steps for o in s.outputs}
+        invariant = dot_marks.intersection(bulb_marks)
+        if invariant:
+            cost = sum(step.cost for step in try_tp_dot.solution_steps) + sum(
+                step.cost for step in try_tp_bulb.solution_steps
+            )
+            for i, j, mark in invariant:
+                step = Step((i, j, "?"), "invariant", cost=cost)
+                if mark == "#":
+                    self.maybe_set_bulb(i, j, step)
+            for i, j, mark in invariant:
+                step = Step((i, j, "?"), "invariant", cost=cost)
+                if mark == "+":
+                    self.maybe_set_dot(i, j, step)
+        return invariant
 
     def guess_and_check_thrifty(self, level: int, max_cost: float = math.inf) -> None:
         """
