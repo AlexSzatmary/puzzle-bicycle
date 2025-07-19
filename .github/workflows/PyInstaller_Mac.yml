@@ -1,6 +1,6 @@
-name: Greetings
+name: PyInstaller_Mac
 
-on: [pull_request_target, issues]
+on: workflow_dispatch
 
 jobs:
   pyinstaller-build:
