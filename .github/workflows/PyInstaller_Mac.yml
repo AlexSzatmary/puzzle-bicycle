@@ -6,8 +6,8 @@ jobs:
   pyinstaller-build:
     runs-on: macos-latest
     steps:
-    - name: Install dependencies
-      run: brew reinstall gettext
+    # - name: Install dependencies
+    #   run: brew reinstall gettext
     - name: Versatile PyInstaller
       # You may pin to the exact commit or the version.
       # uses: sayyid5416/pyinstaller@31a3d88828ae07b9658ecef15818d006b7333d8a
