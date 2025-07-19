@@ -28,7 +28,7 @@ jobs:
     
         # spec_options: # optional, default is 
         # # specific python version you want to use
-        # python_ver: 3.13 # optional, default is 3.10
+        # python_ver: '3.13' # optional, default is 3.10
         # # specific python architecture you want to use
         # python_arch: # optional, default is x64
         # # specific pyinstaller version you want to use
