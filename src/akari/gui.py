@@ -1057,7 +1057,7 @@ class MainWindow(QMainWindow):
         if not thought_process.check_unsolved() and delta is not None:
             # Try to update board based on last board state
             i, j, mark = delta
-            if mark != "." and self.board_auto[i, j] == ".":
+            if mark != ".":
                 board_without_error = self.board.copy()
                 board_without_error[i, j] = "."
                 thought_process_correct = puzzle.ThoughtProcess(board_without_error)
