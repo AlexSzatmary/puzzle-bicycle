@@ -34,13 +34,13 @@ jobs:
         # # specific pyinstaller version you want to use
         # pyinstaller_ver: # optional, default is 
         # # Path on runner-os, where generated executable files are stored
-        # exe_path: # optional, default is ./dist
+        exe_path: src/akari/dist # optional, default is ./dist
         # # If passed, uploads executable artifact  with this name. Else, artifact won't be uploaded.
-        # upload_exe_with_name: # optional, default is 
+        upload_exe_with_name: 'Puzzle Bicycle Akari Mac' # optional, default is 
         # # If true, perform a clean checkout; if false, skip cleaning. Cleaning will remove all existing local files not in the repository during checkout. If you use utilities like pyinstaller-versionfile, set this to false.
         # clean_checkout: # optional, default is true
         # # Whether to download Git-LFS files (passed to actions/checkout)
         # lfs: # optional
         # # Level of compression for archive (between 0 and 9). 0 = No compression, 9 = Max compression.
         # compression_level: # optional, default is 6
-              
+    
