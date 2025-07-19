@@ -19,7 +19,7 @@ jobs:
   
         spec: 'src/akari/Puzzle Bicycle Akari.spec' # default is 
         # path of your requirements.txt file
-        requirements: 'requirements.txt' # optional, default is 
+        # requirements: 'requirements.txt' # optional, default is 
         # Options to set for pyinstaller command Ex: options: '--onedir, -F'       (seperated by comma and space)
         # - Supported options: Check readme
       
