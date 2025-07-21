@@ -287,6 +287,32 @@ class SharedLanesPair:
     touching: Literal[False] | tuple[int, int]
 
 
+class LanesBot:
+    def __init__(self, thought_process: "ThoughtProcess") -> None:
+        self.thought_process = thought_process
+        board = self.thought_process.board
+        self.cols = []
+        self.rows = []
+        self.col_id = -np.ones(board.shape, dtype=int)
+        self.row_id = -np.ones(board.shape, dtype=int)
+        iA = 0
+        for j in range(board.shape[1]):
+            for i in range(board.shape[0] - 1):
+                if board[i + 1, j] not in "-01234" and board[i, j] in "-01234":
+                    iA = i + 1
+                elif board[i + 1, j] in "-01234" and board[i, j] not in "-01234":
+                    self.cols.append((iA, j, i, j))
+                    self.col_id[iA : i + 1, j] = len(self.cols) - 1
+        jA = 0
+        for i in range(board.shape[0]):
+            for j in range(board.shape[1] - 1):
+                if board[i, j + 1] not in "-01234" and board[i, j] in "-01234":
+                    jA = j + 1
+                elif board[i, j + 1] in "-01234" and board[i, j] not in "-01234":
+                    self.rows.append((i, jA, i, j))
+                    self.row_id[i, jA : j + 1] = len(self.rows) - 1
+
+
 class SharedLanesBot:
     """
     SharedLanesBot is a class for applying a related set of methods that are handled
@@ -735,6 +761,8 @@ class ThoughtProcess:
         self.lit_bulb_pairs = []
         self.unilluminatable_cells = []
         self.wrong_numbers = set()
+        if not hasattr(self, "lanes_bot"):
+            self.lanes_bot = LanesBot(self)
         if not hasattr(self, "shared_lanes_bot"):
             self.shared_lanes_bot = SharedLanesBot(self)
         self.solution_steps = []
@@ -743,6 +771,7 @@ class ThoughtProcess:
     def __copy__(self) -> "ThoughtProcess":
         cls = self.__class__
         new = cls.__new__(cls)
+        new.lanes_bot = self.lanes_bot
         new.shared_lanes_bot = self.shared_lanes_bot
         new.__init__(self.board)
         return new
@@ -1147,66 +1176,79 @@ class ThoughtProcess:
 
         This is like a mix of mark_unique_bulbs_for_dot_cells and mark_dots_at_corners.
         """
+        # This diagram is similar to the one in the doc string
+        # -----
+        # -0+C-
+        # -+..-
+        # -F.G-
+        # -----
+        # 0 is the cell we are investigating, C is the empty cell in its row
+        # and F is the empty cell in its column. This method applies if
+        # C and G have the same column and F and G have the same row.
         if mark == ".":
-            for i0, j0 in self.all_interior_ij():
-                self._mark_dots_beyond_corners_at_cell(i0, j0, (i0, j0, mark))
+            for col in self.lanes_bot.cols:
+                iD, j, iE, _ = col
+                col_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
+                if len(col_free) == 1:
+                    self._mark_dots_beyond_corners_check_all_rows_at_col(
+                        iD, j, mark, iD, j, iE, iD + col_free[0]
+                    )
         elif mark == "+":
-            self._mark_dots_beyond_corners_at_cell(i0, j0, (i0, j0, mark))
-            for i, j in self.line_of_sight(i0, j0):
-                self._mark_dots_beyond_corners_at_cell(i, j, (i0, j0, mark))
+            iD, j, iE, _ = self.lanes_bot.cols[self.lanes_bot.col_id[i0, j0]]
+            col_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
+            if len(col_free) == 1:
+                self._mark_dots_beyond_corners_check_all_rows_at_col(
+                    i0, j0, mark, iD, j, iE, iD + col_free[0]
+                )
 
-    def _mark_dots_beyond_corners_at_cell(
-        self, i: int, j: int, mark: tuple[int, int, str]
+            i, jA, _, jB = self.lanes_bot.rows[self.lanes_bot.row_id[i0, j0]]
+            row_free = (self.board[i, jA : jB + 1] == ".").nonzero()[0]
+            if len(row_free) == 1:
+                self._mark_dots_beyond_corners_check_all_cols_at_row(
+                    i0, j0, mark, i, jA, jB, jA + row_free[0]
+                )
+
+    def _mark_dots_beyond_corners_check_all_rows_at_col(
+        self, i0: int, j0: int, mark: str, iD: int, j: int, iE: int, i_free: int
     ) -> None:
-        if self.board[i, j] == "+":
-            cells = []
-            for it in self.line_of_sight_iters(i, j):
-                seen_in_this_direction = False
-                for i1, j1 in it:
-                    if self.board[i1, j1] == ".":
-                        if seen_in_this_direction or len(cells) > 1:
-                            return
-                        else:
-                            cells.append((i1, j1))
-                            seen_in_this_direction = True
-                    elif self.board[i1, j1] in "01234-":
-                        break
-            self._mark_dots_beyond_corners_process_cells(i, j, mark, cells)
+        for i in range(iD, iE + 1):
+            if i != i_free:
+                iA, jA, _, jB = self.lanes_bot.rows[self.lanes_bot.row_id[i, j]]
+                row_free = (self.board[iA, jA : jB + 1] == ".").nonzero()[0]
+                if len(row_free) == 1:
+                    j_free = jA + row_free[0]
+                    if (
+                        self.lanes_bot.row_id[i_free, j]
+                        == self.lanes_bot.row_id[i_free, j_free]
+                        and self.lanes_bot.col_id[i, j_free]
+                        == self.lanes_bot.col_id[i_free, j_free]
+                    ):
+                        self.maybe_set_dot(
+                            i_free,
+                            j_free,
+                            Step((i0, j0, mark), "mark_dots_beyond_corners"),
+                        )
 
-    def _mark_dots_beyond_corners_process_cells(
-        self, i: int, j: int, mark: tuple[int, int, str], cells: list[tuple[int, int]]
+    def _mark_dots_beyond_corners_check_all_cols_at_row(
+        self, i0: int, j0: int, mark: str, i: int, jA: int, jB: int, j_free: int
     ) -> None:
-        if len(cells) == 2:
-            (iA, jA), (iB, jB) = cells
-            if iA == iB or jA == jB:
-                return
-            if iB == i:
-                (iA, jA), (iB, jB) = (iB, jB), (iA, jA)
-            if self._mark_dots_beyond_corners_check_line_of_sight(i, j, iA, jA, iB, jB):
-                self.maybe_set_dot(iB, jA, Step(mark, "mark_dots_beyond_corners"))
-
-    def _mark_dots_beyond_corners_check_line_of_sight(
-        self, i: int, j: int, iA: int, jA: int, iB: int, jB: int
-    ) -> bool:
-        if iB > i:
-            it = self.it_down(iA, jA)
-        else:
-            it = self.it_up(iA, jA)
-        for ix, jx in it:
-            if self.board[ix, jx] in "01234-":
-                return False
-            elif ix == iB:
-                break
-        if jA > j:
-            it = self.it_right(iB, jB)
-        else:
-            it = self.it_left(iB, jB)
-        for ix, jx in it:
-            if self.board[ix, jx] in "01234-":
-                return False
-            elif jx == jA:
-                break
-        return True
+        for j in range(jA, jB + 1):
+            if j != j_free:
+                iD, jD, iE, _ = self.lanes_bot.cols[self.lanes_bot.col_id[i, j]]
+                col_free = (self.board[iD : iE + 1, jD] == ".").nonzero()[0]
+                if len(col_free) == 1:
+                    i_free = iD + col_free[0]
+                    if (
+                        self.lanes_bot.row_id[i_free, j]
+                        == self.lanes_bot.row_id[i_free, j_free]
+                        and self.lanes_bot.col_id[i, j_free]
+                        == self.lanes_bot.col_id[i_free, j_free]
+                    ):
+                        self.maybe_set_dot(
+                            i_free,
+                            j_free,
+                            Step((i0, j0, mark), "mark_dots_beyond_corners"),
+                        )
 
     def analyze_diagonally_adjacent_numbers(self, i: int, j: int, mark: str) -> None:
         """
