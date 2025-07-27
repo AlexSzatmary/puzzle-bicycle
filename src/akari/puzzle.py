@@ -1043,29 +1043,44 @@ class ThoughtProcess:
         the 0; after a + is marked above the 0, the * would then be a hole.
         """
         if mark == ".":
-            for i, j in self.all_interior_ij():
-                self._fill_holes_cell(i, j, (i, j, "."))
+            for col in self.lanes_bot.cols:
+                iD, j, iE, _ = col
+                di_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
+                if len(di_free) == 1:
+                    i_free = iD + di_free[0]
+                    i, jA, _, jB = self.lanes_bot.rows[
+                        self.lanes_bot.row_id[i_free, j]
+                    ]
+                    if np.sum(self.board[i, jA : jB + 1] == ".") == 1:
+                        self.maybe_set_bulb(
+                            i_free,
+                            j,
+                            Step((i_free, j, mark), "fill_holes"),
+                        )
         elif mark == "+":
-            signal = (i0, j0, mark)
-            self._fill_holes_cell(i0, j0, signal)
-            for i, j in self.line_of_sight(i0, j0):
-                self._fill_holes_cell(i, j, signal)
+            iD, j, iE, _ = self.lanes_bot.cols[self.lanes_bot.col_id[i0, j0]]
+            di_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
+            if len(di_free) == 1:
+                i_free = iD + di_free[0]
+                i, jA, _, jB = self.lanes_bot.rows[self.lanes_bot.row_id[i_free, j]]
+                if np.sum(self.board[i, jA : jB + 1] == ".") == 1:
+                    self.maybe_set_bulb(
+                        i_free,
+                        j,
+                        Step((i_free, j, mark), "fill_holes"),
+                    )
 
-    def _fill_holes_cell(self, i: int, j: int, signal: tuple[int, int, str]) -> None:
-        step = Step(signal, "fill_holes")
-        if self.board[i, j] == ".":
-            is_hole = True  # presume a hole
-            for it in self.line_of_sight_iters(i, j):
-                for i1, j1 in it:
-                    if self.board[i1, j1] == ".":
-                        is_hole = False
-                        break
-                    elif self.board[i1, j1] in "01234-":
-                        break
-                if not is_hole:
-                    break
-            if is_hole:
-                self.maybe_set_bulb(i, j, step)
+            i, jA, _, jB = self.lanes_bot.rows[self.lanes_bot.row_id[i0, j0]]
+            dj_free = (self.board[i, jA : jB + 1] == ".").nonzero()[0]
+            if len(dj_free) == 1:
+                j_free = jA + dj_free[0]
+                iD, j, iE, _ = self.lanes_bot.cols[self.lanes_bot.col_id[i, j_free]]
+                if np.sum(self.board[iD : iE + 1, j] == ".") == 1:
+                    self.maybe_set_bulb(
+                        i,
+                        j_free,
+                        Step((i, j_free, mark), "fill_holes"),
+                    )
 
     def mark_unique_bulbs_for_dot_cells(self, i0: int, j0: int, mark: str) -> None:
         """
@@ -1090,6 +1105,27 @@ class ThoughtProcess:
             self._mark_unique_bulbs_for_dot_cells_at_cell(i0, j0, signal)
             for i, j in self.line_of_sight(i0, j0):
                 self._mark_unique_bulbs_for_dot_cells_at_cell(i, j, signal)
+
+    # def _mark_unique_bulbs_for_dot_cells_check_all_rows_at_col(
+    #     self, i0: int, j0: int, mark: str, iD: int, j: int, iE: int, i_free: int
+    # ) -> None:
+    #     for i in range(iD, iE + 1):
+    #         if i != i_free:
+    #             iA, jA, _, jB = self.lanes_bot.rows[self.lanes_bot.row_id[i, j]]
+    #             row_free = (self.board[iA, jA : jB + 1] == ".").nonzero()[0]
+    #             if len(row_free) == 1:
+    #                 j_free = jA + row_free[0]
+    #                 if (
+    #                     self.lanes_bot.row_id[i_free, j]
+    #                     == self.lanes_bot.row_id[i_free, j_free]
+    #                     and self.lanes_bot.col_id[i, j_free]
+    #                     == self.lanes_bot.col_id[i_free, j_free]
+    #                 ):
+    #                     self.maybe_set_dot(
+    #                         i_free,
+    #                         j_free,
+    #                         Step((i0, j0, mark), "mark_dots_beyond_corners"),
+    #                     )
 
     def _mark_unique_bulbs_for_dot_cells_at_cell(
         self, i: int, j: int, signal: tuple[int, int, str]
