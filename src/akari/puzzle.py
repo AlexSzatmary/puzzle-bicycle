@@ -457,7 +457,7 @@ class SharedLanesBot:
                 and iB + jB > iA + jA + 1
             ):
                 self._add_adjacent_lane(
-                    board, iA, jA, iB - wi, jB - wj, vi, vj, -wi, -wj
+                    iA, jA, iB - wi, jB - wj, vi, vj, -wi, -wj
                 )
             if (
                 tracer_E
@@ -467,7 +467,7 @@ class SharedLanesBot:
                 and board[iB, jB] == "."
                 and iB + jB > iA + jA + 1
             ):
-                self._add_adjacent_lane(board, iA, jA, iB + wi, jB + wj, vi, vj, wi, wj)
+                self._add_adjacent_lane(iA, jA, iB + wi, jB + wj, vi, vj, wi, wj)
             if board[iB, jB] in "123":
                 fit_C = new_tracer_C and board[iB - wi, jA - wj] == "."
                 fit_D = tracer_D and board[iB - vi, jA + vj] == "."
@@ -475,7 +475,6 @@ class SharedLanesBot:
                 n_for_same = fit_C + fit_D + fit_E
                 if n_for_same >= 2:
                     self._add_same_lane(
-                        board,
                         iA,
                         jA,
                         iB,
@@ -496,7 +495,6 @@ class SharedLanesBot:
 
     def _add_adjacent_lane(
         self,
-        board: np.ndarray,
         iA: int,
         jA: int,
         iB: int,
@@ -527,7 +525,6 @@ class SharedLanesBot:
 
     def _add_same_lane(
         self,
-        board: np.ndarray,
         iA: int,
         jA: int,
         iB: int,
@@ -1040,9 +1037,7 @@ class ThoughtProcess:
             if np.sum(self.board[i, jA : jB + 1] == ".") == 1:
                 self.maybe_set_bulb(i_free, j, Step("fill_holes"))
 
-    def _fill_holes_check_row(
-        self, row: tuple[int, int, int, int]
-    ) -> None:
+    def _fill_holes_check_row(self, row: tuple[int, int, int, int]) -> None:
         i, jA, _, jB = row
         dj_free = (self.board[i, jA : jB + 1] == ".").nonzero()[0]
         if len(dj_free) == 1:
@@ -1190,25 +1185,25 @@ class ThoughtProcess:
                 col_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
                 if len(col_free) == 1:
                     self._mark_dots_beyond_corners_check_all_rows_at_col(
-                        iD, j, mark, iD, j, iE, iD + col_free[0]
+                        iD, j, iE, iD + col_free[0]
                     )
         elif mark == "+":
             iD, j, iE, _ = self.lanes_bot.cols[self.lanes_bot.col_id[i0, j0]]
             col_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
             if len(col_free) == 1:
                 self._mark_dots_beyond_corners_check_all_rows_at_col(
-                    i0, j0, mark, iD, j, iE, iD + col_free[0]
+                    iD, j, iE, iD + col_free[0]
                 )
 
             i, jA, _, jB = self.lanes_bot.rows[self.lanes_bot.row_id[i0, j0]]
             row_free = (self.board[i, jA : jB + 1] == ".").nonzero()[0]
             if len(row_free) == 1:
                 self._mark_dots_beyond_corners_check_all_cols_at_row(
-                    i0, j0, mark, i, jA, jB, jA + row_free[0]
+                    i, jA, jB, jA + row_free[0]
                 )
 
     def _mark_dots_beyond_corners_check_all_rows_at_col(
-        self, i0: int, j0: int, mark: str, iD: int, j: int, iE: int, i_free: int
+        self, iD: int, j: int, iE: int, i_free: int
     ) -> None:
         for i in range(iD, iE + 1):
             if i != i_free:
@@ -1229,7 +1224,7 @@ class ThoughtProcess:
                         )
 
     def _mark_dots_beyond_corners_check_all_cols_at_row(
-        self, i0: int, j0: int, mark: str, i: int, jA: int, jB: int, j_free: int
+        self, i: int, jA: int, jB: int, j_free: int
     ) -> None:
         for j in range(jA, jB + 1):
             if j != j_free:
