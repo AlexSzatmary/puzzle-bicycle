@@ -923,9 +923,7 @@ class MainWindow(QMainWindow):
         thought_process_hint.apply_methods(9, find_hint=True)
         if not thought_process_hint.check_unsolved():
             # if the puzzle is contradictory, show where by making a fake Step
-            thought_process_hint.hint = puzzle.Step(
-                (-1, -1, "!"), "check_unsolved", cost=0
-            )
+            thought_process_hint.hint = puzzle.Step("check_unsolved", cost=0)
             thought_process_correct = puzzle.ThoughtProcess(
                 puzzle.clear_board(self.board.copy())
             )
@@ -1066,11 +1064,11 @@ class MainWindow(QMainWindow):
                     # The new mark does not contradict what is already in the board
                     if mark == "#":
                         thought_process_correct.maybe_set_bulb(
-                            i, j, puzzle.Step(delta, "check_contradiction", 1.0)
+                            i, j, puzzle.Step("check_contradiction", 1.0)
                         )
                     else:
                         thought_process_correct.maybe_set_dot(
-                            i, j, puzzle.Step(delta, "check_contradiction", 1.0)
+                            i, j, puzzle.Step("check_contradiction", 1.0)
                         )
                     thought_process_correct.apply_methods(self.auto_apply_methods_level)
                     thought_process = thought_process_correct
