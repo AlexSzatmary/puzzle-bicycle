@@ -1044,43 +1044,37 @@ class ThoughtProcess:
         """
         if mark == ".":
             for col in self.lanes_bot.cols:
-                iD, j, iE, _ = col
-                di_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
-                if len(di_free) == 1:
-                    i_free = iD + di_free[0]
-                    i, jA, _, jB = self.lanes_bot.rows[
-                        self.lanes_bot.row_id[i_free, j]
-                    ]
-                    if np.sum(self.board[i, jA : jB + 1] == ".") == 1:
-                        self.maybe_set_bulb(
-                            i_free,
-                            j,
-                            Step((i_free, j, mark), "fill_holes"),
-                        )
+                i, j, _, _ = col
+                self._fill_holes_check_col(col, (i, j, mark))
         elif mark == "+":
-            iD, j, iE, _ = self.lanes_bot.cols[self.lanes_bot.col_id[i0, j0]]
-            di_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
-            if len(di_free) == 1:
-                i_free = iD + di_free[0]
-                i, jA, _, jB = self.lanes_bot.rows[self.lanes_bot.row_id[i_free, j]]
-                if np.sum(self.board[i, jA : jB + 1] == ".") == 1:
-                    self.maybe_set_bulb(
-                        i_free,
-                        j,
-                        Step((i_free, j, mark), "fill_holes"),
-                    )
+            self._fill_holes_check_col(
+                self.lanes_bot.cols[self.lanes_bot.col_id[i0, j0]], (i0, j0, mark)
+            )
+            self._fill_holes_check_row(
+                self.lanes_bot.rows[self.lanes_bot.row_id[i0, j0]], (i0, j0, mark)
+            )
 
-            i, jA, _, jB = self.lanes_bot.rows[self.lanes_bot.row_id[i0, j0]]
-            dj_free = (self.board[i, jA : jB + 1] == ".").nonzero()[0]
-            if len(dj_free) == 1:
-                j_free = jA + dj_free[0]
-                iD, j, iE, _ = self.lanes_bot.cols[self.lanes_bot.col_id[i, j_free]]
-                if np.sum(self.board[iD : iE + 1, j] == ".") == 1:
-                    self.maybe_set_bulb(
-                        i,
-                        j_free,
-                        Step((i, j_free, mark), "fill_holes"),
-                    )
+    def _fill_holes_check_col(
+        self, col: tuple[int, int, int, int], signal: tuple[int, int, str]
+    ) -> None:
+        iD, j, iE, _ = col
+        di_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
+        if len(di_free) == 1:
+            i_free = iD + di_free[0]
+            i, jA, _, jB = self.lanes_bot.rows[self.lanes_bot.row_id[i_free, j]]
+            if np.sum(self.board[i, jA : jB + 1] == ".") == 1:
+                self.maybe_set_bulb(i_free, j, Step(signal, "fill_holes"))
+
+    def _fill_holes_check_row(
+        self, row: tuple[int, int, int, int], signal: tuple[int, int, str]
+    ) -> None:
+        i, jA, _, jB = row
+        dj_free = (self.board[i, jA : jB + 1] == ".").nonzero()[0]
+        if len(dj_free) == 1:
+            j_free = jA + dj_free[0]
+            iD, j, iE, _ = self.lanes_bot.cols[self.lanes_bot.col_id[i, j_free]]
+            if np.sum(self.board[iD : iE + 1, j] == ".") == 1:
+                self.maybe_set_bulb(i, j_free, Step(signal, "fill_holes"))
 
     def mark_unique_bulbs_for_dot_cells(self, i0: int, j0: int, mark: str) -> None:
         """
