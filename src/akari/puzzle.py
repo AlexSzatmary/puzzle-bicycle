@@ -191,7 +191,7 @@ COSTS = {
     "mark_bulbs_around_dotted_numbers": 1.0,
     "mark_dots_around_full_numbers": 1.0,
     "fill_holes": 1.2,
-    "mark_unique_bulbs_for_dot_cells": 1.2,
+    "mark_unique_bulbs": 1.2,
     "mark_dots_at_corners": 2.0,
     "analyze_diagonally_adjacent_numbers": 2.0,
     "mark_bulbs_and_dots_at_shared_lanes": 3.0,
@@ -203,7 +203,7 @@ HINT_MESSAGES = {
     "mark_bulbs_around_dotted_numbers": "Number that has enough dots",
     "mark_dots_around_full_numbers": "Number that has enough bulbs",
     "fill_holes": "Fill hole",
-    "mark_unique_bulbs_for_dot_cells": "Unique bulb position",
+    "mark_unique_bulbs": "Unique bulb position",
     "mark_dots_at_corners": "Mark dots at corners",
     "analyze_diagonally_adjacent_numbers": "Diagonally adjacent numbers",
     "mark_bulbs_and_dots_at_shared_lanes": "Shared lanes",
@@ -315,6 +315,18 @@ class LanesBot:
             return self.thought_process.board[i1 : i2 + 1, j1]
         else:
             return self.thought_process.board[i1, j1 : j2 + 1]
+
+    def col_free_cells(self, col: tuple[int, int, int, int]) -> np.ndarray:
+        iD, j, iE, _ = col
+        col_cells = self.thought_process.board[iD : iE + 1, j]
+        di_free = (col_cells == ".").nonzero()[0]
+        return iD + di_free
+
+    def row_free_cells(self, row: tuple[int, int, int, int]) -> np.ndarray:
+        i, jA, _, jB = row
+        row_cells = self.thought_process.board[i, jA : jB + 1]
+        dj_free = (row_cells == ".").nonzero()[0]
+        return jA + dj_free
 
 
 class SharedLanesBot:
@@ -909,8 +921,7 @@ class ThoughtProcess:
                 self.mark_bulbs_around_dotted_numbers(i, j, mark)
                 self.mark_dots_around_full_numbers(i, j, mark)
             elif mark_level == 3:
-                self.fill_holes(i, j, mark)
-                self.mark_unique_bulbs_for_dot_cells(i, j, mark)
+                self.fill_holes_and_mark_unique_bulbs(i, j, mark)
             elif mark_level == 4:
                 self.mark_dots_at_corners(i, j, mark)
             elif mark_level == 5:
@@ -1011,6 +1022,143 @@ class ThoughtProcess:
                     for di2, dj2 in ORTHO_DIRS:
                         self.maybe_set_dot(i_number + di2, j_number + dj2, step=step)
 
+    def fill_holes_and_mark_unique_bulbs(self, i0: int, j0: int, mark: str) -> None:
+        """
+        Takes annotated and possibly illuminated board. Marks cells that must be bulbs
+        for a dotted cell to be illuminated. For example, if we have,
+        -0--
+        -+.-
+        --.-
+        ----
+        we must obtain,
+        -0--
+        -+#-
+        --|-
+        ----
+        Because otherwise the + below the 0 could not be illuminated.
+        """
+
+        # the plan:
+        # if a col has a bulb
+        #    check each row. For any that has 1 free (and no bulbs), see if that free
+        #    cell is the only free cell in its column. Then bulb it (hole or unique?)
+        # if a col has 0 free (and no bulbs)
+        #    check each row. Any that has 1 free (and no bulbs) needs a bulb there.
+        # if a col has 1 free,
+        #    check each row. If any has 0 free (and no bulbs), fill the one bulb
+        #    except, if the row with the free has 1 free, fill it (hole)
+        #
+        # likewise for rows. For init, only check cols.
+        if mark == ".":
+            for col in self.lanes_bot.cols:
+                self._fill_holes_and_mark_unique_bulbs_col_scan(col)
+        elif mark == "+":
+            self._fill_holes_and_mark_unique_bulbs_col_scan(
+                self.lanes_bot.col_by_ij(i0, j0)
+            )
+            self._fill_holes_and_mark_unique_bulbs_row_scan(
+                self.lanes_bot.row_by_ij(i0, j0)
+            )
+
+    def _fill_holes_and_mark_unique_bulbs_col_scan(
+        self, col: tuple[int, int, int, int]
+    ) -> None:
+        iD, j, iE, _ = col
+        col_cells = self.lanes_bot.lane_contents(*col)
+        if (
+            not np.any(col_cells == "#")
+            and (n_col_free := np.sum(col_cells == ".")) <= 1
+        ):
+            for i in range(iD, iE + 1):
+                row = self.lanes_bot.row_by_ij(i, j)
+                row_cells = self.lanes_bot.lane_contents(*row)
+                if (
+                    not np.any(row_cells == "#")
+                    and (n_row_free := np.sum(row_cells == ".")) <= 1
+                ):
+                    if n_col_free == 1 and n_row_free == 0:
+                        # print()
+                        # print(col)
+                        # print(col_cells == "#")
+                        # print(np.any(col_cells == "#"))
+                        # print(i, j)
+                        # print_board(self.board)
+                        # print(self.lanes_bot.col_free_cells(col))
+                        self.maybe_set_bulb(
+                            self.lanes_bot.col_free_cells(col)[0],
+                            j,
+                            Step("mark_unique_bulbs"),
+                        )
+                        return  # we must break out here because there is now a bulb
+                    elif n_col_free == 0 and n_row_free == 1:
+                        self.maybe_set_bulb(
+                            i,
+                            self.lanes_bot.row_free_cells(row)[0],
+                            Step("mark_unique_bulbs"),
+                        )
+                    elif (
+                        n_col_free == 1 and n_row_free == 1 and self.board[i, j] == "."
+                    ):
+                        self.maybe_set_bulb(
+                            i,
+                            j,
+                            Step("fill_holes"),
+                        )
+                        return  # we must break out here because there is now a bulb
+
+    def _fill_holes_and_mark_unique_bulbs_row_scan(
+        self, row: tuple[int, int, int, int]
+    ) -> None:
+        i, jA, _, jB = row
+        row_cells = self.lanes_bot.lane_contents(*row)
+        if (
+            not np.any(row_cells == "#")
+            and (n_row_free := np.sum(row_cells == ".")) <= 1
+        ):
+            for j in range(jA, jB + 1):
+                col = self.lanes_bot.col_by_ij(i, j)
+                col_cells = self.lanes_bot.lane_contents(*col)
+                if (
+                    not np.any(col_cells == "#")
+                    and (n_col_free := np.sum(col_cells == ".")) <= 1
+                ):
+                    if n_col_free == 1 and n_row_free == 0:
+                        self.maybe_set_bulb(
+                            self.lanes_bot.col_free_cells(col)[0],
+                            j,
+                            Step("mark_unique_bulbs"),
+                        )
+                    elif n_col_free == 0 and n_row_free == 1:
+                        self.maybe_set_bulb(
+                            i,
+                            self.lanes_bot.row_free_cells(row)[0],
+                            Step("mark_unique_bulbs"),
+                        )
+                        return  # we must break out here because there is now a bulb
+                    elif (
+                        n_col_free == 1 and n_row_free == 1 and self.board[i, j] == "."
+                    ):
+                        self.maybe_set_bulb(
+                            i,
+                            j,
+                            Step("fill_holes"),
+                        )
+                        return  # we must break out here because there is now a bulb
+
+    def _fill_holes_and_mark_unique_bulbs_col(
+        self, col: tuple[int, int, int, int]
+    ) -> None:
+        iD, j, iE, _ = col
+        di_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
+        if len(di_free) == 1:
+            i_free = iD + di_free[0]
+            for i in range(iD, iE + 1):
+                if i != i_free:
+                    row = self.lanes_bot.row_by_ij(i, j)
+                    row_cells = self.lanes_bot.lane_contents(*row)
+                    if not np.any(row_cells == "#") and not np.any(row_cells == "."):
+                        self.maybe_set_bulb(i_free, j, Step("mark_unique_bulbs"))
+
     def fill_holes(self, i0: int, j0: int, mark: str) -> None:
         """
         Takes annotated and possibly illuminated board.
@@ -1052,7 +1200,7 @@ class ThoughtProcess:
             if np.sum(self.lanes_bot.lane_contents(*col) == ".") == 1:
                 self.maybe_set_bulb(i, j_free, Step("fill_holes"))
 
-    def mark_unique_bulbs_for_dot_cells(self, i0: int, j0: int, mark: str) -> None:
+    def mark_unique_bulbs(self, i0: int, j0: int, mark: str) -> None:
         """
         Takes annotated and possibly illuminated board. Marks cells that must be bulbs
         for a dotted cell to be illuminated. For example, if we have,
@@ -1071,22 +1219,16 @@ class ThoughtProcess:
             for col in self.lanes_bot.cols:
                 if np.any(self.lanes_bot.lane_contents(*col) == "#"):
                     continue
-                self._mark_unique_bulbs_for_dot_cells_check_col(col)
+                self._mark_unique_bulbs_check_col(col)
             for row in self.lanes_bot.rows:
                 if np.any(self.lanes_bot.lane_contents(*row) == "#"):
                     continue
-                self._mark_unique_bulbs_for_dot_cells_check_row(row)
+                self._mark_unique_bulbs_check_row(row)
         elif mark == "+":
-            self._mark_unique_bulbs_for_dot_cells_check_col(
-                self.lanes_bot.col_by_ij(i0, j0)
-            )
-            self._mark_unique_bulbs_for_dot_cells_check_row(
-                self.lanes_bot.row_by_ij(i0, j0)
-            )
+            self._mark_unique_bulbs_check_col(self.lanes_bot.col_by_ij(i0, j0))
+            self._mark_unique_bulbs_check_row(self.lanes_bot.row_by_ij(i0, j0))
 
-    def _mark_unique_bulbs_for_dot_cells_check_col(
-        self, col: tuple[int, int, int, int]
-    ) -> None:
+    def _mark_unique_bulbs_check_col(self, col: tuple[int, int, int, int]) -> None:
         iD, j, iE, _ = col
         di_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
         if len(di_free) == 1:
@@ -1096,13 +1238,9 @@ class ThoughtProcess:
                     row = self.lanes_bot.row_by_ij(i, j)
                     row_cells = self.lanes_bot.lane_contents(*row)
                     if not np.any(row_cells == "#") and not np.any(row_cells == "."):
-                        self.maybe_set_bulb(
-                            i_free, j, Step("mark_unique_bulbs_for_dot_cells")
-                        )
+                        self.maybe_set_bulb(i_free, j, Step("mark_unique_bulbs"))
 
-    def _mark_unique_bulbs_for_dot_cells_check_row(
-        self, row: tuple[int, int, int, int]
-    ) -> None:
+    def _mark_unique_bulbs_check_row(self, row: tuple[int, int, int, int]) -> None:
         i, jA, _, jB = row
         dj_free = (self.board[i, jA : jB + 1] == ".").nonzero()[0]
         if len(dj_free) == 1:
@@ -1112,9 +1250,7 @@ class ThoughtProcess:
                     col = self.lanes_bot.col_by_ij(i, j)
                     col_cells = self.lanes_bot.lane_contents(*col)
                     if not np.any(col_cells == "#") and not np.any(col_cells == "."):
-                        self.maybe_set_bulb(
-                            i, j_free, Step("mark_unique_bulbs_for_dot_cells")
-                        )
+                        self.maybe_set_bulb(i, j_free, Step("mark_unique_bulbs"))
 
     def mark_dots_at_corners(self, i: int, j: int, mark: str) -> None:
         """
@@ -1170,7 +1306,7 @@ class ThoughtProcess:
         -----
         then A cannot be a bulb because the top left + would become unilluminatable.
 
-        This is like a mix of mark_unique_bulbs_for_dot_cells and mark_dots_at_corners.
+        This is like a mix of mark_unique_bulbs and mark_dots_at_corners.
         """
         # This diagram is similar to the one in the doc string
         # -----

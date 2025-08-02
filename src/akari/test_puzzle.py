@@ -527,7 +527,7 @@ def test_mark_dots_at_corners(
 
 
 @pytest.fixture
-def board_mark_unique_bulbs_for_dot_cells() -> np.ndarray:
+def board_mark_unique_bulbs() -> np.ndarray:
     return boardify_string(
         cleandoc(
             """
@@ -547,7 +547,7 @@ def board_mark_unique_bulbs_for_dot_cells() -> np.ndarray:
 
 
 @pytest.fixture
-def board_mark_unique_bulbs_for_dot_cells_sol() -> np.ndarray:
+def board_mark_unique_bulbs_sol() -> np.ndarray:
     return boardify_string(
         cleandoc(
             """
@@ -566,21 +566,21 @@ def board_mark_unique_bulbs_for_dot_cells_sol() -> np.ndarray:
     )
 
 
-def test_mark_unique_bulbs_for_dot_cells(
-    board_mark_unique_bulbs_for_dot_cells: np.ndarray,
-    board_mark_unique_bulbs_for_dot_cells_sol: np.ndarray,
+def test_mark_unique_bulbs(
+    board_mark_unique_bulbs: np.ndarray,
+    board_mark_unique_bulbs_sol: np.ndarray,
 ) -> None:
     for board, ref in zip(
-        all_orientations(board_mark_unique_bulbs_for_dot_cells),
-        all_orientations(board_mark_unique_bulbs_for_dot_cells_sol),
+        all_orientations(board_mark_unique_bulbs),
+        all_orientations(board_mark_unique_bulbs_sol),
         strict=True,
     ):
         tp = ThoughtProcess(board)
-        tp.mark_unique_bulbs_for_dot_cells(-1, -1, ".")
+        tp.mark_unique_bulbs(-1, -1, ".")
         assert_boards_equal(tp.board, ref)
 
 
-def test_mark_unique_bulbs_for_dot_cells2() -> None:
+def test_mark_unique_bulbs2() -> None:
     board2 = boardify_string(
         cleandoc(
             """
