@@ -281,8 +281,7 @@ class SharedLanesPair:
 
 class LanesBot:
     def __init__(self, thought_process: "ThoughtProcess") -> None:
-        self.thought_process = thought_process
-        board = self.thought_process.board
+        board = thought_process.board
         self.cols = []
         self.rows = []
         self.col_id = -np.ones(board.shape, dtype=int)
@@ -310,21 +309,27 @@ class LanesBot:
     def row_by_ij(self, i: int, j: int) -> tuple[int, int, int, int]:
         return self.rows[self.row_id[i, j]]
 
-    def lane_contents(self, i1: int, j1: int, i2: int, j2: int) -> np.ndarray:
+    def lane_contents(
+        self, board: np.ndarray, i1: int, j1: int, i2: int, j2: int
+    ) -> np.ndarray:
         if j1 == j2:
-            return self.thought_process.board[i1 : i2 + 1, j1]
+            return board[i1 : i2 + 1, j1]
         else:
-            return self.thought_process.board[i1, j1 : j2 + 1]
+            return board[i1, j1 : j2 + 1]
 
-    def col_free_cells(self, col: tuple[int, int, int, int]) -> np.ndarray:
+    def col_free_cells(
+        self, board: np.ndarray, col: tuple[int, int, int, int]
+    ) -> np.ndarray:
         iD, j, iE, _ = col
-        col_cells = self.thought_process.board[iD : iE + 1, j]
+        col_cells = board[iD : iE + 1, j]
         di_free = (col_cells == ".").nonzero()[0]
         return iD + di_free
 
-    def row_free_cells(self, row: tuple[int, int, int, int]) -> np.ndarray:
+    def row_free_cells(
+        self, board: np.ndarray, row: tuple[int, int, int, int]
+    ) -> np.ndarray:
         i, jA, _, jB = row
-        row_cells = self.thought_process.board[i, jA : jB + 1]
+        row_cells = board[i, jA : jB + 1]
         dj_free = (row_cells == ".").nonzero()[0]
         return jA + dj_free
 
@@ -1068,14 +1073,14 @@ class ThoughtProcess:
         self, col: tuple[int, int, int, int]
     ) -> None:
         iD, j, iE, _ = col
-        col_cells = self.lanes_bot.lane_contents(*col)
+        col_cells = self.lanes_bot.lane_contents(self.board, *col)
         if (
             not np.any(col_cells == "#")
             and (n_col_free := np.sum(col_cells == ".")) <= 1
         ):
             for i in range(iD, iE + 1):
                 row = self.lanes_bot.row_by_ij(i, j)
-                row_cells = self.lanes_bot.lane_contents(*row)
+                row_cells = self.lanes_bot.lane_contents(self.board, *row)
                 if (
                     not np.any(row_cells == "#")
                     and (n_row_free := np.sum(row_cells == ".")) <= 1
@@ -1089,7 +1094,7 @@ class ThoughtProcess:
                         # print_board(self.board)
                         # print(self.lanes_bot.col_free_cells(col))
                         self.maybe_set_bulb(
-                            self.lanes_bot.col_free_cells(col)[0],
+                            self.lanes_bot.col_free_cells(self.board, col)[0],
                             j,
                             Step("mark_unique_bulbs"),
                         )
@@ -1097,7 +1102,7 @@ class ThoughtProcess:
                     elif n_col_free == 0 and n_row_free == 1:
                         self.maybe_set_bulb(
                             i,
-                            self.lanes_bot.row_free_cells(row)[0],
+                            self.lanes_bot.row_free_cells(self.board, row)[0],
                             Step("mark_unique_bulbs"),
                         )
                     elif (
@@ -1114,28 +1119,28 @@ class ThoughtProcess:
         self, row: tuple[int, int, int, int]
     ) -> None:
         i, jA, _, jB = row
-        row_cells = self.lanes_bot.lane_contents(*row)
+        row_cells = self.lanes_bot.lane_contents(self.board, *row)
         if (
             not np.any(row_cells == "#")
             and (n_row_free := np.sum(row_cells == ".")) <= 1
         ):
             for j in range(jA, jB + 1):
                 col = self.lanes_bot.col_by_ij(i, j)
-                col_cells = self.lanes_bot.lane_contents(*col)
+                col_cells = self.lanes_bot.lane_contents(self.board, *col)
                 if (
                     not np.any(col_cells == "#")
                     and (n_col_free := np.sum(col_cells == ".")) <= 1
                 ):
                     if n_col_free == 1 and n_row_free == 0:
                         self.maybe_set_bulb(
-                            self.lanes_bot.col_free_cells(col)[0],
+                            self.lanes_bot.col_free_cells(self.board, col)[0],
                             j,
                             Step("mark_unique_bulbs"),
                         )
                     elif n_col_free == 0 and n_row_free == 1:
                         self.maybe_set_bulb(
                             i,
-                            self.lanes_bot.row_free_cells(row)[0],
+                            self.lanes_bot.row_free_cells(self.board, row)[0],
                             Step("mark_unique_bulbs"),
                         )
                         return  # we must break out here because there is now a bulb
@@ -1159,7 +1164,7 @@ class ThoughtProcess:
             for i in range(iD, iE + 1):
                 if i != i_free:
                     row = self.lanes_bot.row_by_ij(i, j)
-                    row_cells = self.lanes_bot.lane_contents(*row)
+                    row_cells = self.lanes_bot.lane_contents(self.board, *row)
                     if not np.any(row_cells == "#") and not np.any(row_cells == "."):
                         self.maybe_set_bulb(i_free, j, Step("mark_unique_bulbs"))
 
@@ -1188,20 +1193,20 @@ class ThoughtProcess:
 
     def _fill_holes_check_col(self, col: tuple[int, int, int, int]) -> None:
         i, j, _, _ = col
-        di_free = (self.lanes_bot.lane_contents(*col) == ".").nonzero()[0]
+        di_free = (self.lanes_bot.lane_contents(self.board, *col) == ".").nonzero()[0]
         if len(di_free) == 1:
             i_free = i + di_free[0]
             row = self.lanes_bot.row_by_ij(i_free, j)
-            if np.sum(self.lanes_bot.lane_contents(*row) == ".") == 1:
+            if np.sum(self.lanes_bot.lane_contents(self.board, *row) == ".") == 1:
                 self.maybe_set_bulb(i_free, j, Step("fill_holes"))
 
     def _fill_holes_check_row(self, row: tuple[int, int, int, int]) -> None:
         i, jA, _, _ = row
-        dj_free = (self.lanes_bot.lane_contents(*row) == ".").nonzero()[0]
+        dj_free = (self.lanes_bot.lane_contents(self.board, *row) == ".").nonzero()[0]
         if len(dj_free) == 1:
             j_free = jA + dj_free[0]
             col = self.lanes_bot.col_by_ij(i, j_free)
-            if np.sum(self.lanes_bot.lane_contents(*col) == ".") == 1:
+            if np.sum(self.lanes_bot.lane_contents(self.board, *col) == ".") == 1:
                 self.maybe_set_bulb(i, j_free, Step("fill_holes"))
 
     def mark_unique_bulbs(self, i0: int, j0: int, mark: str) -> None:
@@ -1221,11 +1226,11 @@ class ThoughtProcess:
         """
         if mark == ".":
             for col in self.lanes_bot.cols:
-                if np.any(self.lanes_bot.lane_contents(*col) == "#"):
+                if np.any(self.lanes_bot.lane_contents(self.board, *col) == "#"):
                     continue
                 self._mark_unique_bulbs_check_col(col)
             for row in self.lanes_bot.rows:
-                if np.any(self.lanes_bot.lane_contents(*row) == "#"):
+                if np.any(self.lanes_bot.lane_contents(self.board, *row) == "#"):
                     continue
                 self._mark_unique_bulbs_check_row(row)
         elif mark == "+":
@@ -1240,7 +1245,7 @@ class ThoughtProcess:
             for i in range(iD, iE + 1):
                 if i != i_free:
                     row = self.lanes_bot.row_by_ij(i, j)
-                    row_cells = self.lanes_bot.lane_contents(*row)
+                    row_cells = self.lanes_bot.lane_contents(self.board, *row)
                     if not np.any(row_cells == "#") and not np.any(row_cells == "."):
                         self.maybe_set_bulb(i_free, j, Step("mark_unique_bulbs"))
 
@@ -1252,7 +1257,7 @@ class ThoughtProcess:
             for j in range(jA, jB + 1):
                 if j != j_free:
                     col = self.lanes_bot.col_by_ij(i, j)
-                    col_cells = self.lanes_bot.lane_contents(*col)
+                    col_cells = self.lanes_bot.lane_contents(self.board, *col)
                     if not np.any(col_cells == "#") and not np.any(col_cells == "."):
                         self.maybe_set_bulb(i, j_free, Step("mark_unique_bulbs"))
 
@@ -1324,7 +1329,9 @@ class ThoughtProcess:
         if mark == ".":
             for col in self.lanes_bot.cols:
                 iD, j, iE, _ = col
-                col_free = (self.lanes_bot.lane_contents(*col) == ".").nonzero()[0]
+                col_free = (
+                    self.lanes_bot.lane_contents(self.board, *col) == "."
+                ).nonzero()[0]
                 if len(col_free) == 1:
                     self._mark_dots_beyond_corners_check_all_rows_at_col(
                         iD, j, iE, iD + col_free[0]
@@ -1332,7 +1339,9 @@ class ThoughtProcess:
         elif mark == "+":
             col = self.lanes_bot.col_by_ij(i0, j0)
             iD, j, iE, _ = col
-            col_free = (self.lanes_bot.lane_contents(*col) == ".").nonzero()[0]
+            col_free = (
+                self.lanes_bot.lane_contents(self.board, *col) == "."
+            ).nonzero()[0]
             if len(col_free) == 1:
                 self._mark_dots_beyond_corners_check_all_rows_at_col(
                     iD, j, iE, iD + col_free[0]
@@ -1340,7 +1349,9 @@ class ThoughtProcess:
 
             row = self.lanes_bot.row_by_ij(i0, j0)
             i, jA, _, jB = row
-            row_free = (self.lanes_bot.lane_contents(*row) == ".").nonzero()[0]
+            row_free = (
+                self.lanes_bot.lane_contents(self.board, *row) == "."
+            ).nonzero()[0]
             if len(row_free) == 1:
                 self._mark_dots_beyond_corners_check_all_cols_at_row(
                     i, jA, jB, jA + row_free[0]
@@ -1520,25 +1531,29 @@ class ThoughtProcess:
         -----
         """
         col = self.lanes_bot.col_by_ij(i, j)
-        col_cells = self.lanes_bot.lane_contents(*col)
+        col_cells = self.lanes_bot.lane_contents(self.board, *col)
         if not (np.any(col_cells == ".") or np.any(col_cells == "#")):
             self._check_this_col_unilluminatable(col)
         row = self.lanes_bot.row_by_ij(i, j)
-        row_cells = self.lanes_bot.lane_contents(*row)
+        row_cells = self.lanes_bot.lane_contents(self.board, *row)
         if not (np.any(row_cells == ".") or np.any(row_cells == "#")):
             self._check_this_row_unilluminatable(row)
 
     def _check_this_col_unilluminatable(self, col: tuple[int, int, int, int]) -> None:
         iD, j, iE, _ = col
         for i in range(iD, iE + 1):
-            row_cells = self.lanes_bot.lane_contents(*self.lanes_bot.row_by_ij(i, j))
+            row_cells = self.lanes_bot.lane_contents(
+                self.board, *self.lanes_bot.row_by_ij(i, j)
+            )
             if not (np.any(row_cells == ".") or np.any(row_cells == "#")):
                 self.unilluminatable_cells.append((i, j))
 
     def _check_this_row_unilluminatable(self, row: tuple[int, int, int, int]) -> None:
         i, jA, _, jB = row
         for j in range(jA, jB + 1):
-            col_cells = self.lanes_bot.lane_contents(*self.lanes_bot.col_by_ij(i, j))
+            col_cells = self.lanes_bot.lane_contents(
+                self.board, *self.lanes_bot.col_by_ij(i, j)
+            )
             if not (np.any(col_cells == ".") or np.any(col_cells == "#")):
                 self.unilluminatable_cells.append((i, j))
 
