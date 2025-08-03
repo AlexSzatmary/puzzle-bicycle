@@ -909,7 +909,11 @@ class ThoughtProcess:
             self.new_mark[0].append((-1, -1, "."))
             for i, j in self.all_interior_ij():
                 self.find_wrong_numbers_at_cell(i, j)
-                self.check_this_cell_unilluminatable(i, j)
+            for col in self.lanes_bot.cols:
+                self._check_this_col_unilluminatable(col)
+            # TODO check if following 2 lines affect correctness or speed
+            # for row in self.lanes_bot.rows:
+            #     self._check_this_col_unilluminatable(row)
         while any(self.new_mark):
             mark_level, queue = next(
                 (i, q) for i, q in enumerate(self.new_mark, start=1) if q
@@ -1515,26 +1519,27 @@ class ThoughtProcess:
         -#-*0
         -----
         """
-        self.check_this_cell_unilluminatable(i, j)
-        for it in self.line_of_sight_iters(i, j):
-            for i1, j1 in it:
-                if self.board[i1, j1] in "01234-":
-                    break
-                self.check_this_cell_unilluminatable(i1, j1)
+        col = self.lanes_bot.col_by_ij(i, j)
+        col_cells = self.lanes_bot.lane_contents(*col)
+        if not (np.any(col_cells == ".") or np.any(col_cells == "#")):
+            self._check_this_col_unilluminatable(col)
+        row = self.lanes_bot.row_by_ij(i, j)
+        row_cells = self.lanes_bot.lane_contents(*row)
+        if not (np.any(row_cells == ".") or np.any(row_cells == "#")):
+            self._check_this_row_unilluminatable(row)
 
-    def check_this_cell_unilluminatable(self, i: int, j: int) -> None:
-        if self.board[i, j] == "+":
-            is_unilluminatable = True
-            for it in self.line_of_sight_iters(i, j):
-                for i2, j2 in it:
-                    if self.board[i2, j2] in ".#":
-                        is_unilluminatable = False
-                        break
-                    elif self.board[i2, j2] in "01234-":
-                        break
-                if not is_unilluminatable:
-                    break
-            if is_unilluminatable:
+    def _check_this_col_unilluminatable(self, col: tuple[int, int, int, int]) -> None:
+        iD, j, iE, _ = col
+        for i in range(iD, iE + 1):
+            row_cells = self.lanes_bot.lane_contents(*self.lanes_bot.row_by_ij(i, j))
+            if not (np.any(row_cells == ".") or np.any(row_cells == "#")):
+                self.unilluminatable_cells.append((i, j))
+
+    def _check_this_row_unilluminatable(self, row: tuple[int, int, int, int]) -> None:
+        i, jA, _, jB = row
+        for j in range(jA, jB + 1):
+            col_cells = self.lanes_bot.lane_contents(*self.lanes_bot.col_by_ij(i, j))
+            if not (np.any(col_cells == ".") or np.any(col_cells == "#")):
                 self.unilluminatable_cells.append((i, j))
 
     def check_unsolved(self) -> bool:
