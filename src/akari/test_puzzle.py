@@ -189,7 +189,7 @@ def test_illuminate_all_1() -> None:
     board_1_sol_wrong[2, 1] = "#"
     board_1_sol_wrong[1, 5] = "#"
     (wrong_bulb_pairs_wrong, _) = illuminate_all(board_1_sol_wrong.copy())
-    assert wrong_bulb_pairs_wrong == [(1, 2, 1, 5), (1, 5, 2, 5), (2, 1, 3, 1)]
+    assert set(wrong_bulb_pairs_wrong) == {(1, 2, 1, 5), (1, 5, 2, 5), (2, 1, 3, 1)}
 
     # Test that illumination happens for a known wrong case
     # and that 3 wrong pairs are detected
@@ -280,7 +280,7 @@ def test_illuminate_one_1() -> None:
             """)
     )
     assert_boards_equal(tp_wrong.board, ref)
-    assert tp_wrong.lit_bulb_pairs == [(2, 1, 3, 1), (1, 5, 1, 2), (1, 5, 2, 5)]
+    assert set(tp_wrong.lit_bulb_pairs) == {(2, 1, 3, 1), (1, 5, 1, 2), (1, 5, 2, 5)}
 
 
 def test_check_unlit_cells_1() -> None:

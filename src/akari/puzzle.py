@@ -860,31 +860,6 @@ class ThoughtProcess:
         """
         return zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i)
 
-    def line_of_sight_iters(
-        self, i: int, j: int
-    ) -> Iterator[Iterator[tuple[int, int]]]:
-        """
-        Returns an iterator of it_up, it_left, it_down, and it_right
-
-        This is useful because we often want to break partway through searching in a
-        given direction, but then look in the next direction.
-        """
-        return (
-            it(i, j) for it in [self.it_up, self.it_left, self.it_down, self.it_right]
-        )
-
-    def line_of_sight(self, i: int, j: int) -> list[tuple[int, int]]:
-        """
-        Returns an iterator of all cells in line of sight to a cell at i, j
-        """
-        line_of_sight_cells = []
-        for it in self.line_of_sight_iters(i, j):
-            for i, j in it:
-                if self.board[i, j] in "01234-":
-                    break
-                line_of_sight_cells.append((i, j))
-        return line_of_sight_cells
-
     def apply_methods(  # noqa: C901
         self,
         max_level: int,
@@ -969,33 +944,48 @@ class ThoughtProcess:
         else:
             self._illuminate_one(i, j, mark)
 
-    def _illuminate_one(self, i: int, j: int, mark: str) -> None:
+    def _illuminate_one(  # noqa: C901 this complexity is fine
+        self,
+        i: int,
+        j: int,
+        mark: str,
+    ) -> None:
         """
         helper for illuminate
         """
         step = Step("illuminate")
-        fill_chars = ["|", "_", "|", "_"]
         if self.board[i, j] == "#":
-            for it, fill_char in zip(
-                self.line_of_sight_iters(i, j), fill_chars, strict=True
-            ):
-                for i1, j1 in it:
-                    if self.board[i1, j1] == "#":
-                        if (i1, j1, i, j) not in self.lit_bulb_pairs:
-                            self.lit_bulb_pairs.append((i, j, i1, j1))
-                    elif self.board[i1, j1] == fill_char or self.board[i1, j1] == "x":
-                        # row or column already filled
-                        continue
-                    elif self.board[i1, j1] == "_" or self.board[i1, j1] == "|":
-                        # this branch will only trigger if the char at this location
-                        # is not the same as the fill_char
-                        self.board[i1, j1] = "x"
-                    elif self.board[i1, j1] in "01234-":  # type: ignore
-                        break
-                    else:
-                        self.maybe_set_dot(i1, j1, step=step)
-                        self.board[i1, j1] = fill_char  # this assignment is cosmetic,
-                        # making the light rays but not functionally changing state.
+            iD, _, iE, _ = self.lanes_bot.col_by_ij(i, j)
+            for i1 in range(iD, iE + 1):
+                if i1 == i or self.board[i1, j] == "|" or self.board[i1, j] == "x":
+                    pass
+                elif self.board[i1, j] == "#":
+                    if (i1, j, i, j) not in self.lit_bulb_pairs:
+                        self.lit_bulb_pairs.append((i, j, i1, j))
+                elif self.board[i1, j] == "_":
+                    # this branch will only trigger if the char at this location
+                    # is not the same as the fill_char
+                    self.board[i1, j] = "x"
+                else:
+                    self.maybe_set_dot(i1, j, step=step)
+                    self.board[i1, j] = "|"  # this assignment is cosmetic,
+                    # making the light rays but not functionally changing state.
+
+            _, jA, _, jB = self.lanes_bot.row_by_ij(i, j)
+            for j1 in range(jA, jB + 1):
+                if j1 == j or self.board[i, j1] == "_" or self.board[i, j1] == "x":
+                    pass
+                elif self.board[i, j1] == "#":
+                    if (i, j1, i, j) not in self.lit_bulb_pairs:
+                        self.lit_bulb_pairs.append((i, j, i, j1))
+                elif self.board[i, j1] == "|":
+                    # this branch will only trigger if the char at this location
+                    # is not the same as the fill_char
+                    self.board[i, j1] = "x"
+                else:
+                    self.maybe_set_dot(i, j1, step=step)
+                    self.board[i, j1] = "_"  # this assignment is cosmetic,
+                    # making the light rays but not functionally changing state.
 
     def mark_bulbs_around_dotted_numbers(self, i: int, j: int, mark: str) -> None:
         if mark == ".":
