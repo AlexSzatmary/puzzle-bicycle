@@ -4,9 +4,7 @@ import math
 import sys
 import timeit
 from collections import defaultdict, deque
-from collections.abc import Iterator
 from dataclasses import dataclass
-from itertools import zip_longest
 from typing import Literal, cast
 
 import numpy as np
@@ -309,6 +307,20 @@ class LanesBot:
     def row_by_ij(self, i: int, j: int) -> tuple[int, int, int, int]:
         return self.rows[self.row_id[i, j]]
 
+    def it_col(self, i: int, j: int) -> list[tuple[int, int]]:
+        """
+        Iterator of cells in col containing (i, j)
+        """
+        iD, _, iE, _ = self.col_by_ij(i, j)
+        return [(i1, j) for i1 in range(iD, iE + 1)]
+
+    def it_row(self, i: int, j: int) -> list[tuple[int, int]]:
+        """
+        Iterator of cells in row containing (i, j)
+        """
+        _, jA, _, jB = self.row_by_ij(i, j)
+        return [(i, j1) for j1 in range(jA, jB + 1)]
+
     def lane_contents(
         self, board: np.ndarray, i1: int, j1: int, i2: int, j2: int
     ) -> np.ndarray:
@@ -452,9 +464,11 @@ class SharedLanesBot:
                     # tracer_E is in column jA + 1
                     # other wise, the tracers are in rows iA - 1, iA, and iA + 1
                     if direction == 0:
-                        cells_after_A = self.thought_process.it_down(iA, jA)
+                        _, _, iE, _ = self.thought_process.lanes_bot.col_by_ij(iA, jA)
+                        cells_after_A = [(i1, jA) for i1 in range(iA + 1, iE + 1)]
                     else:
-                        cells_after_A = self.thought_process.it_right(iA, jA)
+                        _, _, _, jB = self.thought_process.lanes_bot.row_by_ij(iA, jA)
+                        cells_after_A = [(iA, j1) for j1 in range(jA + 1, jB + 1)]
                     self._trace_shared_lanes_at_cell(
                         board, vi, vj, wi, wj, iA, jA, cells_after_A
                     )
@@ -468,7 +482,7 @@ class SharedLanesBot:
         wj: int,
         iA: int,
         jA: int,
-        cells_after_A: Iterator[tuple[int, int]],
+        cells_after_A: list[tuple[int, int]],
     ) -> None:
         tracer_C = board[iA - wi, jA - wj] == "."
         tracer_D = board[iA + vi, jA + vj] == "."
@@ -669,15 +683,13 @@ class SharedLanesBot:
                     self.thought_process.maybe_set_bulb(
                         sl.touching[0], sl.touching[1], step
                     )
-                self._dot_shared_lanes(board, sl, step)
+                self._dot_shared_lanes(sl, step)
             if sl.touching and balance == -1:
                 self.thought_process.maybe_set_bulb(
                     sl.touching[0], sl.touching[1], step
                 )
 
-    def _dot_shared_lanes(
-        self, board: np.ndarray, sl: SharedLanesPair, step: Step
-    ) -> None:
+    def _dot_shared_lanes(self, sl: SharedLanesPair, step: Step) -> None:
         """
         Dots cells along shared lanes other than the shared cells
 
@@ -685,20 +697,12 @@ class SharedLanesBot:
         """
         for i1, j1, i2, j2 in sl.shared_pairs:
             if j1 == j2:
-                cells_after_1 = self.thought_process.it_down(i1, j1)
-                cells_before_1 = self.thought_process.it_up(i1, j1)
+                cells = self.thought_process.lanes_bot.it_col(i1, j1)
             else:
-                cells_after_1 = self.thought_process.it_right(i1, j1)
-                cells_before_1 = self.thought_process.it_left(i1, j1)
-            for ix, jx in cells_after_1:
-                if board[ix, jx] in "-01234":
-                    break
-                elif (ix, jx) != (i2, j2):
+                cells = self.thought_process.lanes_bot.it_row(i1, j1)
+            for ix, jx in cells:
+                if (ix, jx) != (i1, j1) and (ix, jx) != (i2, j2):
                     self.thought_process.maybe_set_dot(ix, jx, step)
-            for ix, jx in cells_before_1:
-                if board[ix, jx] in "-01234":
-                    break
-                self.thought_process.maybe_set_dot(ix, jx, step)
 
 
 def check_number(board: np.ndarray) -> list[tuple[int, int]]:
@@ -835,30 +839,6 @@ class ThoughtProcess:
             for i in range(1, self.board.shape[0] - 1)
             for j in range(1, self.board.shape[1] - 1)
         ]
-
-    def it_up(self, i: int, j: int) -> Iterator[tuple[int, int]]:
-        """
-        Iterator of cells above (i, j)
-        """
-        return zip_longest(range(i - 1, 0, -1), [], fillvalue=j)
-
-    def it_left(self, i: int, j: int) -> Iterator[tuple[int, int]]:
-        """
-        Iterator of cells to the left of (i, j)
-        """
-        return zip_longest([], range(j - 1, 0, -1), fillvalue=i)
-
-    def it_down(self, i: int, j: int) -> Iterator[tuple[int, int]]:
-        """
-        Iterator of cells below (i, j)
-        """
-        return zip_longest(range(i + 1, np.size(self.board, 0) - 1), [], fillvalue=j)
-
-    def it_right(self, i: int, j: int) -> Iterator[tuple[int, int]]:
-        """
-        Iterator of cells to the right of (i, j)
-        """
-        return zip_longest([], range(j + 1, np.size(self.board, 1) - 1), fillvalue=i)
 
     def apply_methods(  # noqa: C901
         self,
