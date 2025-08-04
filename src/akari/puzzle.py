@@ -781,6 +781,8 @@ class ThoughtProcess:
             self.shared_lanes_bot = SharedLanesBot(self)
         self.solution_steps = []
         self.cost = 0.0
+        self.guess_and_check_last_i = 0
+        self.guess_and_check_last_j = 1
 
     def __copy__(self) -> "ThoughtProcess":
         cls = self.__class__
@@ -1537,39 +1539,49 @@ class ThoughtProcess:
         Guesses at every blank cell and uses apply_methods to eliminate impossible
         options.
         """
-        gacbc = 1.0  # guess_and_check base cost
         level_to_use = min(level, 8)
-        for i, j in zip(
-            *np.asarray(self.board == ".", dtype=int).nonzero(), strict=True
-        ):
-            i = int(i)
-            j = int(j)
+        j = self.guess_and_check_last_j
+        for i in range(self.guess_and_check_last_i + 1, self.board.shape[0]):
             if self.board[i, j] == ".":
-                try_tp_dot = self.__copy__()
-                try_tp_dot.maybe_set_dot(
-                    i, j, Step("guess_and_check_guess", cost=gacbc)
-                )
-                try_tp_dot.apply_methods(level_to_use)
-                if not try_tp_dot.check_unsolved():
-                    cost = sum(step.cost for step in try_tp_dot.solution_steps)
-                    self.maybe_set_bulb(i, j, Step("guess_and_check", cost=cost))
-                try_tp_bulb = self.__copy__()
-                try_tp_bulb.maybe_set_bulb(
-                    i, j, Step("guess_and_check_guess", cost=gacbc)
-                )
-                try_tp_bulb.apply_methods(level_to_use)
-                if not try_tp_bulb.check_unsolved():
-                    cost = sum(step.cost for step in try_tp_bulb.solution_steps)
-                    self.maybe_set_dot(i, j, Step("guess_and_check", cost=cost))
-                invariant = self._guess_and_check_handle_invariant(
-                    try_tp_dot, try_tp_bulb
-                )
-                if (
-                    not try_tp_dot.check_unsolved()
-                    or not try_tp_bulb.check_unsolved()
-                    or invariant
-                ):
+                if self._guess_and_check_loop_kernel(i, j, level_to_use):
+                    self.guess_and_check_last_i = i
+                    self.guess_and_check_last_j = j
                     return
+        for j in range(self.guess_and_check_last_j + 1, self.board.shape[1]):
+            for i in range(1, self.board.shape[0]):
+                if self.board[i, j] == ".":
+                    if self._guess_and_check_loop_kernel(i, j, level_to_use):
+                        self.guess_and_check_last_i = i
+                        self.guess_and_check_last_j = j
+                        return
+        for j in range(1, self.guess_and_check_last_j):
+            for i in range(1, self.board.shape[0]):
+                if self.board[i, j] == ".":
+                    if self._guess_and_check_loop_kernel(i, j, level_to_use):
+                        self.guess_and_check_last_i = i
+                        self.guess_and_check_last_j = j
+                        return
+
+    def _guess_and_check_loop_kernel(self, i: int, j: int, level_to_use: int) -> bool:
+        gacbc = 1.0  # guess_and_check base cost
+        try_tp_dot = self.__copy__()
+        try_tp_dot.maybe_set_dot(i, j, Step("guess_and_check_guess", cost=gacbc))
+        try_tp_dot.apply_methods(level_to_use)
+        if not try_tp_dot.check_unsolved():
+            cost = sum(step.cost for step in try_tp_dot.solution_steps)
+            self.maybe_set_bulb(i, j, Step("guess_and_check", cost=cost))
+        try_tp_bulb = self.__copy__()
+        try_tp_bulb.maybe_set_bulb(i, j, Step("guess_and_check_guess", cost=gacbc))
+        try_tp_bulb.apply_methods(level_to_use)
+        if not try_tp_bulb.check_unsolved():
+            cost = sum(step.cost for step in try_tp_bulb.solution_steps)
+            self.maybe_set_dot(i, j, Step("guess_and_check", cost=cost))
+        invariant = self._guess_and_check_handle_invariant(try_tp_dot, try_tp_bulb)
+        return (
+            not try_tp_dot.check_unsolved()
+            or not try_tp_bulb.check_unsolved()
+            or bool(invariant)
+        )
 
     def _guess_and_check_handle_invariant(
         self, try_tp_dot: "ThoughtProcess", try_tp_bulb: "ThoughtProcess"
