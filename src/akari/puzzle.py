@@ -1534,7 +1534,11 @@ class ThoughtProcess:
             [self.wrong_numbers, self.lit_bulb_pairs, self.unilluminatable_cells]
         )
 
-    def guess_and_check(self, level: int) -> None:
+    def guess_and_check(  # noqa: C901 TODO reduce complexity by making a list of
+        # points to cycle through
+        self,
+        level: int,
+    ) -> None:
         """
         Guesses at every blank cell and uses apply_methods to eliminate impossible
         options.
