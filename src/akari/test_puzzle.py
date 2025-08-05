@@ -1304,6 +1304,46 @@ def test_find_unilluminatable_cells() -> None:
     print_board(tp.board)
     assert set(tp.unilluminatable_cells) == {(1, 2), (5, 2)}
 
+    board2 = boardify_string(
+        cleandoc("""
+            -------
+            -+++++-
+            -.---.-
+            -.---.-
+            -.---.-
+            -.....-
+            -------
+            """)
+    )
+    tp = ThoughtProcess(board2)
+    tp.apply_methods(1)
+    print_board(tp.board)
+    assert set(tp.unilluminatable_cells) == {(1, 2), (1, 3), (1, 4)}
+
+    board3 = boardify_string(
+        cleandoc("""
+            -------
+            -+++++-
+            -+---.-
+            -+---.-
+            -+---.-
+            -+....-
+            -------
+            """)
+    )
+    tp = ThoughtProcess(board3)
+    tp.apply_methods(1)
+    print_board(tp.board)
+    assert set(tp.unilluminatable_cells) == {
+        (1, 1),
+        (1, 2),
+        (1, 3),
+        (1, 4),
+        (2, 1),
+        (3, 1),
+        (4, 1),
+    }
+
 
 def test_mark_dots_beyond_corners() -> None:
     pre = boardify_string(

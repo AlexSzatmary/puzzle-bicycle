@@ -871,8 +871,7 @@ class ThoughtProcess:
             self.new_mark[0].append((-1, -1, "."))
             for i, j in self.all_interior_ij():
                 self.find_wrong_numbers_at_cell(i, j)
-            for col in self.lanes_bot.cols:
-                self._check_this_col_unilluminatable(col)
+            self.find_unilluminatable_cells_init()
             # TODO check if following 2 lines affect correctness or speed
             # for row in self.lanes_bot.rows:
             #     self._check_this_col_unilluminatable(row)
@@ -1485,6 +1484,12 @@ class ThoughtProcess:
                 self.board[i_number, j_number]
             ) or n_free + n_bulbs_already < int(self.board[i_number, j_number]):
                 self.wrong_numbers.add((i_number, j_number))
+
+    def find_unilluminatable_cells_init(self) -> None:
+        for col in self.lanes_bot.cols:
+            col_cells = self.lanes_bot.lane_contents(self.board, *col)
+            if not (np.any(col_cells == ".") or np.any(col_cells == "#")):
+                self._check_this_col_unilluminatable(col)
 
     def find_unilluminatable_cells(self, i: int, j: int) -> None:
         """
