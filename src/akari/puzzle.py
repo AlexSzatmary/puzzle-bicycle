@@ -1065,7 +1065,7 @@ class ThoughtProcess:
                         # print_board(self.board)
                         # print(self.lanes_bot.col_free_cells(col))
                         self.maybe_set_bulb(
-                            self.lanes_bot.col_free_cells(self.board, col)[0],
+                            int(self.lanes_bot.col_free_cells(self.board, col)[0]),
                             j,
                             Step("mark_unique_bulbs"),
                         )
@@ -1073,7 +1073,7 @@ class ThoughtProcess:
                     elif n_col_free == 0 and n_row_free == 1:
                         self.maybe_set_bulb(
                             i,
-                            self.lanes_bot.row_free_cells(self.board, row)[0],
+                            int(self.lanes_bot.row_free_cells(self.board, row)[0]),
                             Step("mark_unique_bulbs"),
                         )
                     elif (
@@ -1104,14 +1104,14 @@ class ThoughtProcess:
                 ):
                     if n_col_free == 1 and n_row_free == 0:
                         self.maybe_set_bulb(
-                            self.lanes_bot.col_free_cells(self.board, col)[0],
+                            int(self.lanes_bot.col_free_cells(self.board, col)[0]),
                             j,
                             Step("mark_unique_bulbs"),
                         )
                     elif n_col_free == 0 and n_row_free == 1:
                         self.maybe_set_bulb(
                             i,
-                            self.lanes_bot.row_free_cells(self.board, row)[0],
+                            int(self.lanes_bot.row_free_cells(self.board, row)[0]),
                             Step("mark_unique_bulbs"),
                         )
                         return  # we must break out here because there is now a bulb
@@ -1124,20 +1124,6 @@ class ThoughtProcess:
                             Step("fill_holes"),
                         )
                         return  # we must break out here because there is now a bulb
-
-    def _fill_holes_and_mark_unique_bulbs_col(
-        self, col: tuple[int, int, int, int]
-    ) -> None:
-        iD, j, iE, _ = col
-        di_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
-        if len(di_free) == 1:
-            i_free = iD + di_free[0]
-            for i in range(iD, iE + 1):
-                if i != i_free:
-                    row = self.lanes_bot.row_by_ij(i, j)
-                    row_cells = self.lanes_bot.lane_contents(self.board, *row)
-                    if not np.any(row_cells == "#") and not np.any(row_cells == "."):
-                        self.maybe_set_bulb(i_free, j, Step("mark_unique_bulbs"))
 
     def fill_holes(self, i0: int, j0: int, mark: str) -> None:
         """
@@ -1344,8 +1330,8 @@ class ThoughtProcess:
                         == self.lanes_bot.col_id[i_free, j_free]
                     ):
                         self.maybe_set_dot(
-                            i_free,
-                            j_free,
+                            int(i_free),
+                            int(j_free),
                             Step("mark_dots_beyond_corners"),
                         )
 
@@ -1365,8 +1351,8 @@ class ThoughtProcess:
                         == self.lanes_bot.col_id[i_free, j_free]
                     ):
                         self.maybe_set_dot(
-                            i_free,
-                            j_free,
+                            int(i_free),
+                            int(j_free),
                             Step("mark_dots_beyond_corners"),
                         )
 
