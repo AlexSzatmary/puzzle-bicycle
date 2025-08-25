@@ -683,19 +683,21 @@ class SharedLanesBot:
                     self.thought_process.maybe_set_bulb(
                         sl.touching[0], sl.touching[1], step
                     )
-                self._dot_shared_lanes(sl, step)
+                self._dot_shared_lanes(active_lanes, step)
             if sl.touching and balance == -1:
                 self.thought_process.maybe_set_bulb(
                     sl.touching[0], sl.touching[1], step
                 )
 
-    def _dot_shared_lanes(self, sl: SharedLanesPair, step: Step) -> None:
+    def _dot_shared_lanes(
+        self, active_lanes: list[tuple[int, int, int, int]], step: Step
+    ) -> None:
         """
         Dots cells along shared lanes other than the shared cells
 
         Requires that i1 <= i2 and j1 <= j2
         """
-        for i1, j1, i2, j2 in sl.shared_pairs:
+        for i1, j1, i2, j2 in active_lanes:
             if j1 == j2:
                 cells = self.thought_process.lanes_bot.it_col(i1, j1)
             else:
