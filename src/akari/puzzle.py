@@ -1665,6 +1665,42 @@ class ThoughtProcess:
                 self.maybe_set_dot(*cheapest_choice[1])
 
 
+class DebugThoughtProcess(ThoughtProcess):
+    """
+    This class has not been tested and is a placeholder for some interesting code
+    used for debugging.
+
+    It could be worked into a debug tool which, given a known reference solution, can
+    tell the first solution step that gives an incorrect result.
+    """
+    def __init__(self, board: np.ndarray, *, get_reference: bool = True) -> None:
+        if not hasattr(self, "reference") and get_reference:
+            ref_tp = DebugThoughtProcess(self.board, get_reference=False)
+            ref_tp.reference = None
+            ref_tp.apply_methods(9, handle_invariant=False)
+            self.reference = ref_tp.board
+
+    def __copy__(self) -> "DebugThoughtProcess":
+        new = super.__copy__(self)
+        new.reference = self.reference
+        return new
+
+    def update_solution_steps(
+        self, i: int, j: int, mark: str, step: Step | None
+    ) -> None:
+        self.super().update_solution_steps(i, j, mark, step)
+        if self.reference is not None:
+            if (self.board[i, j] == "#" and self.reference[i, j] != "#") or (
+                self.board[i, j] != "#" and self.reference[i, j] == "#"
+            ):
+                print("THIS STEP IS BAD!!!")
+                print(step)
+                print_board(self.board)
+                print("***")
+                print_board(self.reference)
+                raise ValueError
+
+
 def do_best_to_get_a_non_wrong_solution(board: np.ndarray) -> np.ndarray:
     """
     If the board has a solution with the current state, return that solution
