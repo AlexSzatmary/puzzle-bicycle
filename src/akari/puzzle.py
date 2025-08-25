@@ -1539,12 +1539,19 @@ class ThoughtProcess:
         Guesses at every blank cell and uses apply_methods to eliminate impossible
         options.
         """
+        do_not_check_dot = np.zeros(np.shape(self.board), dtype=bool)
+        do_not_check_bulb = np.zeros(np.shape(self.board), dtype=bool)
         level_to_use = min(level, 8)
         j = self.guess_and_check_last_j
         for i in range(self.guess_and_check_last_i + 1, self.board.shape[0]):
             if self.board[i, j] == ".":
                 if self._guess_and_check_loop_kernel(
-                    i, j, level_to_use, handle_invariant=handle_invariant
+                    i,
+                    j,
+                    level_to_use,
+                    do_not_check_dot,
+                    do_not_check_bulb,
+                    handle_invariant=handle_invariant,
                 ):
                     self.guess_and_check_last_i = i
                     self.guess_and_check_last_j = j
@@ -1553,7 +1560,12 @@ class ThoughtProcess:
             for i in range(1, self.board.shape[0]):
                 if self.board[i, j] == ".":
                     if self._guess_and_check_loop_kernel(
-                        i, j, level_to_use, handle_invariant=handle_invariant
+                        i,
+                        j,
+                        level_to_use,
+                        do_not_check_dot,
+                        do_not_check_bulb,
+                        handle_invariant=handle_invariant,
                     ):
                         self.guess_and_check_last_i = i
                         self.guess_and_check_last_j = j
@@ -1562,36 +1574,74 @@ class ThoughtProcess:
             for i in range(1, self.board.shape[0]):
                 if self.board[i, j] == ".":
                     if self._guess_and_check_loop_kernel(
-                        i, j, level_to_use, handle_invariant=handle_invariant
+                        i,
+                        j,
+                        level_to_use,
+                        do_not_check_dot,
+                        do_not_check_bulb,
+                        handle_invariant=handle_invariant,
                     ):
                         self.guess_and_check_last_i = i
                         self.guess_and_check_last_j = j
                         return
 
     def _guess_and_check_loop_kernel(
-        self, i: int, j: int, level_to_use: int, *, handle_invariant: bool = True
+        self,
+        i: int,
+        j: int,
+        level_to_use: int,
+        do_not_check_dot: np.ndarray,
+        do_not_check_bulb: np.ndarray,
+        *,
+        handle_invariant: bool = True,
     ) -> bool:
         gacbc = 1.0  # guess_and_check base cost
-        try_tp_dot = self.__copy__()
-        try_tp_dot.reference = None
-        try_tp_dot.maybe_set_dot(i, j, Step("guess_and_check_guess", cost=gacbc))
-        try_tp_dot.apply_methods(level_to_use)
-        if not try_tp_dot.check_unsolved():
-            cost = sum(step.cost for step in try_tp_dot.solution_steps)
-            self.maybe_set_bulb(i, j, Step("guess_and_check", cost=cost))
-            return True
-        try_tp_bulb = self.__copy__()
-        try_tp_bulb.reference = None
-        try_tp_bulb.maybe_set_bulb(i, j, Step("guess_and_check_guess", cost=gacbc))
-        try_tp_bulb.apply_methods(level_to_use)
-        if not try_tp_bulb.check_unsolved():
-            cost = sum(step.cost for step in try_tp_bulb.solution_steps)
-            self.maybe_set_dot(i, j, Step("guess_and_check", cost=cost))
-            return True
-        if not handle_invariant:
+        try_tp_dot = None
+        try_tp_bulb = None
+        if not do_not_check_dot[i, j]:
+            try_tp_dot = self.__copy__()
+            try_tp_dot.reference = None
+            try_tp_dot.maybe_set_dot(i, j, Step("guess_and_check_guess", cost=gacbc))
+            try_tp_dot.apply_methods(level_to_use)
+            if not try_tp_dot.check_unsolved():
+                cost = sum(step.cost for step in try_tp_dot.solution_steps)
+                self.maybe_set_bulb(i, j, Step("guess_and_check", cost=cost))
+                return True
+            else:
+                self._handle_do_not_check(
+                    try_tp_dot, do_not_check_dot, do_not_check_bulb
+                )
+        if not do_not_check_bulb[i, j]:
+            try_tp_bulb = self.__copy__()
+            try_tp_bulb.reference = None
+            try_tp_bulb.maybe_set_bulb(i, j, Step("guess_and_check_guess", cost=gacbc))
+            try_tp_bulb.apply_methods(level_to_use)
+            if not try_tp_bulb.check_unsolved():
+                cost = sum(step.cost for step in try_tp_bulb.solution_steps)
+                self.maybe_set_dot(i, j, Step("guess_and_check", cost=cost))
+                return True
+            else:
+                self._handle_do_not_check(
+                    try_tp_bulb, do_not_check_dot, do_not_check_bulb
+                )
+
+        if not handle_invariant or try_tp_bulb is None or try_tp_dot is None:
             return False
         invariant = self._guess_and_check_handle_invariant(try_tp_dot, try_tp_bulb)
         return bool(invariant)
+
+    def _handle_do_not_check(
+        self,
+        try_tp: "ThoughtProcess",
+        do_not_check_dot: np.ndarray,
+        do_not_check_bulb: np.ndarray,
+    ) -> None:
+        for step in try_tp.solution_steps:
+            for i, j, mark in step.outputs:
+                if mark == "+":
+                    do_not_check_dot[i, j] = True
+                else:
+                    do_not_check_bulb[i, j] = True
 
     def _guess_and_check_handle_invariant(
         self, try_tp_dot: "ThoughtProcess", try_tp_bulb: "ThoughtProcess"
