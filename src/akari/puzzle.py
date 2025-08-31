@@ -1197,29 +1197,49 @@ class ThoughtProcess:
             self._mark_unique_bulbs_check_col(self.lanes_bot.col_by_ij(i0, j0))
             self._mark_unique_bulbs_check_row(self.lanes_bot.row_by_ij(i0, j0))
 
+    def col_is_all_dots(self, col: tuple[int, int, int, int]) -> bool:
+        col_cells = self.lanes_bot.lane_contents(self.board, *col)
+        return not np.any(col_cells == "#") and not np.any(col_cells == ".")
+
+    def row_is_all_dots(self, row: tuple[int, int, int, int]) -> bool:
+        row_cells = self.lanes_bot.lane_contents(self.board, *row)
+        return not np.any(row_cells == "#") and not np.any(row_cells == ".")
+
+    def col_needs_bulb(self, col: tuple[int, int, int, int]) -> bool:
+        iD, j, iE, _ = col
+        for i in range(iD, iE + 1):
+            row = self.lanes_bot.row_by_ij(i, j)
+            if self.row_is_all_dots(row):
+                return True
+        return False
+
+    def row_needs_bulb(self, row: tuple[int, int, int, int]) -> bool:
+        i, jA, _, jB = row
+        for j in range(jA, jB + 1):
+            col = self.lanes_bot.col_by_ij(i, j)
+            if self.col_is_all_dots(col):
+                return True
+        return False
+
     def _mark_unique_bulbs_check_col(self, col: tuple[int, int, int, int]) -> None:
         iD, j, iE, _ = col
         di_free = (self.board[iD : iE + 1, j] == ".").nonzero()[0]
         if len(di_free) == 1:
-            i_free = iD + di_free[0]
-            for i in range(iD, iE + 1):
-                if i != i_free:
-                    row = self.lanes_bot.row_by_ij(i, j)
-                    row_cells = self.lanes_bot.lane_contents(self.board, *row)
-                    if not np.any(row_cells == "#") and not np.any(row_cells == "."):
-                        self.maybe_set_bulb(i_free, j, Step("mark_unique_bulbs"))
+            if self.col_needs_bulb(col):
+                i_free = iD + di_free[0]
+                self.maybe_set_bulb(i_free, j, Step("mark_unique_bulbs"))
 
     def _mark_unique_bulbs_check_row(self, row: tuple[int, int, int, int]) -> None:
         i, jA, _, jB = row
         dj_free = (self.board[i, jA : jB + 1] == ".").nonzero()[0]
         if len(dj_free) == 1:
             j_free = jA + dj_free[0]
-            for j in range(jA, jB + 1):
-                if j != j_free:
-                    col = self.lanes_bot.col_by_ij(i, j)
-                    col_cells = self.lanes_bot.lane_contents(self.board, *col)
-                    if not np.any(col_cells == "#") and not np.any(col_cells == "."):
-                        self.maybe_set_bulb(i, j_free, Step("mark_unique_bulbs"))
+        i, jA, _, jB = row
+        dj_free = (self.board[i, jA : jB + 1] == ".").nonzero()[0]
+        if len(dj_free) == 1:
+            if self.row_needs_bulb(row):
+                j_free = jA + dj_free[0]
+                self.maybe_set_bulb(i, j_free, Step("mark_unique_bulbs"))
 
     def mark_dots_at_corners(self, i: int, j: int, mark: str) -> None:
         """
