@@ -558,9 +558,10 @@ class MainWindow(QMainWindow):
         self.methods_group = QActionGroup(self)
         self.methods_radios = []
         for level in range(10):
-            if 6 < level < 9:
+            n_levels = len(puzzle.LEVEL_NAMES) - 2
+            if n_levels < level < 9:
                 continue  # these levels are not yet implemented
-            if level <= 6:
+            if level <= n_levels:
                 name = puzzle.LEVEL_NAMES[level]
             elif level == 9:
                 name = puzzle.LEVEL_NAMES[-1]
@@ -789,7 +790,7 @@ class MainWindow(QMainWindow):
         # simplistic
         if self.auto_apply_methods_level + 2 == len(self.methods_group.actions()):
             self.auto_apply_methods_level = 9
-        if self.auto_apply_methods_level + 1 == len(self.methods_group.actions()):
+        elif self.auto_apply_methods_level + 1 == len(self.methods_group.actions()):
             self.auto_apply_methods_level = 10
         self.refresh_board()
 
