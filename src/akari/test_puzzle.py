@@ -676,6 +676,68 @@ def test_analyze_diagonally_adjacent_numbers(
         assert_boards_equal(tp.board, ref)
 
 
+def test_fish_2() -> None:
+    board_pairs_raw = [
+        (
+            """
+            ------
+            ---..-
+            -0+..-
+            -0+..-
+            ---..-
+            ---..-
+            ------
+            """,
+            """
+            ------
+            ---++-
+            -0+..-
+            -0+..-
+            ---++-
+            ---++-
+            ------
+            """,
+        ),
+        (
+            """
+            ---0----
+            ---+----
+            --.....-
+            -1#____-
+            --.....-
+            -----+--
+            -----0--
+            """,
+            """
+            ---0----
+            ---+----
+            --+.+.+-
+            -1#____-
+            --+.+.+-
+            -----+--
+            -----0--
+            """,
+        ),
+    ]
+    board_pairs = [
+        (boardify_string(cleandoc(pre)), boardify_string(cleandoc(post)))
+        for (pre, post) in board_pairs_raw
+    ]
+    for pre, post in board_pairs:
+        for pre_rotated, post_rotated in zip(
+            all_orientations(pre),
+            all_orientations(post),
+            strict=True,
+        ):
+            pre_rotated = transpose_board(pre_rotated)
+            post_rotated = transpose_board(post_rotated)
+            print_board(pre_rotated)
+            tp = ThoughtProcess(pre_rotated)
+            tp.fish_2(-1, -1, ".")
+            print_board(tp.board)
+            assert_boards_equal(tp.board, post_rotated)
+
+
 def test_find_wrong_numbers() -> None:
     for board in all_orientations(board_1_sol):
         tp = ThoughtProcess(board)

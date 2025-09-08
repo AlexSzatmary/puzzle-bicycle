@@ -194,6 +194,7 @@ COSTS = {
     "analyze_diagonally_adjacent_numbers": 2.0,
     "mark_bulbs_and_dots_at_shared_lanes": 3.0,
     "mark_dots_beyond_corners": 2.8,
+    "fish_2": 3.0,
 }
 
 HINT_MESSAGES = {
@@ -218,6 +219,7 @@ LEVEL_NAMES = [
     "+Mark Dots At Corners",
     "+Analyze Diagonal Numbers",
     "+Shared Lanes",
+    "+Fish (2)",
     "Brute Force",
 ]
 
@@ -897,6 +899,8 @@ class ThoughtProcess:
             elif mark_level == 6:
                 self.shared_lanes_bot.mark_bulbs_and_dots_at_shared_lanes(i, j, mark)
                 self.mark_dots_beyond_corners(i, j, mark)
+            elif mark_level == 7:
+                self.fish_2(i, j, mark)
             elif max_level == 9 and not any(self.new_mark):
                 # guess and check is orders of magnitude more expensive than other
                 # methods and should only be called if all else has been tried.
@@ -1206,6 +1210,9 @@ class ThoughtProcess:
         return not np.any(row_cells == "#") and not np.any(row_cells == ".")
 
     def col_needs_bulb(self, col: tuple[int, int, int, int]) -> bool:
+        """
+        Returns true if any row in this col is all dots.
+        """
         iD, j, iE, _ = col
         for i in range(iD, iE + 1):
             row = self.lanes_bot.row_by_ij(i, j)
@@ -1214,6 +1221,9 @@ class ThoughtProcess:
         return False
 
     def row_needs_bulb(self, row: tuple[int, int, int, int]) -> bool:
+        """
+        Returns true if any col in this row is all dots.
+        """
         i, jA, _, jB = row
         for j in range(jA, jB + 1):
             col = self.lanes_bot.col_by_ij(i, j)
@@ -1466,6 +1476,122 @@ class ThoughtProcess:
         self.maybe_set_dot(iC, jC - dj, step)
         self.maybe_set_bulb(iD + di, jD, step)
         self.maybe_set_bulb(iD, jD + dj, step)
+
+    def fish_2(self, i: int, j: int, mark: str) -> None:
+        """
+        If one column must have a bulb in one row or another, and a second column also
+        needs a bulb in one of those two rows, then no other column can have a bulb
+        in those rows.
+
+        For example, this,
+        ---0----
+        ---+----
+        --.....-
+        -1#____-
+        --.....-
+        -----+--
+        -----0--
+        becomes this,
+        ---0----
+        ---+----
+        --+.+.+-
+        -1#____-
+        --+.+.+-
+        -----+--
+        -----0--
+        with the rows above and below the 1 changing.
+
+        In Sudoku, the related method is also called "X-Wing", with variants for 3 or 4
+        rows being "swordfish" and "jellyfish". In Akari, I think it makes more sense
+        to just call the general technique "fish"; this method works for 2 rows so we
+        will call it fish_2.
+        """
+        if mark == ".":
+            for col in self.lanes_bot.cols:
+                self._fish_2_check_col(col)
+            for row in self.lanes_bot.rows:
+                self._fish_2_check_row(row)
+        elif mark == "+":
+            # if a cell just became dotted, that could be important for 2 reasons:
+            # 1. it might make a col have 2 free cells
+            # 2. it might make a col be all dots (so all intersecting rows should be
+            # checked)
+            # likewise for rows
+            col = self.lanes_bot.col_by_ij(i, j)
+            self._fish_2_check_col(col)
+            if self.col_is_all_dots(col):
+                for i1, j1 in self.lanes_bot.it_col(i, j):
+                    row = self.lanes_bot.row_by_ij(i1, j1)
+                    self._fish_2_check_row(row)
+
+            row = self.lanes_bot.row_by_ij(i, j)
+            self._fish_2_check_row(row)
+            if self.row_is_all_dots(row):
+                for i1, j1 in self.lanes_bot.it_row(i, j):
+                    col = self.lanes_bot.col_by_ij(i1, j1)
+                    self._fish_2_check_col(col)
+
+    def _fish_2_check_col(self, col: tuple[int, int, int, int]) -> None:
+        if self.col_needs_bulb(col):
+            col_free = self.lanes_bot.col_free_cells(self.board, col)
+            if col_free.size == 2:
+                self._fish_2_check_all_rows_at_col(col[1], col_free)
+
+    def _fish_2_check_row(self, row: tuple[int, int, int, int]) -> None:
+        if self.row_needs_bulb(row):
+            row_free = self.lanes_bot.row_free_cells(self.board, row)
+            if row_free.size == 2:
+                self._fish_2_check_all_cols_at_row(row[0], row_free)
+
+    def _fish_2_check_all_rows_at_col(self, j: int, col_free: np.ndarray) -> None:
+        i1 = int(col_free[0])
+        i2 = int(col_free[1])
+        row_1 = self.lanes_bot.row_by_ij(i1, j)
+        row_2 = self.lanes_bot.row_by_ij(i2, j)
+        for jx in range(max(row_1[1], row_2[1]), min(row_1[3], row_2[3])):
+            # the 1 and 3 indices give the starting j of each row, so we scan from the
+            # start of row_1 or row_2 and go until the end of whichever row ends first
+            if jx == j:
+                continue
+            colx = self.lanes_bot.col_by_ij(i1, jx)
+            if not self.col_needs_bulb(colx):
+                continue
+            if colx == self.lanes_bot.col_by_ij(i2, jx):
+                colx_free = self.lanes_bot.col_free_cells(self.board, colx)
+                if len(colx_free) == 2 and np.all(col_free == colx_free):
+                    step = Step("fish_2")
+                    for _, jy in self.lanes_bot.it_row(i1, jx):
+                        if jy != j and jy != jx:
+                            self.maybe_set_dot(i1, jy, step)
+                    for _, jy in self.lanes_bot.it_row(i2, jx):
+                        if jy != j and jy != jx:
+                            self.maybe_set_dot(i2, jy, step)
+                    return
+
+    def _fish_2_check_all_cols_at_row(self, i: int, row_free: np.ndarray) -> None:
+        j1 = int(row_free[0])
+        j2 = int(row_free[1])
+        col_1 = self.lanes_bot.col_by_ij(i, j1)
+        col_2 = self.lanes_bot.col_by_ij(i, j2)
+        for ix in range(max(col_1[0], col_2[0]), min(col_1[2], col_2[2])):
+            # the 1 and 3 indices give the starting j of each col, so we scan from the
+            # start of col_1 or col_2 and go until the end of whichever col ends first
+            if ix == i:
+                continue
+            rowx = self.lanes_bot.row_by_ij(ix, j1)
+            if not self.row_needs_bulb(rowx):
+                continue
+            if rowx == self.lanes_bot.row_by_ij(ix, j2):
+                rowx_free = self.lanes_bot.row_free_cells(self.board, rowx)
+                if len(rowx_free) == 2 and np.all(row_free == rowx_free):
+                    step = Step("fish_2")
+                    for iy, _ in self.lanes_bot.it_col(ix, j1):
+                        if iy != i and iy != ix:
+                            self.maybe_set_dot(iy, j1, step)
+                    for iy, _ in self.lanes_bot.it_col(ix, j2):
+                        if iy != i and iy != ix:
+                            self.maybe_set_dot(iy, j2, step)
+                    return
 
     def find_wrong_numbers(self, i: int, j: int) -> None:
         """
@@ -1743,6 +1869,7 @@ class DebugThoughtProcess(ThoughtProcess):
     It could be worked into a debug tool which, given a known reference solution, can
     tell the first solution step that gives an incorrect result.
     """
+
     def __init__(self, board: np.ndarray, *, get_reference: bool = True) -> None:
         if not hasattr(self, "reference") and get_reference:
             ref_tp = DebugThoughtProcess(self.board, get_reference=False)
