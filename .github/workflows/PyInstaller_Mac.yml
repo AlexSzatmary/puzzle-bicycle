@@ -6,6 +6,8 @@ jobs:
   pyinstaller-build:
     runs-on: macos-latest
     steps:
+    - name: Install gettext
+      run: brew reinstall gettext
     - name: Versatile PyInstaller
       # You may pin to the exact commit or the version.
       # uses: sayyid5416/pyinstaller@31a3d88828ae07b9658ecef15818d006b7333d8a
@@ -15,9 +17,9 @@ jobs:
         # - This file will be used to create executable.
         # - If .py: Generated spec file will also be uploaded as artifact
   
-        spec: src/akari/gui.spec # default is 
+        spec: 'src/akari/Puzzle Bicycle Akari.spec' # default is 
         # path of your requirements.txt file
-        requirements: requirements.txt # optional, default is 
+        # requirements: 'requirements.txt' # optional, default is 
         # Options to set for pyinstaller command Ex: options: '--onedir, -F'       (seperated by comma and space)
         # - Supported options: Check readme
       
@@ -25,20 +27,20 @@ jobs:
         # # Custom parameters for spec file. (won't work with .py spec file) Ex: spec_options: '--debug'
     
         # spec_options: # optional, default is 
-        # # specific python version you want to use
-        # python_ver: # optional, default is 3.10
+        # specific python version you want to use
+        python_ver: '3.13' # optional, default is 3.10
         # # specific python architecture you want to use
         # python_arch: # optional, default is x64
         # # specific pyinstaller version you want to use
         # pyinstaller_ver: # optional, default is 
         # # Path on runner-os, where generated executable files are stored
-        # exe_path: # optional, default is ./dist
+        exe_path: src/akari/dist # optional, default is ./dist
         # # If passed, uploads executable artifact  with this name. Else, artifact won't be uploaded.
-        # upload_exe_with_name: # optional, default is 
+        upload_exe_with_name: 'Puzzle Bicycle Akari Mac' # optional, default is 
         # # If true, perform a clean checkout; if false, skip cleaning. Cleaning will remove all existing local files not in the repository during checkout. If you use utilities like pyinstaller-versionfile, set this to false.
         # clean_checkout: # optional, default is true
         # # Whether to download Git-LFS files (passed to actions/checkout)
         # lfs: # optional
         # # Level of compression for archive (between 0 and 9). 0 = No compression, 9 = Max compression.
         # compression_level: # optional, default is 6
-              
+    
