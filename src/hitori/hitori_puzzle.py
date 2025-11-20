@@ -12,6 +12,8 @@ import numpy as np
 SHADED = "#"
 UNSHADED = "+"
 UNKNOWN = "."
+ORTHO_DIRS = [(1, 0), (0, -1), (-1, 0), (0, 1)]
+DIAG_DIRS = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
 
 
 COSTS = {
@@ -175,7 +177,7 @@ def swap_state_shaded(state: State) -> State:
 
 
 def search_base(
-    puzzle: Puzzle, *, depth: int = 2, budget: float = 10.
+    puzzle: Puzzle, *, depth: int = 2, budget: float = 10.0
 ) -> tuple[Puzzle, Proof | None, list[Step]]:
     steps = []
     # hot = set() # TODO add hot set checking for base
@@ -304,7 +306,6 @@ def _search_handle_contradiction(
 class NoShadedAdjacent(Constraint):
     def __init__(self, puzzle: Puzzle) -> None:
         super().__init__(puzzle)
-        self.implications = []
 
     def check(
         self, new_moves: list[State]
@@ -340,7 +341,7 @@ class NoShadedAdjacent(Constraint):
             return (
                 ProofConstraintContradiction(
                     [(var, SHADED) for var in shaded_adjacent],
-                    "Adjacent cells are shaded",
+                    "Some shaded cells are adjacent.",
                 ),
                 [],
             )
@@ -349,6 +350,158 @@ class NoShadedAdjacent(Constraint):
                 ProofConstraintContradiction([], ""),
                 [(var, SHADED) for var in hot],
             )
+
+
+class AllUnshadedOrthogonallyConnected(Constraint):
+    def __init__(self, puzzle: Puzzle) -> None:
+        super().__init__(puzzle)
+
+    def check(
+        self, new_moves: list[State]
+    ) -> tuple[ProofConstraintContradiction, list[State]]:
+        nodes_in_loops, hot_var = self._find_loops_at_ij(new_moves)
+        if nodes_in_loops:
+            return (
+                ProofConstraintContradiction(
+                    [(var, SHADED) for var in nodes_in_loops],
+                    "The unshaded cells are divided.",
+                ),
+                [],
+            )
+        else:
+            return (
+                ProofConstraintContradiction([], ""),
+                [(var, SHADED) for var in hot_var],
+            )
+
+    def _find_loops_at_ij(
+        self, new_moves: list[State]
+    ) -> tuple[list[Variable], list[Variable]]:
+        loop_cells = []
+        moves_in_loops = []
+        hot_var = []
+        nrows = self.puzzle.board.shape[0]
+        ncols = self.puzzle.board.shape[1]
+        for (i, j), value in new_moves:
+            if value != SHADED:
+                continue
+            print(self.puzzle.board)
+            # branches = []  # see definition in _trace_graph
+            at_edge = i == 0 or j == 0 or i == nrows - 1 or j == ncols - 1
+
+            if (i, j) in loop_cells:
+                moves_in_loops.append((i, j))
+                continue
+
+            new_loop_cells, new_hot = self._trace_graph(
+                [(i, j, i, j, [(i, j)])],
+                # [(i + di, j + dj, i, j, [(i, j)]) for (di, dj) in DIAG_DIRS],
+                start_at_edge=at_edge,
+            )
+
+            if new_loop_cells:
+                moves_in_loops.append((i, j))
+                loop_cells.extend(new_loop_cells)
+            hot_var.extend(new_hot)
+
+            # # The following if statements are repetitive but I am pretty sure that
+            # # unrolling them rather than looping is easier to get right (due to the
+            # # need to bounds check) and will have a worthwhile perf advantage
+            # if i > 0 and j > 0:
+            #     if self.puzzle.board[i - 1, j - 1] == SHADED:
+            #         branches.append((i - 1, j - 1, i, j, [(i, j)]))
+            #     elif self.puzzle.board[i - 1, j - 1] == UNKNOWN:
+            #         hot_var.append((i - 1, j - 1))
+            # if i < nrows - 1 and j > 0:
+            #     if self.puzzle.board[i + 1, j - 1] == SHADED:
+            #         branches.append((i + 1, j - 1, i, j, [(i, j)]))
+            #     elif self.puzzle.board[i + 1, j - 1] == UNKNOWN:
+            #         hot_var.append((i + 1, j - 1))
+            # if i > 0 and j < ncols - 1:
+            #     if self.puzzle.board[i - 1, j + 1] == SHADED:
+            #         branches.append((i - 1, j + 1, i, j, [(i, j)]))
+            #     elif self.puzzle.board[i - 1, j + 1] == UNKNOWN:
+            #         hot_var.append((i - 1, j + 1))
+            # if i < nrows - 1 and j < ncols - 1:
+            #     if self.puzzle.board[i + 1, j + 1] == SHADED:
+            #         branches.append((i + 1, j + 1, i, j, [(i, j)]))
+            #     elif self.puzzle.board[i + 1, j + 1] == UNKNOWN:
+            #         hot_var.append((i + 1, j + 1))
+            # if len(branches) > 1 or (len(branches) > 0 and at_edge):
+            #     new_loop_cells, new_hot = self._trace_graph(
+            #         branches, start_at_edge=at_edge
+            #     )
+            #     if new_loop_cells:
+            #         moves_in_loops.append((i, j))
+            #         loop_cells.extend(new_loop_cells)
+            #     hot_var.extend(new_hot)
+        return moves_in_loops, list(set(hot_var))
+
+    def _trace_graph(  # noqa: C901 There is a lot of necessarily repetitive code
+        self,
+        branches: list[tuple[int, int, int, int, list[tuple[int, int]]]],
+        *,
+        start_at_edge: bool,
+    ) -> tuple[list[Variable], list[Variable]]:
+        """
+        Each "branch" is a tuple of the i and j for the next cell to check, the i and j
+        for the cell that led to this cell being checked, and the list of cells that the
+        branch has already passed through.
+        """
+        loop_cells = []
+        cells_on_edge_path = []
+        seen = {(branch[0], branch[1]) for branch in branches}
+        seen.add((branches[0][2], branches[0][2]))  # also add original move
+        nrows = self.puzzle.board.shape[0]
+        ncols = self.puzzle.board.shape[1]
+        hot_var = []
+        edge_contacts = int(start_at_edge)
+        true_at_start = True
+        # To be on a loop, the new_move must touch two branches (that it might connect)
+        # or one branch and the perimeter of the board
+        while (
+            true_at_start
+            or (not start_at_edge and len(branches) > 1)
+            or (start_at_edge and branches)
+        ):
+            true_at_start = False
+            new_branches = []
+            for i0, j0, from_i, from_j, path in branches:
+                print((i0, j0, from_i, from_j, path))
+                for di, dj in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
+                    i = i0 + di
+                    j = j0 + dj
+                    print("  (i, j)", (i, j))
+                    if i == from_i and j == from_j:  # don't double-check cells
+                        continue
+                    if i < 0 or j < 0 or i > nrows - 1 or j > ncols - 1:
+                        continue
+                    if self.puzzle.board[i, j] == UNKNOWN:
+                        hot_var.append((i, j))
+                        continue
+                    elif self.puzzle.board[i, j] == UNSHADED:
+                        continue
+                    if i == 0 or j == 0 or i == nrows - 1 or j == ncols - 1:
+                        edge_contacts += 1
+                        cells_on_edge_path.extend(path)
+                        continue
+                    if (i, j) in seen:
+                        loop_cells.extend(path)
+                        continue
+                    new_branches.append((i, j, i0, j0, [*path, (i, j)]))
+                    # for di2, dj2 in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
+                    #     i2 = i + di2
+                    #     j2 = j = dj2
+                    #     print("    (i2, j2)", (i2, j2))
+                    #     if self.puzzle.board[i2, j2] == SHADED:
+                    #         new_branches.append((i2, j2, i, j, [*path, (i2, j2)]))
+                    #     elif self.puzzle.board[i2, j2] == UNKNOWN:
+                    #         hot_var.append((i2, j2))
+            branches = new_branches
+        if edge_contacts > 1:
+            loop_cells.extend(cells_on_edge_path)
+
+        return loop_cells, hot_var
 
 
 # class Trees:
@@ -395,22 +548,17 @@ class NoShadedAdjacent(Constraint):
 #         return ([], [])
 
 
-class OrthogonallyConnected(Constraint):
-    def __init__(self) -> None:
-        pass
-        # make to do next list
-
-    def check_for_conflict(
-        self, puzzle: Puzzle, steps: list[Step]
-    ) -> tuple[list, list]:
-        return ([], [])
-
-
 # ***** Hitori
 class HitoriPuzzle(Puzzle):
     def __init__(self, numbers: np.ndarray, board: np.ndarray) -> None:
         self.numbers = numbers
-        super().__init__(board, [NoShadedAdjacent])
+        super().__init__(
+            board,
+            [
+                NoShadedAdjacent,
+                AllUnshadedOrthogonallyConnected,
+            ],
+        )
 
     def __copy__(self) -> "HitoriPuzzle":
         new = cast("HitoriPuzzle", super().__copy__())
@@ -470,16 +618,6 @@ def main(argv: list | None = None) -> None:
     #     with open(file) as hin:
     #         hitori_puzzle = load_pzprv3(hin.read())
     #         hitori_puzzle.print_board()
-    puzzle = hitori_puzzle_from_strings(
-        """
-        . .
-        . .
-        """,
-        """
-        1 1
-        1 2
-        """,
-    )
     # puzzle.apply_state(((0, 0), SHADED))
     # print(puzzle.board)
     # puzzle.print_board()
@@ -495,10 +633,62 @@ def main(argv: list | None = None) -> None:
     # print("***")
     # print(search(copy(puzzle), ((1, 1), SHADED), hot=set())[0])
     # puzzle.print_board()
-    print(search_base(puzzle))
-    puzzle.apply_state(((0, 0), SHADED))
-    puzzle.apply_state(((1, 1), SHADED))
-    print(search_base(puzzle))
+    # print(search_base(puzzle))
+    # puzzle.apply_state(((1, 1), SHADED))
+    # puzzle = hitori_puzzle_from_strings(
+    #     """
+    #     . #
+    #     . .
+    #     """,
+    #     """
+    #     1 1
+    #     1 2
+    #     """,
+    # )
+    # sb = search_base(puzzle)
+    # print(sb)
+    # print("*** FINAL ***")
+    # print(sb[0].board)
+    # print()
+
+    puzzle = hitori_puzzle_from_strings(
+        """
+        . . .
+        . . .
+        . . #
+        """,
+        """
+        1 1 3
+        1 2 4
+        5 6 7
+        """,
+    )
+    print(puzzle.board)
+    sb = search_base(puzzle)
+    print(sb)
+    print("*** FINAL ***")
+    print(sb[0].board)
+    print()
+
+    puzzle = hitori_puzzle_from_strings(
+        """
+        . . . .
+        # . . .
+        . . . .
+        . . # .
+        """,
+        """
+        1 1 3
+        1 2 4
+        5 6 7
+        """,
+    )
+    print(puzzle.board)
+    sb = search_base(puzzle)
+    print(sb)
+    print("*** FINAL ***")
+    print(sb[0].board)
+    print()
 
 
 if __name__ == "__main__":
