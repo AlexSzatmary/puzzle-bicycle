@@ -238,7 +238,7 @@ def search(
     proof, new_hot = puzzle.apply_constraints([this_move])
     if proof:
         return _search_handle_contradiction(steps, this_move, proof)
-    hot.union(new_hot)
+    hot.update(new_hot)
 
     checked = set()
     while cost < budget and hot:
@@ -569,7 +569,7 @@ class EqualNumbersRowColumn(Constraint):
             if value != UNSHADED:
                 continue
             if self._equal_by_cols[i][j].size:
-                if np.sum(board[self._equal_by_cols[i][j]] == UNSHADED) > 1:
+                if np.sum(board[self._equal_by_cols[i][j], j] == UNSHADED) > 1:
                     for k in self._equal_by_cols[i][j]:
                         if board[k, j] == UNSHADED:
                             equal_numbers.append((int(k), j))
@@ -578,7 +578,7 @@ class EqualNumbersRowColumn(Constraint):
                         if board[k, j] == UNKNOWN:
                             hot_var.append((int(k), j))
             if self._equal_by_rows[i][j].size:
-                if np.sum(board[self._equal_by_rows[i][j]] == UNSHADED) > 1:
+                if np.sum(board[i, self._equal_by_rows[i][j]] == UNSHADED) > 1:
                     for k in self._equal_by_rows[i][j]:
                         if board[i, k] == UNSHADED:
                             equal_numbers.append((i, int(k)))
@@ -699,11 +699,12 @@ def step_list_repr(step_list: list[Step]) -> str:
 def main(argv: list | None = None) -> None:
     if argv is None:
         argv = sys.argv
-    # for file in argv[1:]:
-    #     print(file)
-    #     with open(file) as hin:
-    #         hitori_puzzle = load_pzprv3(hin.read())
-    #         hitori_puzzle.print_board()
+    for file in argv[1:]:
+        print(file)
+        with open(file) as hin:
+            hitori_puzzle = load_pzprv3(hin.read())
+            hitori_puzzle.print_board()
+            puzzle = hitori_puzzle
     # puzzle.apply_state(((0, 0), SHADED))
     # print(puzzle.board)
     # puzzle.print_board()
@@ -741,12 +742,12 @@ def main(argv: list | None = None) -> None:
     #     """
     #     . . .
     #     . . .
-    #     . . #
+    #     . . .
     #     """,
     #     """
     #     1 1 3
-    #     1 2 4
-    #     5 6 7
+    #     1 3 1
+    #     2 2 1
     #     """,
     # )
     # print(puzzle.board)
@@ -776,23 +777,26 @@ def main(argv: list | None = None) -> None:
     # print(sb[0].board)
     # print()
 
-    puzzle = hitori_puzzle_from_strings(
-        """
-        . .
-        . .
-        """,
-        """
-        1 1
-        1 2
-        """,
-    )
+    # puzzle = hitori_puzzle_from_strings(
+    #     """
+    #     . .
+    #     . .
+    #     """,
+    #     """
+    #     1 1
+    #     1 2
+    #     """,
+    # )
     sb = search_base(puzzle)
+    print("*** PROOF FOR WHY CONTRADICTORY ***")
     print(sb[1])
     print()
+    print("*** STEPS ***")
     print(sb[2])
     print()
     print("*** FINAL ***")
     print(sb[0].board)
+    sb[0].print_board()
     print(f"Solved: {not bool(sb[1])}")
     print()
 
