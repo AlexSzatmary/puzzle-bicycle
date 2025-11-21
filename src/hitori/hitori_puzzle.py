@@ -22,6 +22,10 @@ COSTS = {
 
 
 # ***** General
+def uniq(a: list) -> list:
+    return list(set(a))
+
+
 class Puzzle:
     def __init__(
         self, board: np.ndarray, constraint_classes: list[type["Constraint"]]
@@ -213,7 +217,7 @@ def search_base(
         guesses = puzzle.guesses_to_make()
         new_steps = []
 
-    return puzzle, None, []
+    return puzzle, None, steps
 
 
 def search(
@@ -504,6 +508,87 @@ class AllUnshadedOrthogonallyConnected(Constraint):
         return loop_cells, hot_var
 
 
+class EqualNumbersRowColumn(Constraint):
+    def __init__(self, puzzle: Puzzle) -> None:
+        super().__init__(puzzle)
+        nrows = puzzle.board.shape[0]
+        ncols = puzzle.board.shape[1]
+        # empty list is only used for numbers that do not share a row or column so this
+        # is the rare case in which initializing a list of lists with * sense.
+        null = np.array([], dtype=int)
+        self._equal_by_cols: np.ndarray = [[null] * ncols for _i in range(nrows)]
+        self._equal_by_rows: np.ndarray = [[null] * ncols for _i in range(nrows)]
+        for i in range(nrows):
+            for j in range(ncols):
+                if not self._equal_by_cols[i][j].size:
+                    sames = (puzzle.numbers[i:, j] == puzzle.numbers[i, j]).nonzero()[
+                        0
+                    ] + i
+                    if sames.size > 1:
+                        for same in sames:
+                            self._equal_by_cols[same][j] = sames
+                if not self._equal_by_rows[i][j].size:
+                    sames = (puzzle.numbers[i, j:] == puzzle.numbers[i, j]).nonzero()[
+                        0
+                    ] + j
+                    if sames.size > 1:
+                        for same in sames:
+                            self._equal_by_rows[i][same] = sames
+
+    def __copy__(self) -> "Constraint":
+        new = super().__copy__()
+        new._equal_by_cols = self._equal_by_cols
+        new._equal_by_rows = self._equal_by_rows
+        return new
+
+    def check(
+        self, new_moves: list[State]
+    ) -> tuple[ProofConstraintContradiction, list[State]]:
+        equal_numbers, hot_var = self._find_unshaded_equal_numbers(new_moves)
+        if equal_numbers:
+            return (
+                ProofConstraintContradiction(
+                    [(var, UNSHADED) for var in equal_numbers],
+                    "There are equal numbers in a row or column.",
+                ),
+                [],
+            )
+        else:
+            return (
+                ProofConstraintContradiction([], ""),
+                [(var, SHADED) for var in hot_var],
+            )
+
+    def _find_unshaded_equal_numbers(  # noqa: C901 it's fine, a lot of logic is doubled for rows and cols
+        self, new_moves: list[State]
+    ) -> tuple[list[Variable], list[Variable]]:
+        board: np.ndarray = self.puzzle.board
+        equal_numbers = []
+        hot_var = []
+        for (i, j), value in new_moves:
+            if value != UNSHADED:
+                continue
+            if self._equal_by_cols[i][j].size:
+                if np.sum(board[self._equal_by_cols[i][j]] == UNSHADED) > 1:
+                    for k in self._equal_by_cols[i][j]:
+                        if board[k, j] == UNSHADED:
+                            equal_numbers.append((int(k), j))
+                else:
+                    for k in self._equal_by_cols[i][j]:
+                        if board[k, j] == UNKNOWN:
+                            hot_var.append((int(k), j))
+            if self._equal_by_rows[i][j].size:
+                if np.sum(board[self._equal_by_rows[i][j]] == UNSHADED) > 1:
+                    for k in self._equal_by_rows[i][j]:
+                        if board[i, k] == UNSHADED:
+                            equal_numbers.append((i, int(k)))
+                else:
+                    for k in self._equal_by_cols[i][j]:
+                        if board[i, k] == UNKNOWN:
+                            hot_var.append((i, int(k)))
+        return uniq(equal_numbers), uniq(hot_var)
+
+
 # class Trees:
 #     def __init__(self) -> None:
 #         self.trees_of_cells = {}
@@ -556,6 +641,7 @@ class HitoriPuzzle(Puzzle):
             board,
             [
                 NoShadedAdjacent,
+                EqualNumbersRowColumn,
                 AllUnshadedOrthogonallyConnected,
             ],
         )
@@ -651,43 +737,63 @@ def main(argv: list | None = None) -> None:
     # print(sb[0].board)
     # print()
 
-    puzzle = hitori_puzzle_from_strings(
-        """
-        . . .
-        . . .
-        . . #
-        """,
-        """
-        1 1 3
-        1 2 4
-        5 6 7
-        """,
-    )
-    print(puzzle.board)
-    sb = search_base(puzzle)
-    print(sb)
-    print("*** FINAL ***")
-    print(sb[0].board)
-    print()
+    # puzzle = hitori_puzzle_from_strings(
+    #     """
+    #     . . .
+    #     . . .
+    #     . . #
+    #     """,
+    #     """
+    #     1 1 3
+    #     1 2 4
+    #     5 6 7
+    #     """,
+    # )
+    # print(puzzle.board)
+    # sb = search_base(puzzle)
+    # print(sb)
+    # print("*** FINAL ***")
+    # print(sb[0].board)
+    # print()
+
+    # puzzle = hitori_puzzle_from_strings(
+    #     """
+    #     . . . .
+    #     # . . .
+    #     . . . .
+    #     . . # .
+    #     """,
+    #     """
+    #     1 1 3
+    #     1 2 4
+    #     5 6 7
+    #     """,
+    # )
+    # print(puzzle.board)
+    # sb = search_base(puzzle)
+    # print(sb)
+    # print("*** FINAL ***")
+    # print(sb[0].board)
+    # print()
 
     puzzle = hitori_puzzle_from_strings(
         """
-        . . . .
-        # . . .
-        . . . .
-        . . # .
+        . .
+        . .
         """,
         """
-        1 1 3
-        1 2 4
-        5 6 7
+        1 1
+        1 2
         """,
     )
-    print(puzzle.board)
     sb = search_base(puzzle)
-    print(sb)
+    print(sb[1])
+    print()
+    print(sb[2])
+    print()
     print("*** FINAL ***")
     print(sb[0].board)
+    print(f"Solved: {not bool(sb[1])}")
     print()
 
 
