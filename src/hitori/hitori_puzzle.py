@@ -171,7 +171,7 @@ class Constraint:
         self, new_moves: list[State]
     ) -> tuple[ProofConstraintContradiction, list[State]]:
         """
-        A check takes a list of moves. It applies those moves and
+        A check takes a list of moves.
 
         * if there's a contradiction, returns a proof of why.
         * if there's no contradiction, return a list of good next moves to try that are
@@ -307,7 +307,7 @@ class NoShadedAdjacent(Constraint):
     def __init__(self, puzzle: Puzzle) -> None:
         super().__init__(puzzle)
 
-    def check(
+    def check(  # noqa: C901 repetitive complexity, nbd
         self, new_moves: list[State]
     ) -> tuple[ProofConstraintContradiction, list[State]]:
         shaded_adjacent = set()
@@ -315,28 +315,30 @@ class NoShadedAdjacent(Constraint):
         for (i, j), value in new_moves:
             if value != SHADED:
                 continue
-            if i > 0 and self.puzzle.board[i - 1, j] == SHADED:
-                shaded_adjacent.add((i, j))
-                shaded_adjacent.add((i - 1, j))
-                hot.add((i - 1, j))
-            if (
-                i < self.puzzle.board.shape[0] - 1
-                and self.puzzle.board[i + 1, j] == SHADED
-            ):
-                shaded_adjacent.add((i, j))
-                shaded_adjacent.add((i + 1, j))
-                hot.add((i + 1, j))
-            if j > 0 and self.puzzle.board[i, j - 1] == SHADED:
-                shaded_adjacent.add((i, j))
-                shaded_adjacent.add((i, j - 1))
-                hot.add((i, j - 1))
-            if (
-                j < self.puzzle.board.shape[1] - 1
-                and self.puzzle.board[i, j + 1] == SHADED
-            ):
-                shaded_adjacent.add((i, j))
-                shaded_adjacent.add((i, j + 1))
-                hot.add((i, j + 1))
+            if i > 0:
+                if self.puzzle.board[i - 1, j] == SHADED:
+                    shaded_adjacent.add((i, j))
+                    shaded_adjacent.add((i - 1, j))
+                else:
+                    hot.add((i - 1, j))
+            if i < self.puzzle.board.shape[0] - 1:
+                if self.puzzle.board[i + 1, j] == SHADED:
+                    shaded_adjacent.add((i, j))
+                    shaded_adjacent.add((i + 1, j))
+                else:
+                    hot.add((i + 1, j))
+            if j > 0:
+                if self.puzzle.board[i, j - 1] == SHADED:
+                    shaded_adjacent.add((i, j))
+                    shaded_adjacent.add((i, j - 1))
+                else:
+                    hot.add((i, j - 1))
+            if j < self.puzzle.board.shape[1] - 1:
+                if self.puzzle.board[i, j + 1] == SHADED:
+                    shaded_adjacent.add((i, j))
+                    shaded_adjacent.add((i, j + 1))
+                else:
+                    hot.add((i, j + 1))
         if shaded_adjacent:
             return (
                 ProofConstraintContradiction(
@@ -535,7 +537,7 @@ class EqualNumbersRowColumn(Constraint):
                         if board[i, k] == UNSHADED:
                             equal_numbers.append((i, int(k)))
                 else:
-                    for k in self._equal_by_cols[i][j]:
+                    for k in self._equal_by_rows[i][j]:
                         if board[i, k] == UNKNOWN:
                             hot_var.append((i, int(k)))
         return uniq(equal_numbers), uniq(hot_var)
