@@ -2,6 +2,7 @@
 # genres are supported but for now all the backend is going in here.
 import math
 import sys
+import textwrap
 from copy import copy
 from dataclasses import dataclass
 from inspect import cleandoc
@@ -72,6 +73,9 @@ class Puzzle:
                     guesses.append(((i, j), SHADED))
                     guesses.append(((i, j), UNSHADED))
         return guesses
+
+    def any_unknown(self) -> bool:
+        return bool(np.any(self.board == UNKNOWN))
 
 
 # ***** Constraint class
@@ -202,6 +206,7 @@ def search_base(
             for step in new_steps:
                 for consequent in step.consequents:
                     puzzle.apply_state(consequent)
+                    puzzle.print_just_board(indent=(5 - depth) * 2)
                 proof, _new_hot = puzzle.apply_constraints(step.consequents)
                 if proof:
                     return (puzzle, proof, steps)
@@ -214,6 +219,7 @@ def search_base(
             allowed_budget = 2.0
         else:
             allowed_budget += 1
+        print(f"allowed_budget {allowed_budget}")
         guesses = puzzle.guesses_to_make()
         new_steps = []
 
@@ -255,6 +261,8 @@ def search(
         for step in new_steps:
             for consequent in step.consequents:
                 puzzle.apply_state(consequent)
+                puzzle.print_just_board(indent=(5 - depth) * 2)
+                print()
             proof, new_hot = puzzle.apply_constraints(step.consequents)
             if proof:
                 return _search_handle_contradiction(steps, this_move, proof)
@@ -389,7 +397,6 @@ class AllUnshadedOrthogonallyConnected(Constraint):
         for (i, j), value in new_moves:
             if value != SHADED:
                 continue
-            print(self.puzzle.board)
             # branches = []  # see definition in _trace_graph
             at_edge = i == 0 or j == 0 or i == nrows - 1 or j == ncols - 1
 
@@ -471,11 +478,9 @@ class AllUnshadedOrthogonallyConnected(Constraint):
             true_at_start = False
             new_branches = []
             for i0, j0, from_i, from_j, path in branches:
-                print((i0, j0, from_i, from_j, path))
                 for di, dj in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
                     i = i0 + di
                     j = j0 + dj
-                    print("  (i, j)", (i, j))
                     if i == from_i and j == from_j:  # don't double-check cells
                         continue
                     if i < 0 or j < 0 or i > nrows - 1 or j > ncols - 1:
@@ -660,6 +665,14 @@ class HitoriPuzzle(Puzzle):
             for (number_row, value_row) in zip(self.numbers, self.board, strict=False)
         )
 
+    def print_just_board(self, indent: int = 0) -> None:
+        print(
+            textwrap.indent(
+                "\n".join("".join(value_row) for value_row in self.board), " " * indent
+            )
+        )
+        print()
+
 
 def hitori_puzzle_from_strings(board_str: str, numbers_str: str) -> HitoriPuzzle:
     return HitoriPuzzle(
@@ -696,6 +709,21 @@ def step_list_repr(step_list: list[Step]) -> str:
     return "\n".join(repr(step) for step in step_list)
 
 
+def verbose_output(puzzle: Puzzle) -> None:
+    sb = search_base(puzzle)
+    print("*** PROOF FOR WHY CONTRADICTORY ***")
+    print(sb[1])
+    print()
+    print("*** STEPS ***")
+    print(sb[2])
+    print()
+    print("*** FINAL ***")
+    print(sb[0].board)
+    sb[0].print_board()
+    print(f"Solved: {not bool(sb[1]) and not puzzle.any_unknown()}")
+    print()
+
+
 def main(argv: list | None = None) -> None:
     if argv is None:
         argv = sys.argv
@@ -705,6 +733,7 @@ def main(argv: list | None = None) -> None:
             hitori_puzzle = load_pzprv3(hin.read())
             hitori_puzzle.print_board()
             puzzle = hitori_puzzle
+            verbose_output(puzzle)
     # puzzle.apply_state(((0, 0), SHADED))
     # print(puzzle.board)
     # puzzle.print_board()
@@ -787,18 +816,6 @@ def main(argv: list | None = None) -> None:
     #     1 2
     #     """,
     # )
-    sb = search_base(puzzle)
-    print("*** PROOF FOR WHY CONTRADICTORY ***")
-    print(sb[1])
-    print()
-    print("*** STEPS ***")
-    print(sb[2])
-    print()
-    print("*** FINAL ***")
-    print(sb[0].board)
-    sb[0].print_board()
-    print(f"Solved: {not bool(sb[1])}")
-    print()
 
 
 if __name__ == "__main__":
