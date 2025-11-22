@@ -189,12 +189,10 @@ def search_base(
 ) -> tuple[Puzzle, Proof | None, list[Step]]:
     steps = []
     # hot = set() # TODO add hot set checking for base
-    # flag = False  # flag will be set if a solution is set or there is a stall
-    # while not flag:  # TODO give some condition based on find solution or stall
     allowed_budget = 2.0
     guesses = puzzle.guesses_to_make()
     new_steps = []
-    while allowed_budget < budget:
+    while allowed_budget < budget and puzzle.any_unknown():
         for guess in guesses:
             new_steps, _implications = search(
                 copy(puzzle),
@@ -210,8 +208,6 @@ def search_base(
                 proof, _new_hot = puzzle.apply_constraints(step.consequents)
                 if proof:
                     return (puzzle, proof, steps)
-                # checked.difference_update(new_hot)
-                # hot.update(new_hot)  # make sure we don't get an infinite loop
                 steps.append(step)
             if new_steps:
                 break  # reset variables and budget
@@ -270,25 +266,6 @@ def search(
             hot.update(new_hot)  # make sure we don't get an infinite loop
             steps.append(step)
             # TODO add costs as a thing for proofs?
-
-    # change board state with new moves
-
-    # when constraints are applied to a new move, they either fail and give a proof or
-    # succeed and put State on the hot list
-
-    # apply implications until contradiction or we run out. Implications use up budget.
-    # check constraints aggressively as we do that
-    # if False, return proof
-    # postpone invariants. if invariant detected, return proof
-
-    # At the depth = 0 level,
-    # * budget can be huge but the next levels get budget doled
-    #   out in a stingy way
-    # * new_move should be null or something.
-    # Or maybe we do need a different function for depth = 0.
-
-    # this should really be a uniform cost search type of thing; depth is there just in
-    # case and shallowish depth (5?) should be plenty
 
     # TODO this should only return steps if a contradiction is found, an implication is
     # found; otherwise, return invariants
@@ -397,7 +374,6 @@ class AllUnshadedOrthogonallyConnected(Constraint):
         for (i, j), value in new_moves:
             if value != SHADED:
                 continue
-            # branches = []  # see definition in _trace_graph
             at_edge = i == 0 or j == 0 or i == nrows - 1 or j == ncols - 1
 
             if (i, j) in loop_cells:
@@ -406,7 +382,6 @@ class AllUnshadedOrthogonallyConnected(Constraint):
 
             new_loop_cells, new_hot = self._trace_graph(
                 [(i, j, i, j, [(i, j)])],
-                # [(i + di, j + dj, i, j, [(i, j)]) for (di, dj) in DIAG_DIRS],
                 start_at_edge=at_edge,
             )
 
@@ -415,37 +390,6 @@ class AllUnshadedOrthogonallyConnected(Constraint):
                 loop_cells.extend(new_loop_cells)
             hot_var.extend(new_hot)
 
-            # # The following if statements are repetitive but I am pretty sure that
-            # # unrolling them rather than looping is easier to get right (due to the
-            # # need to bounds check) and will have a worthwhile perf advantage
-            # if i > 0 and j > 0:
-            #     if self.puzzle.board[i - 1, j - 1] == SHADED:
-            #         branches.append((i - 1, j - 1, i, j, [(i, j)]))
-            #     elif self.puzzle.board[i - 1, j - 1] == UNKNOWN:
-            #         hot_var.append((i - 1, j - 1))
-            # if i < nrows - 1 and j > 0:
-            #     if self.puzzle.board[i + 1, j - 1] == SHADED:
-            #         branches.append((i + 1, j - 1, i, j, [(i, j)]))
-            #     elif self.puzzle.board[i + 1, j - 1] == UNKNOWN:
-            #         hot_var.append((i + 1, j - 1))
-            # if i > 0 and j < ncols - 1:
-            #     if self.puzzle.board[i - 1, j + 1] == SHADED:
-            #         branches.append((i - 1, j + 1, i, j, [(i, j)]))
-            #     elif self.puzzle.board[i - 1, j + 1] == UNKNOWN:
-            #         hot_var.append((i - 1, j + 1))
-            # if i < nrows - 1 and j < ncols - 1:
-            #     if self.puzzle.board[i + 1, j + 1] == SHADED:
-            #         branches.append((i + 1, j + 1, i, j, [(i, j)]))
-            #     elif self.puzzle.board[i + 1, j + 1] == UNKNOWN:
-            #         hot_var.append((i + 1, j + 1))
-            # if len(branches) > 1 or (len(branches) > 0 and at_edge):
-            #     new_loop_cells, new_hot = self._trace_graph(
-            #         branches, start_at_edge=at_edge
-            #     )
-            #     if new_loop_cells:
-            #         moves_in_loops.append((i, j))
-            #         loop_cells.extend(new_loop_cells)
-            #     hot_var.extend(new_hot)
         return moves_in_loops, list(set(hot_var))
 
     def _trace_graph(  # noqa: C901 There is a lot of necessarily repetitive code
@@ -498,14 +442,6 @@ class AllUnshadedOrthogonallyConnected(Constraint):
                         loop_cells.extend(path)
                         continue
                     new_branches.append((i, j, i0, j0, [*path, (i, j)]))
-                    # for di2, dj2 in [(-1, -1), (-1, 1), (1, -1), (1, 1)]:
-                    #     i2 = i + di2
-                    #     j2 = j = dj2
-                    #     print("    (i2, j2)", (i2, j2))
-                    #     if self.puzzle.board[i2, j2] == SHADED:
-                    #         new_branches.append((i2, j2, i, j, [*path, (i2, j2)]))
-                    #     elif self.puzzle.board[i2, j2] == UNKNOWN:
-                    #         hot_var.append((i2, j2))
             branches = new_branches
         if edge_contacts > 1:
             loop_cells.extend(cells_on_edge_path)
@@ -564,7 +500,7 @@ class EqualNumbersRowColumn(Constraint):
                 [(var, SHADED) for var in hot_var],
             )
 
-    def _find_unshaded_equal_numbers(  # noqa: C901 it's fine, a lot of logic is doubled for rows and cols
+    def _find_unshaded_equal_numbers(  # noqa: C901 it's fine, a lot doubled logic
         self, new_moves: list[State]
     ) -> tuple[list[Variable], list[Variable]]:
         board: np.ndarray = self.puzzle.board
@@ -592,50 +528,6 @@ class EqualNumbersRowColumn(Constraint):
                         if board[i, k] == UNKNOWN:
                             hot_var.append((i, int(k)))
         return uniq(equal_numbers), uniq(hot_var)
-
-
-# class Trees:
-#     def __init__(self) -> None:
-#         self.trees_of_cells = {}
-#         self.cells_in_trees = {}
-
-#     def merge_trees(self, tree_A: tuple[int, int], tree_B: tuple[int, int]) -> bool:
-#         root_A = self.trees_of_cells[tree_A]
-#         root_B = self.trees_of_cells[tree_B]
-#         if root_A == root_B:
-#             return False
-#         elif root_A > root_B:
-#             root_A, root_B = root_B, root_A
-#         for cell in self.trees_of_cells[root_B]:
-#             self.trees_of_cells[cell] = root_A
-#         self.trees_of_cells[root_A].extend(self.trees_of_cells.pop(root_B))
-#         return True
-
-#     def add_unit_tree(self, i: int, j: int) -> None:
-#         self.trees_of_cells[i, j] = (i, j)
-#         self.cells_in_trees[i, j] = (i, j)
-
-
-# class OrthogonallyConnectedConstraintManager:
-#     def __init__(self, puzzle: Puzzle) -> None:
-#         self.trees = Trees()
-#         board = puzzle.board
-#         self.nrows = board.shape[0]
-#         self.ncols = board.shape[1]
-#         for i in range(self.nrows):
-#             for j in range(self.ncols):
-#                 if board[i, j] == SHADED:
-#                     board[i, j] = (0, 0)
-
-#     def _add_shaded(self, i: int, j: int) -> tuple[list, list]:
-
-#         best_tree = (i, j)
-#         if i == 0 or j == 0 or i == self.rows - 1 or j == self.cols - 1:
-#             best_tree = (0, 0)
-#         if (i - 1, j - 1) in self.trees:
-#             if best_tree < self.trees[i - 1, j - 1]:
-#                 self.trees[i - 1, j - 1] = best_tree
-#         return ([], [])
 
 
 # ***** Hitori
@@ -734,88 +626,6 @@ def main(argv: list | None = None) -> None:
             hitori_puzzle.print_board()
             puzzle = hitori_puzzle
             verbose_output(puzzle)
-    # puzzle.apply_state(((0, 0), SHADED))
-    # print(puzzle.board)
-    # puzzle.print_board()
-    # print(puzzle.constraints)
-    # # print(step_list_repr(search(copy(puzzle), ((0, 0), SHADED), hot=set())[0]))
-    # # print(step_list_repr(search(copy(puzzle), ((0, 1), SHADED), hot=set())[0]))
-    # # print(step_list_repr(search(copy(puzzle), ((1, 0), SHADED), hot=set())[0]))
-    # # print(step_list_repr(search(copy(puzzle), ((1, 1), SHADED), hot=set())[0]))
-    # print(search(copy(puzzle), ((0, 0), SHADED), hot=set())[0])
-    # print(search(copy(puzzle), ((0, 1), SHADED), hot=set())[0])
-    # print(search(copy(puzzle), ((1, 0), SHADED), hot=set())[0])
-    # print(search(copy(puzzle), ((1, 1), SHADED), hot=set())[0])
-    # print("***")
-    # print(search(copy(puzzle), ((1, 1), SHADED), hot=set())[0])
-    # puzzle.print_board()
-    # print(search_base(puzzle))
-    # puzzle.apply_state(((1, 1), SHADED))
-    # puzzle = hitori_puzzle_from_strings(
-    #     """
-    #     . #
-    #     . .
-    #     """,
-    #     """
-    #     1 1
-    #     1 2
-    #     """,
-    # )
-    # sb = search_base(puzzle)
-    # print(sb)
-    # print("*** FINAL ***")
-    # print(sb[0].board)
-    # print()
-
-    # puzzle = hitori_puzzle_from_strings(
-    #     """
-    #     . . .
-    #     . . .
-    #     . . .
-    #     """,
-    #     """
-    #     1 1 3
-    #     1 3 1
-    #     2 2 1
-    #     """,
-    # )
-    # print(puzzle.board)
-    # sb = search_base(puzzle)
-    # print(sb)
-    # print("*** FINAL ***")
-    # print(sb[0].board)
-    # print()
-
-    # puzzle = hitori_puzzle_from_strings(
-    #     """
-    #     . . . .
-    #     # . . .
-    #     . . . .
-    #     . . # .
-    #     """,
-    #     """
-    #     1 1 3
-    #     1 2 4
-    #     5 6 7
-    #     """,
-    # )
-    # print(puzzle.board)
-    # sb = search_base(puzzle)
-    # print(sb)
-    # print("*** FINAL ***")
-    # print(sb[0].board)
-    # print()
-
-    # puzzle = hitori_puzzle_from_strings(
-    #     """
-    #     . .
-    #     . .
-    #     """,
-    #     """
-    #     1 1
-    #     1 2
-    #     """,
-    # )
 
 
 if __name__ == "__main__":
