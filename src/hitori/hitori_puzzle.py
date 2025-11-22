@@ -74,6 +74,9 @@ class Puzzle:
                     guesses.append(((i, j), UNSHADED))
         return guesses
 
+    def is_known(self, var: "Variable") -> bool:
+        return self.board[var] != UNKNOWN
+
     def any_unknown(self) -> bool:
         return bool(np.any(self.board == UNKNOWN))
 
@@ -185,36 +188,42 @@ def swap_state_shaded(state: State) -> State:
 
 
 def search_base(
-    puzzle: Puzzle, *, depth: int = 2, budget: float = 10.0
+    puzzle: Puzzle, *, max_depth: int = 5, budget: float = 16.0
 ) -> tuple[Puzzle, Proof | None, list[Step]]:
     steps = []
     # hot = set() # TODO add hot set checking for base
     allowed_budget = 2.0
+    allowed_depth = 1
     guesses = puzzle.guesses_to_make()
     new_steps = []
     while allowed_budget < budget and puzzle.any_unknown():
         for guess in guesses:
+            if puzzle.is_known(guess[0]):
+                continue
             new_steps, _implications = search(
                 copy(puzzle),
                 guess,
                 hot=set(),
-                depth=depth - 1,
+                depth=allowed_depth - 1,
                 budget=allowed_budget,
             )
             for step in new_steps:
                 for consequent in step.consequents:
                     puzzle.apply_state(consequent)
-                    puzzle.print_just_board(indent=(5 - depth) * 2)
                 proof, _new_hot = puzzle.apply_constraints(step.consequents)
                 if proof:
                     return (puzzle, proof, steps)
                 steps.append(step)
+            puzzle.print_just_board(indent=(5 - allowed_depth) * 2)
+            print()
             if new_steps:
                 break  # reset variables and budget
         if new_steps:
             allowed_budget = 2.0
+            allowed_depth = 1
         else:
             allowed_budget += 1
+            allowed_depth += 1
         print(f"allowed_budget {allowed_budget}")
         guesses = puzzle.guesses_to_make()
         new_steps = []
@@ -232,11 +241,14 @@ def search(
     # implications: dict | None = None, # Not actually doing implications yet
 ) -> tuple[list[Step], list[Implication]]:
     """ """
+    if depth < 0:
+        return [], []
     steps = []
     steps.append(Step([this_move], ProofStr([], "assumed"), COSTS["search"]))
     cost = steps[-1].cost
-    var, val = this_move
-    puzzle.board[var] = val
+    puzzle.apply_state(this_move)
+    puzzle.print_just_board(indent=(5 - depth) * 2)
+    print()
     proof, new_hot = puzzle.apply_constraints([this_move])
     if proof:
         return _search_handle_contradiction(steps, this_move, proof)
@@ -245,7 +257,7 @@ def search(
     checked = set()
     while cost < budget and hot:
         guess = hot.pop()
-        if guess in checked:
+        if guess in checked or puzzle.is_known(guess[0]):
             continue
         new_steps, _implications = search(
             copy(puzzle),
@@ -257,12 +269,11 @@ def search(
         for step in new_steps:
             for consequent in step.consequents:
                 puzzle.apply_state(consequent)
-                puzzle.print_just_board(indent=(5 - depth) * 2)
-                print()
             proof, new_hot = puzzle.apply_constraints(step.consequents)
             if proof:
                 return _search_handle_contradiction(steps, this_move, proof)
             checked.difference_update(new_hot)
+            checked.update(step.consequents)
             hot.update(new_hot)  # make sure we don't get an infinite loop
             steps.append(step)
             # TODO add costs as a thing for proofs?
@@ -610,7 +621,8 @@ def verbose_output(puzzle: Puzzle) -> None:
     print(sb[2])
     print()
     print("*** FINAL ***")
-    print(sb[0].board)
+    sb[0].print_just_board()
+    print()
     sb[0].print_board()
     print(f"Solved: {not bool(sb[1]) and not puzzle.any_unknown()}")
     print()
