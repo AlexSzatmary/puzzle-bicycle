@@ -546,8 +546,11 @@ class EqualNumbersRowColumn(Constraint):
 
 # ***** Hitori
 class HitoriPuzzle(Puzzle):
-    def __init__(self, numbers: np.ndarray, board: np.ndarray) -> None:
+    def __init__(
+        self, board: np.ndarray, numbers: np.ndarray, number_field_size: int
+    ) -> None:
         self.numbers = numbers
+        self.number_field_size = number_field_size
         super().__init__(
             board,
             [
@@ -560,12 +563,15 @@ class HitoriPuzzle(Puzzle):
     def __copy__(self) -> "HitoriPuzzle":
         new = cast("HitoriPuzzle", super().__copy__())
         new.numbers = self.numbers
+        new.number_field_size = self.number_field_size
         return new
 
     def stringify_board(self) -> str:
         return "\n".join(
             "".join(
-                SHADED if value == SHADED else number
+                SHADED.rjust(self.number_field_size)
+                if value == SHADED
+                else number.rjust(self.number_field_size)
                 for (number, value) in zip(number_row, value_row, strict=False)
             )
             for (number_row, value_row) in zip(self.numbers, self.board, strict=False)
@@ -581,14 +587,21 @@ class HitoriPuzzle(Puzzle):
 
 
 def hitori_puzzle_from_strings(board_str: str, numbers_str: str) -> HitoriPuzzle:
+    max_num_str_len = max(
+        len(n) for L in cleandoc(numbers_str).split("\n") for n in L.split()
+    )
+    if max_num_str_len > 1:
+        max_num_str_len += 1
+    numbers = np.array(
+        [line.split() for line in cleandoc(numbers_str).split("\n")], dtype="str"
+    )
     return HitoriPuzzle(
-        np.array(
-            [line.split() for line in cleandoc(numbers_str).split("\n")], dtype="str"
-        ),
         np.array(
             [line.split() for line in cleandoc(board_str).split("\n") if line],
             dtype="str",
         ),
+        numbers,
+        max_num_str_len,
     )
 
 
@@ -600,7 +613,14 @@ def load_pzprv3(pzprv3: str) -> HitoriPuzzle:
     pzprv3_lines = pzprv3.split("\n")
     rows = int(pzprv3_lines[2])
     cols = int(pzprv3_lines[3])
-    numbers = np.zeros((rows, cols), dtype="str")
+
+    # The size of the number strings is a suprising hassle. If a Hitori puzzle has
+    # numbers with multiple digits, we need to capture that.
+    max_num_str_len = max(len(n) for L in pzprv3_lines[4 : 4 + rows] for n in L.split())
+    if max_num_str_len > 1:  # if it's a multiple digit puzzle, put spaces between cells
+        max_num_str_len += 1
+
+    numbers = np.zeros((rows, cols), dtype=f"<U{max_num_str_len}")
     numbers[:, :] = "-"
     for i, row in enumerate(pzprv3_lines[4 : 4 + rows]):
         numbers[i, :] = row.split()
@@ -608,7 +628,7 @@ def load_pzprv3(pzprv3: str) -> HitoriPuzzle:
     board[:, :] = "-"
     for i, row in enumerate(pzprv3_lines[4 + rows : 4 + rows * 2]):
         board[i, :] = row.split()
-    return HitoriPuzzle(numbers, board)
+    return HitoriPuzzle(board, numbers, max_num_str_len)
 
 
 def step_list_repr(step_list: list[Step]) -> str:
