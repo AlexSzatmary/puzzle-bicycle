@@ -196,10 +196,10 @@ def search_base(
     allowed_depth = 1
     guesses = puzzle.guesses_to_make()
     new_steps = []
-    while allowed_budget < budget and puzzle.any_unknown():
+    while (
+        allowed_budget < budget and allowed_depth <= max_depth and puzzle.any_unknown()
+    ):
         for guess in guesses:
-            if allowed_budget == 15.0:
-                pass
             if puzzle.is_known(guess[0]):
                 continue
             new_steps, _implications = search(
@@ -226,7 +226,7 @@ def search_base(
         else:
             allowed_budget += 1
             allowed_depth += 1
-        print(f"allowed_budget {allowed_budget}")
+        print(f"allowed_budget {allowed_budget} allowed depth {allowed_depth}")
         guesses = puzzle.guesses_to_make()
         new_steps = []
 
