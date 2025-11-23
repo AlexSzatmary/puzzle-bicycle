@@ -421,7 +421,6 @@ class AllUnshadedOrthogonallyConnected(Constraint):
         loop_cells = []
         cells_on_edge_path = []
         seen = {(branch[0], branch[1]) for branch in branches}
-        seen.add((branches[0][2], branches[0][2]))  # also add original move
         nrows = self.puzzle.board.shape[0]
         ncols = self.puzzle.board.shape[1]
         hot_var = []
