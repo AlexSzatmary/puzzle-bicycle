@@ -198,6 +198,8 @@ def search_base(
     new_steps = []
     while allowed_budget < budget and puzzle.any_unknown():
         for guess in guesses:
+            if allowed_budget == 15.0:
+                pass
             if puzzle.is_known(guess[0]):
                 continue
             new_steps, _implications = search(
@@ -426,12 +428,11 @@ class AllUnshadedOrthogonallyConnected(Constraint):
         edge_contacts = int(start_at_edge)
         true_at_start = True
         # To be on a loop, the new_move must touch two branches (that it might connect)
-        # or one branch and the perimeter of the board
-        while (
-            true_at_start
-            or (not start_at_edge and len(branches) > 1)
-            or (start_at_edge and branches)
-        ):
+        # or one branch and the perimeter of the board. edge_contacts is the total
+        # number of contacts with the perimeter but bool(edge_contacts) is needed here
+        # because for this condition, the number of contacts does not matter as long as
+        # it is more than 0.
+        while true_at_start or (bool(edge_contacts) + len(branches) > 1):
             true_at_start = False
             new_branches = []
             for i0, j0, from_i, from_j, path in branches:
