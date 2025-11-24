@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "black>=25.11.0",
     "coverage>=7.6.8",
     "ipykernel>=6.29.5",
     "ipython>=8.30.0",

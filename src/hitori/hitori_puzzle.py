@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from inspect import cleandoc
 from typing import Any, cast
 
+import black
 import numpy as np
 
 SHADED = "#"
@@ -94,12 +95,16 @@ class Step:
     cost: float
 
     def __repr__(self) -> str:
-        return cleandoc(f"""
-        Step(
-          consequents={self.consequents},
-          reason={self.reason},
-          cost={self.cost}
-        """)
+        return (
+            f"Step(consequents={self.consequents}, reason={self.reason},"
+            f"cost={self.cost})"
+        )
+        # return cleandoc(f"""
+        # Step(
+        #   consequents={self.consequents},
+        #   reason={self.reason},
+        #   cost={self.cost})
+        # """)
 
 
 @dataclass
@@ -648,7 +653,15 @@ def verbose_output(puzzle: Puzzle) -> None:
     print(sb[1])
     print()
     print("*** STEPS ***")
-    print(sb[2])
+    # print(sb[2])
+    print(
+        black.format_str(
+            step_list_repr(sb[2]),
+            mode=black.Mode(
+                line_length=88,
+            ),
+        )
+    )
     print()
     print("*** FINAL ***")
     sb[0].print_just_board()
