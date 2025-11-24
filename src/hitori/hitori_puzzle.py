@@ -192,13 +192,11 @@ def search_base(
 ) -> tuple[Puzzle, Proof | None, list[Step]]:
     steps = []
     # hot = set() # TODO add hot set checking for base
-    allowed_budget = 2.0
-    allowed_depth = 1
+    allowed_depth = 2
+    allowed_budget = 2.0 * allowed_depth
     guesses = puzzle.guesses_to_make()
     new_steps = []
-    while (
-        allowed_budget < budget and allowed_depth <= max_depth and puzzle.any_unknown()
-    ):
+    while allowed_depth <= max_depth and puzzle.any_unknown():
         for guess in guesses:
             if puzzle.is_known(guess[0]):
                 continue
@@ -221,12 +219,14 @@ def search_base(
             if new_steps:
                 break  # reset variables and budget
         if new_steps:
-            allowed_budget = 2.0
-            allowed_depth = 1
+            allowed_depth = 2
+            allowed_budget = 2.0 * allowed_depth
+        elif allowed_budget < budget:
+            allowed_budget *= 2.0
         else:
-            allowed_budget += 1
-            allowed_depth += 1
-        print(f"allowed_budget {allowed_budget} allowed depth {allowed_depth}")
+            allowed_depth += 2
+            allowed_budget = 2.0 * allowed_depth
+        print(f"allowed_budget {allowed_budget} allowed_depth {allowed_depth}")
         guesses = puzzle.guesses_to_make()
         new_steps = []
 
