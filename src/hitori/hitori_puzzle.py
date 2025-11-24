@@ -209,7 +209,8 @@ def search_base(
                 copy(puzzle),
                 guess,
                 hot=set(),
-                depth=allowed_depth - 1,
+                depth=0,
+                max_depth=allowed_depth - 1,
                 budget=allowed_budget,
             )
             for step in new_steps:
@@ -243,18 +244,19 @@ def search(
     this_move: State,
     *,
     hot: set[State],
-    depth: int = 2,
+    depth: int,
+    max_depth: int = 2,
     budget: float = math.inf,
     # implications: dict | None = None, # Not actually doing implications yet
 ) -> tuple[list[Step], list[Implication]]:
     """ """
-    if depth < 0:
+    if depth > max_depth:
         return [], []
     steps = []
     steps.append(Step([this_move], ProofStr([], "assumed"), COSTS["search"]))
     cost = steps[-1].cost
     puzzle.apply_state(this_move)
-    puzzle.print_just_board(indent=(5 - depth) * 2)
+    puzzle.print_just_board(indent=2 * depth)
     print()
     proof, new_hot = puzzle.apply_constraints([this_move])
     if proof:
@@ -270,7 +272,8 @@ def search(
             copy(puzzle),
             guess,
             hot=hot.copy(),
-            depth=depth - 1,
+            depth=depth + 1,
+            max_depth=max_depth,
             budget=budget - cost,
         )
         for step in new_steps:
