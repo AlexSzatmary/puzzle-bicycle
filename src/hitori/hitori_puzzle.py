@@ -568,7 +568,9 @@ class HitoriPuzzle(Puzzle):
         empty = ".".rjust(self.number_field_size)
         for i in range(self.board.shape[0]):
             for j in range(self.board.shape[1]):
-                if self.board[i, j] == UNKNOWN and self.numbers[i, j] == empty:
+                if self.board[i, j] == UNKNOWN and (
+                    self.numbers[i, j] == empty or self.numbers[i, j] == "."
+                ):
                     self.board[i, j] = UNSHADED
                     # have to reformat . numbers as spaces so the solution does not look
                     # incomplete
