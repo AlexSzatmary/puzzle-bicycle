@@ -209,7 +209,7 @@ def search_base(
                 copy(puzzle),
                 guess,
                 hot=set(),
-                depth=0,
+                depth=1,
                 max_depth=allowed_depth - 1,
                 budget=allowed_budget,
             )
@@ -230,7 +230,7 @@ def search_base(
         elif allowed_budget < budget:
             allowed_budget *= 2.0
         else:
-            allowed_depth += 2
+            allowed_depth += 1
             allowed_budget = 2.0 * allowed_depth
         print(f"allowed_budget {allowed_budget} allowed_depth {allowed_depth}")
         guesses = puzzle.guesses_to_make()
@@ -250,8 +250,6 @@ def search(
     # implications: dict | None = None, # Not actually doing implications yet
 ) -> tuple[list[Step], list[Implication]]:
     """ """
-    if depth > max_depth:
-        return [], []
     steps = []
     steps.append(Step([this_move], ProofStr([], "assumed"), COSTS["search"]))
     cost = steps[-1].cost
@@ -268,25 +266,26 @@ def search(
         guess = hot.pop()
         if guess in checked or puzzle.is_known(guess[0]):
             continue
-        new_steps, _implications = search(
-            copy(puzzle),
-            guess,
-            hot=hot.copy(),
-            depth=depth + 1,
-            max_depth=max_depth,
-            budget=budget - cost,
-        )
-        for step in new_steps:
-            for consequent in step.consequents:
-                puzzle.apply_state(consequent)
-            proof, new_hot = puzzle.apply_constraints(step.consequents)
-            if proof:
-                return _search_handle_contradiction(steps, this_move, proof)
-            checked.difference_update(new_hot)
-            checked.update(step.consequents)
-            hot.update(new_hot)  # make sure we don't get an infinite loop
-            steps.append(step)
-            # TODO add costs as a thing for proofs?
+        if depth < max_depth:
+            new_steps, _implications = search(
+                copy(puzzle),
+                guess,
+                hot=hot.copy(),
+                depth=depth + 1,
+                max_depth=max_depth,
+                budget=budget - cost,
+            )
+            for step in new_steps:
+                for consequent in step.consequents:
+                    puzzle.apply_state(consequent)
+                proof, new_hot = puzzle.apply_constraints(step.consequents)
+                if proof:
+                    return _search_handle_contradiction(steps, this_move, proof)
+                checked.difference_update(new_hot)
+                checked.update(step.consequents)
+                hot.update(new_hot)  # make sure we don't get an infinite loop
+                steps.append(step)
+                # TODO add costs as a thing for proofs?
 
     # TODO this should only return steps if a contradiction is found, an implication is
     # found; otherwise, return invariants
