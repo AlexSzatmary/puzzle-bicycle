@@ -518,7 +518,7 @@ class EqualNumbersRowColumn(Constraint):
         else:
             return (
                 ProofConstraintContradiction([], ""),
-                [(var, SHADED) for var in hot_var],
+                [(var, UNSHADED) for var in hot_var],
             )
 
     def _find_unshaded_equal_numbers(  # noqa: C901 it's fine, a lot doubled logic
