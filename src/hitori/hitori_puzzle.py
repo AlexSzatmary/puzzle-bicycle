@@ -161,6 +161,34 @@ class ProofWrongGuess(Proof):
 @dataclass
 class ProofStepList(Proof):
     reason: list[Step]
+    _saved_cost: float | None = None
+
+    @property
+    def cost(self) -> float:
+        if self._saved_cost is None:
+            self._calculate_cost()
+        assert self._saved_cost is not None
+        return self._saved_cost
+
+    def _calculate_cost(self) -> None:
+        # The cost of a ProofStepList is the total cost of the steps actually needed to
+        # support the final step in the list. Steps that were proven before this list
+        # are free, so we do not count any state that is an antecedent to one of the
+        # steps in the list, but not a consequent to any of them.
+        #
+        # This is intended to measure how much stuff you need in your head that you
+        # didn't already write on the paper; it might not be a helpful measure if there
+        # are many layers of recursion.
+
+        needed_steps = []
+        needed_antecedents = set(self.reason[-1].reason.antecedents)
+        for step in self.reason[-2::-1]:
+            if any(c in needed_antecedents for c in step.consequents):
+                needed_antecedents.update(step.reason.antecedents)
+                needed_steps.append(step)
+        self._saved_cost = sum(step.cost for step in needed_steps)
+        if isinstance(self.reason[-1].reason, ProofConstraintContradiction):
+            self._saved_cost += self.reason[-1].cost
 
 
 class Constraint:
@@ -227,8 +255,8 @@ def search_base(
         if new_steps:
             allowed_depth = 2
             allowed_budget = 2.0 * allowed_depth
-        elif allowed_budget < budget:
-            allowed_budget *= 2.0
+        # elif allowed_budget < budget: disable until cost counted
+        #     allowed_budget *= 2.0
         else:
             allowed_depth += 1
             allowed_budget = 2.0 * allowed_depth
@@ -292,19 +320,17 @@ def search(
     return ([], [])  # add second return when doing invariants
 
 
-# TODO redo cost to measure from depth of new proof graph
-
-
 def _search_handle_contradiction(
     steps: list[Step], this_move: State, proof: ProofConstraintContradiction
 ) -> tuple[list[Step], list[Implication]]:
     steps.append(Step([swap_state_shaded(this_move)], proof, 1.0))
+    psl = ProofStepList([this_move], steps)
     return (
         [
             Step(
                 [swap_state_shaded(this_move)],
-                ProofStepList([this_move], steps),
-                1.0,
+                psl,
+                psl.cost,
             )
         ],
         [],
@@ -672,6 +698,7 @@ def verbose_output(puzzle: Puzzle) -> None:
     print()
     sb[0].print_board()
     print(f"Solved: {not bool(sb[1]) and not puzzle.any_unknown()}")
+    print(f"Difficulty: {max(step.cost for step in sb[2])}")
     print()
 
 
