@@ -220,12 +220,12 @@ def swap_state_shaded(state: State) -> State:
     )
 
 
-def search_base(
+def search_base(  # noqa: C901 TODO simplify
     puzzle: Puzzle, *, max_depth: int = 5, budget: float = 16.0
 ) -> tuple[Puzzle, Proof | None, list[Step]]:
     steps = []
     # hot = set() # TODO add hot set checking for base
-    allowed_depth = 2
+    allowed_depth = 1
     allowed_budget = 2.0 * allowed_depth
     guesses = puzzle.guesses_to_make()
     new_steps = []
@@ -238,10 +238,14 @@ def search_base(
                 guess,
                 hot=set(),
                 depth=1,
-                max_depth=allowed_depth - 1,
+                max_depth=allowed_depth,
                 budget=allowed_budget,
             )
+            guess_cost = 0
             for step in new_steps:
+                guess_cost += step.cost
+                if guess_cost > budget:
+                    break
                 for consequent in step.consequents:
                     puzzle.apply_state(consequent)
                 proof, _new_hot = puzzle.apply_constraints(step.consequents)
@@ -253,10 +257,10 @@ def search_base(
             if new_steps:
                 break  # reset variables and budget
         if new_steps:
-            allowed_depth = 2
+            allowed_depth = 1
             allowed_budget = 2.0 * allowed_depth
-        # elif allowed_budget < budget: disable until cost counted
-        #     allowed_budget *= 2.0
+        elif allowed_budget < budget:
+            allowed_budget += 1.0
         else:
             allowed_depth += 1
             allowed_budget = 2.0 * allowed_depth
@@ -290,7 +294,7 @@ def search(
     hot.update(new_hot)
 
     checked = set()
-    while cost < budget and hot:
+    while hot:
         guess = hot.pop()
         if guess in checked or puzzle.is_known(guess[0]):
             continue
@@ -303,7 +307,11 @@ def search(
                 max_depth=max_depth,
                 budget=budget - cost,
             )
+            guess_cost = cost
             for step in new_steps:
+                guess_cost += step.cost
+                if guess_cost > budget:
+                    break
                 for consequent in step.consequents:
                     puzzle.apply_state(consequent)
                 proof, new_hot = puzzle.apply_constraints(step.consequents)
