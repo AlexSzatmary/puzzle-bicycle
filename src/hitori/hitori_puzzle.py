@@ -241,10 +241,9 @@ def search_base(  # noqa: C901 TODO simplify
                 max_depth=allowed_depth,
                 budget=allowed_budget,
             )
-            guess_cost = 0
             for step in new_steps:
-                guess_cost += step.cost
-                if guess_cost > budget:
+                if step.cost > budget:
+                    new_steps = []
                     break
                 for consequent in step.consequents:
                     puzzle.apply_state(consequent)
@@ -308,11 +307,9 @@ def search(
             max_depth=max_depth,
             budget=budget - cost,
         )
-        guess_cost = cost
         for step in new_steps:
-            guess_cost += step.cost
-            if guess_cost > budget:
-                break
+            if step.cost > budget:
+                continue
             for consequent in step.consequents:
                 puzzle.apply_state(consequent)
             proof, new_hot = puzzle.apply_constraints(step.consequents)
@@ -334,16 +331,7 @@ def _search_handle_contradiction(
 ) -> tuple[list[Step], list[Implication]]:
     steps.append(Step([swap_state_shaded(this_move)], proof, 1.0))
     psl = ProofStepList([this_move], steps)
-    return (
-        [
-            Step(
-                [swap_state_shaded(this_move)],
-                psl,
-                psl.cost,
-            )
-        ],
-        [],
-    )
+    return ([Step([swap_state_shaded(this_move)], psl, psl.cost)], [])
 
 
 # ***** Dynasty constraints
