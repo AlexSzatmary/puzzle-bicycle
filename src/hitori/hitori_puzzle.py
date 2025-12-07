@@ -480,11 +480,13 @@ class AllUnshadedOrthogonallyConnected(Constraint):
                     if i == 0 or j == 0 or i == nrows - 1 or j == ncols - 1:
                         edge_contacts += 1
                         cells_on_edge_path.extend(path)
+                        cells_on_edge_path.append((i, j))
                         continue
                     if (i, j) in seen:
                         loop_cells.extend(path)
                         continue
                     new_branches.append((i, j, i0, j0, [*path, (i, j)]))
+                    seen.add((i, j))
             branches = new_branches
         if edge_contacts > 1:
             loop_cells.extend(cells_on_edge_path)
