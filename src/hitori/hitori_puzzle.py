@@ -295,7 +295,11 @@ def search(
     hot.update(new_hot)
 
     checked = set()
-    while hot:
+    next_hot = set()
+    while hot or next_hot:
+        if not hot:
+            hot = next_hot
+            next_hot = set()
         guess = hot.pop()
         if guess in checked or puzzle.is_known(guess[0]):
             continue
@@ -317,7 +321,7 @@ def search(
                 return _search_handle_contradiction(steps, this_move, proof)
             checked.difference_update(new_hot)
             checked.update(step.consequents)
-            hot.update(new_hot)  # make sure we don't get an infinite loop
+            next_hot.update(new_hot)  # make sure we don't get an infinite loop
             steps.append(step)
             # TODO add costs as a thing for proofs?
 
