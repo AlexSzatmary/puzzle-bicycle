@@ -416,6 +416,7 @@ class AllUnshadedOrthogonallyConnected(Constraint):
         hot_var = []
         nrows = self.puzzle.board.shape[0]
         ncols = self.puzzle.board.shape[1]
+        all_moves_in_loops = []
         for (i, j), value in new_moves:
             if value != SHADED:
                 continue
@@ -431,11 +432,12 @@ class AllUnshadedOrthogonallyConnected(Constraint):
             )
 
             if new_loop_cells:
+                all_moves_in_loops.extend(new_loop_cells)
                 moves_in_loops.append((i, j))
                 loop_cells.extend(new_loop_cells)
             hot_var.extend(new_hot)
 
-        return moves_in_loops, list(set(hot_var))
+        return uniq(all_moves_in_loops), list(set(hot_var))
 
     def _trace_graph(  # noqa: C901 There is a lot of necessarily repetitive code
         self,
